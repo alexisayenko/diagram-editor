@@ -78,3 +78,10 @@ test("browser app dirty check is safe before a diagram is ready", () => {
   assert.equal(check(true, {}), false);
   assert.equal(check(true, { "canvas/edit-mode": { isDirty: () => true } }), true);
 });
+test("browser app script and built diagram.html scripts are syntactically valid", () => {
+  const html = readFileSync(new URL("../../diagram.html", import.meta.url), "utf8");
+  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  assert.ok(scripts.length > 0);
+  for (const s of scripts) assert.doesNotThrow(() => new Function(s));
+  assert.doesNotThrow(() => new Function(readFileSync(new URL("../browser/app.js", import.meta.url), "utf8")));
+});

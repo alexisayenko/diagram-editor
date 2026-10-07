@@ -36,7 +36,7 @@ async function load(dir, filename) {
 }
 frame.addEventListener("load", () => {
   if (!active) return;
-  ready = !!frame.contentWindow.InfraDiagram?.modules["canvas/edit-mode"] : null;
+  ready = !!frame.contentWindow.InfraDiagram?.modules["canvas/edit-mode"];
   if (!ready) message("The diagram could not start. Reload it to retry.", true);
   controls();
 });
