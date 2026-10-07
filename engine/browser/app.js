@@ -6,7 +6,7 @@ const saveButton = document.querySelector("#save");
 const status = document.querySelector("#status");
 const frame = document.querySelector("#view");
 let folder = null, active = null, ready = false, busy = false;
-const editor = () => ready && frame.contentWindow.InfraDiagram?.modules["canvas/edit-mode"];
+const editor = () => ready ? frame.contentWindow.InfraDiagram?.modules["canvas/edit-mode"] : null;
 const dirty = () => editor()?.isDirty() || false;
 function message(text, error = false) { status.textContent = text; status.classList.toggle("error", error); }
 function controls() {
@@ -36,7 +36,7 @@ async function load(dir, filename) {
 }
 frame.addEventListener("load", () => {
   if (!active) return;
-  ready = !!frame.contentWindow.InfraDiagram?.modules["canvas/edit-mode"];
+  ready = !!frame.contentWindow.InfraDiagram?.modules["canvas/edit-mode"] : null;
   if (!ready) message("The diagram could not start. Reload it to retry.", true);
   controls();
 });
