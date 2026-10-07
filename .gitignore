@@ -31,3 +31,4 @@ out/
 # Local, private diagram data (never commit)
 /local/
 *.private.*
+/tmp/
