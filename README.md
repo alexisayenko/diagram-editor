@@ -1,6 +1,6 @@
 # diagram-editor
 
-Infrastructure diagram editor: an engine (`engine/`) that renders TOML / Mermaid diagram folders into interactive HTML, SVG/PNG and Excalidraw. Open `diagram.html` in Edge or Chrome to start; see [docs/tech/authoring.md](docs/tech/authoring.md) and [docs/tech/architecture.md](docs/tech/architecture.md). Code lives in `engine/`, sample content in `examples/`.
+Infrastructure diagram editor: an engine (`engine/`) that renders TOML / Mermaid diagram folders into interactive HTML, SVG/PNG and Excalidraw. Run `node engine/serve.mjs` and open its address to start (any modern browser); see [docs/tech/authoring.md](docs/tech/authoring.md) and [docs/tech/architecture.md](docs/tech/architecture.md). Code lives in `engine/`, sample content in `examples/`.
 
 ## Never commit infrastructure data (hard rule)
 

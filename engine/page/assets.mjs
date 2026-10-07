@@ -14,7 +14,7 @@ const CSS = {
 // "canvas/geometry" is generated from render/geometry.mjs (geometryKit) so build and edit mode route connections identically.
 const RUNTIME = [
   "ui/core", "ui/details", "ui/skins", "ui/panels", "ui/networks", "ui/legend", "ui/selection",
-  "ui/export-columns", "ui/copy", "ui/export-image", "ui/init",
+  "ui/export-columns", "ui/copy", "ui/export-image", "ui/init", "ui/notes-edit",
   "canvas/geometry", "canvas/model", "canvas/zoom-pan", "canvas/edit-mode",
 ];
 

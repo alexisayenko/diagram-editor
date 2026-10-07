@@ -35,3 +35,12 @@
 :root[data-style="swiss"] .note{border-radius:0;box-shadow:none}
 :root[data-style="swiss"] .cp{border-radius:0}
 @media (max-width:699px){.cp{max-width:calc(100vw - 24px)}#rc{width:min(320px,calc(100vw - 24px))}}
+#nl.ed .note{cursor:text}
+.nadd,.nbtn{align-self:flex-start;font:inherit;font-size:12px;border:1px solid var(--nmut);background:var(--panel);color:var(--fg);border-radius:4px;padding:3px 10px;cursor:pointer}
+.nadd:hover,.nbtn:hover{filter:brightness(.96)}
+.note.editing{padding-bottom:8px;cursor:auto}
+.ned{display:block;width:100%;min-height:96px;resize:vertical;font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--nfg);background:transparent;border:1px solid var(--nmut);border-radius:3px;padding:5px}
+.nerr{margin-top:4px;color:#a31c1c;font-size:12px}
+.nrow{display:flex;align-items:center;gap:6px;margin-top:6px}
+.nhint{margin-left:auto;font-size:10px;color:var(--nmut)}
+.ndel{color:#a31c1c}

@@ -62,7 +62,7 @@ test("invalid saved geometry and mismatched model identity are rejected", () => 
 test("browser bundle uses the real renderer and embeds text safely", () => {
   const html = readFileSync(new URL("../../diagram.html", import.meta.url), "utf8");
   const start = html.indexOf("<script>") + 8, end = html.lastIndexOf("</script>");
-  const prefix = html.slice(start, end).split("// Folder handles remain")[0];
+  const prefix = html.slice(start, end).split("// Files live in local/")[0];
   const bundled = runInNewContext(prefix + '\nrequire("browser/render.mjs").renderDiagram(source, "demo.toml", null, ASSETS)', { source: demo });
   assert.match(bundled.html, /InfraDiagram\.define/);
   assert.match(bundled.html, /web-01\.example\.test/);
@@ -72,7 +72,7 @@ test("browser bundle uses the real renderer and embeds text safely", () => {
 });
 test("browser app dirty check is safe before a diagram is ready", () => {
   const app = readFileSync(new URL("../browser/app.js", import.meta.url), "utf8");
-  const src = app.split("\n").filter((l) => /^const (editor|dirty) = /.test(l)).join("\n");
+  const src = app.split("\n").filter((l) => /^const (editor|notesApi|dirty) = /.test(l)).join("\n");
   const check = (ready, mods) => runInNewContext(src + "\ndirty()", { ready, frame: { contentWindow: { InfraDiagram: { modules: mods } } } });
   assert.equal(check(false, {}), false);
   assert.equal(check(true, {}), false);

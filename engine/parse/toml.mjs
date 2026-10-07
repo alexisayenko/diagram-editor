@@ -1,7 +1,7 @@
 // The diagram authoring subset of TOML: scalar keys and top-level arrays of tables.
 // Kept dependency-free and shared by Node tests and the standalone browser page.
 import { parseNotes } from "./notes.mjs";
-export function parseToml(src) {
+export function parseToml(src, spans = null) {
   src = src.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
   let p = 0, table;
   const root = Object.create(null);
@@ -16,13 +16,30 @@ export function parseToml(src) {
     }
   }
   function string() {
-    const quote = src[p++];
+    const quote = src[p++], multi = src.startsWith(quote + quote, p);
     let out = "";
+    if (multi) { p += 2; if (src[p] === "\n") p++; }
     while (p < src.length) {
       const c = src[p++];
-      if (c === quote) return out;
-      if (c === "\n" || c.charCodeAt(0) < 32) error("strings must be on one line; use \\n in a double-quoted string");
+      if (c === quote) {
+        if (!multi) return out;
+        let run = 1;
+        while (src[p - 1 + run] === quote) run++;
+        if (run > 5) error("too many quotes in a multi-line string");
+        p += run - 1;
+        if (run >= 3) return out + quote.repeat(run - 3);
+        out += quote.repeat(run);
+        continue;
+      }
+      if (c === "\n" ? !multi : c.charCodeAt(0) < 32 && !(multi && c === "\t")) error("strings must be on one line; use \\n or a multi-line string");
       if (c !== "\\" || quote === "'") { out += c; continue; }
+      if (multi && /[ \t\n]/.test(src[p])) {
+        let q = p;
+        while (src[q] === " " || src[q] === "\t") q++;
+        if (src[q] !== "\n") error("unsupported string escape");
+        while (/[ \t\n]/.test(src[q] || "")) q++;
+        p = q; continue;
+      }
       const e = src[p++], escapes = { b: "\b", t: "\t", n: "\n", f: "\f", r: "\r", '"': '"', "\\": "\\" };
       if (Object.hasOwn(escapes, e)) out += escapes[e];
       else if (e === "u" || e === "U") {
@@ -53,24 +70,43 @@ export function parseToml(src) {
   }
   while (p < src.length) {
     space(); if (p >= src.length) break;
+    let keyLine = false;
     if (src[p] === "[") {
       const m = src.slice(p).match(/^\[\[([a-z][a-z0-9_]*)\]\]/);
-      if (!m) error("expected [[regions]], [[servers]], or [[connections]]");
+      if (!m) error("expected [[regions]], [[servers]], [[connections]], or [[documents]]");
+      if (spans && spans.firstTable === undefined) spans.firstTable = p;
       p += m[0].length;
       if (Object.hasOwn(root, m[1]) && !Array.isArray(root[m[1]])) error("table name already used as a key");
       table = Object.create(null); (root[m[1]] ||= []).push(table);
     } else {
-      const m = src.slice(p).match(/^([a-z][a-z0-9_]*)[ \t]*=/);
+      const m = src.slice(p).match(/^([a-z][a-z0-9_]*)[ \t]*=/), start = p;
       if (!m) error("expected key = value");
       p += m[0].length;
       if (Object.hasOwn(table, m[1])) error(`duplicate key '${m[1]}'`);
+      space(false);
+      const valueStart = p;
       table[m[1]] = value();
+      if (spans && table === root) { spans.keys[m[1]] = { start, valueStart, valueEnd: p }; keyLine = true; }
     }
     space(false);
     if (p < src.length && src[p] !== "\n") error("unexpected text after value");
     p++;
+    if (keyLine) spans.lastLineEnd = Math.min(p, src.length);
   }
   return root;
+}
+
+// One note card from its TOML string: first line title, optional "Date:" line, rest body.
+export function parseNoteText(text, at = "note", strict = false) {
+  const fail = (m) => { throw new Error(`TOML: ${at}: ${m}`); };
+  if (strict && text.trim() && !text.split("\n")[0].trim()) fail("the first line is the title and cannot be empty");
+  const [head, ...rest] = text.trim().split("\n"), dated = /^\s*Date:/.test(rest[0] || "");
+  if (!head) fail("needs a title line and body text");
+  if (dated && !/^\s*Date:\s*\S/.test(rest[0])) fail("empty Date");
+  const body = rest.slice(dated ? 1 : 0).join("\n");
+  if (!body.trim()) fail("needs a title line and body text");
+  if (/^\s*#/m.test(body)) fail("body lines cannot start with #");
+  return { ...parseNotes(`## ${head}\n${dated ? "" : "Date: Note\n\n"}${rest.join("\n")}`)[0], text: text.trim() };
 }
 
 const COLORS = { web: "#C2185B", application: "#1565C0", interface: "#00838F", external: "#7E57C2", cache: "#B8860B", oracle: "#E65100", mongo: "#2E7D32", nas: "#546E7A", statistics: "#6D4C41" };
@@ -84,8 +120,8 @@ export function tomlModel(src, filename = "diagram.toml") {
   function list(v, at) { if (v === undefined) return []; if (!Array.isArray(v) || v.some((s) => typeof s !== "string" || !s.trim())) fail(`${at} must be an array of non-empty strings`); return v; }
   function bool(v, at) { if (v !== undefined && typeof v !== "boolean") fail(`${at} must be true or false`); return v || false; }
   function type(v, at) { if (!Object.hasOwn(COLORS, v)) fail(`${at}: server_type must be one of ${Object.keys(COLORS).join(", ")}`); return v; }
-  keys(t, ["id", "title", "notes", "regions", "servers", "connections"], "diagram");
-  for (const key of ["regions", "servers", "connections"]) {
+  keys(t, ["id", "title", "notes", "regions", "servers", "connections", "documents"], "diagram");
+  for (const key of ["regions", "servers", "connections", "documents"]) {
     if (t[key] !== undefined && (!Array.isArray(t[key]) || t[key].some((v) => !v || typeof v !== "object" || Array.isArray(v)))) fail(`${key} must use [[${key}]] tables`);
   }
   const id = t.id ?? filename.replace(/\.toml$/i, "");
@@ -93,13 +129,14 @@ export function tomlModel(src, filename = "diagram.toml") {
   const config = { id, title: str(t.title, "title"), groups: {}, processes: {} };
   const noteList = t.notes === undefined ? [] : typeof t.notes === "string" ? [t.notes] : t.notes;
   if (!Array.isArray(noteList) || noteList.some((n) => typeof n !== "string" || !n.trim())) fail("notes must be a non-empty string or an array of non-empty strings");
-  const notes = noteList.map((n, i) => {
-    const [head, ...rest] = n.trim().split("\n"), dated = /^\s*Date:/.test(rest[0] || "");
-    if (dated && !/^\s*Date:\s*\S/.test(rest[0])) fail(`notes[${i + 1}]: empty Date`);
-    const body = rest.slice(dated ? 1 : 0).join("\n");
-    if (!body.trim()) fail(`notes[${i + 1}]: needs a title line and body text`);
-    if (/^\s*#/m.test(body)) fail(`notes[${i + 1}]: body lines cannot start with #`);
-    return parseNotes(`## ${head}\n${dated ? "" : "Date: Note\n\n"}${rest.join("\n")}`)[0];
+  const notes = noteList.map((n, i) => parseNoteText(n, `notes[${i + 1}]`));
+  const docs = (t.documents || []).map((d, i) => {
+    const at = "documents[" + (i + 1) + "]";
+    keys(d, ["title", "url", "description"], at);
+    const url = str(d.url, at + ".url");
+    if (!/^https?:[/][/][^\s]+$/.test(url)) fail(at + ".url must be an http or https URL");
+    if (d.description !== undefined && typeof d.description !== "string") fail(at + ".description must be a string");
+    return { title: str(d.title, at + ".title").trim(), url, desc: (d.description || "").trim() };
   });
   const model = { clusters: new Map(), nodes: new Map(), edges: [], linkStyles: new Map(), classDefs: new Map(), classes: new Map() };
   const sections = Object.create(null), used = new Set();
@@ -138,7 +175,7 @@ export function tomlModel(src, filename = "diagram.toml") {
     if (s.details !== undefined && typeof s.details !== "string") fail(`${eid}.details must be a string`);
     sections[title] = (s.os ? `| Key | Value |\n|---|---|\n| OS | ${s.os} |\n\n` : "") + (s.details || "");
   }
-  if (!model.nodes.size && !model.clusters.size) fail("define at least one server or region");
+  if (!model.nodes.size && !model.clusters.size && !docs.length && !notes.length) fail("define at least one server, region, document or note");
   const edgeIds = new Set();
   for (const e of t.connections || []) {
     keys(e, ["from", "to", "label", "firewall", "proposed", "from_service", "to_service"], "connection");
@@ -161,5 +198,5 @@ export function tomlModel(src, filename = "diagram.toml") {
       config.processes[k] = Object.fromEntries(Object.entries(process).filter(([, v]) => v !== null));
     }
   }
-  return { config, model, sections, notes };
+  return { config, model, sections, notes, docs };
 }

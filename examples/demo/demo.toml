@@ -99,3 +99,12 @@ from = "app02"
 to = "cache"
 label = "TCP · proposed cache"
 proposed = true
+
+[[documents]]
+title = "Demo environment overview"
+url = "https://wiki.example.test/display/DEMO/Overview"
+description = "servers, roles and owners"
+
+[[documents]]
+title = "Job 104 batch import"
+url = "https://wiki.example.test/display/DEMO/Job+104"
