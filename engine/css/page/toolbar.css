@@ -1,0 +1,16 @@
+#ta{position:fixed;top:8px;left:8px;right:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;justify-content:space-between;font:12px system-ui,sans-serif;z-index:5;pointer-events:none}
+#ta>*{pointer-events:auto}
+#tar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end;margin-left:auto}
+#ta button{font:inherit;padding:3px 8px;border:1px solid var(--fg);border-radius:4px;background:var(--panel);color:var(--fg);cursor:pointer}
+#ta button:focus-visible,.sw:focus-visible,.reset:focus-visible,#pc:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+#ta[data-on="1"] #te{background:var(--red);border-color:var(--red);color:#fff}
+#ta label,#tm:not(:empty){display:flex;gap:3px;align-items:center;padding:3px 6px;border-radius:4px;background:var(--panel);color:var(--fg)}
+#tal{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#ss,#zm{display:inline-flex}
+#ss button,#zm button{border-radius:0;margin-left:-1px}
+#ss button:first-child,#zm button:first-child{border-radius:4px 0 0 4px;margin-left:0}
+#ss button:last-child,#zm button:last-child{border-radius:0 4px 4px 0}
+#zo,#zi{min-width:26px}
+body>svg:not(.edit){cursor:grab;touch-action:none}
+body>svg.panning{cursor:grabbing}
+#ss button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}

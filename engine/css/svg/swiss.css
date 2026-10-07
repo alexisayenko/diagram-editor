@@ -1,0 +1,17 @@
+svg.s-swiss .d{fill:none;stroke:var(--clln);stroke-width:.75}
+svg.s-swiss .d.prop{stroke-width:1;stroke-dasharray:4 3}
+svg.s-swiss .cd{fill:var(--card);stroke:var(--cardln);stroke-width:.75}
+svg.s-swiss .ab,svg.s-swiss .sq{fill:var(--tc)}
+svg.s-swiss .sep{fill:none;stroke:var(--cardln);stroke-width:.75}
+svg.s-swiss .tp,svg.s-swiss .hd,svg.s-swiss .ic{display:none}
+svg.s-swiss .tt{fill:var(--mut);font-size:7.5px;font-weight:500;letter-spacing:1.2px}
+svg.s-swiss .ip{fill:none;stroke:var(--ipln);stroke-width:.75}
+svg.s-swiss .ni{fill:var(--ipt);font-family:var(--mono);font-size:10px}
+svg.s-swiss .nt{font-weight:600;fill:#111}
+svg.s-swiss .nb{fill:#333}
+svg.s-swiss .ct{fill:#111;text-transform:uppercase;letter-spacing:1.4px;font-weight:600;font-size:10px}
+svg.s-swiss .r{stroke-width:1.5}
+svg.s-swiss .k{stroke-width:1.5}
+svg.s-swiss .tcp,svg.s-swiss .mvl,svg.s-swiss .fwt{text-transform:uppercase;letter-spacing:1px;font-size:8.5px}
+svg.s-swiss .fwz{stroke-width:1.5;stroke-linecap:square;stroke-linejoin:miter}
+svg.s-swiss .lp{rx:0}

@@ -1,0 +1,61 @@
+%% Demo diagram: synthetic data only (RFC 5737 IPs, *.example.test hosts).
+flowchart LR
+  subgraph web["Web Servers"]
+    web01["web-01.example.test<br/>nginx reverse proxy<br/>Customer portal<br/>203.0.113.10/24<br/>192.0.2.10/24"]
+    web02["web-02.example.test<br/>nginx reverse proxy<br/>Customer portal<br/>203.0.113.11/24<br/>192.0.2.11/24"]
+  end
+  subgraph ifc["Interface Servers"]
+    ifc01["ifc-01.example.test<br/>SFTP gateway<br/>Job 104 #quot;Batch import#quot;<br/>198.51.100.20/25<br/>192.0.2.20/24"]
+  end
+  subgraph app["Application Servers"]
+    app01["app-01.example.test<br/>Tomcat: core-api<br/>RMI: order-service<br/>192.0.2.31/24"]
+    app02["app-02.example.test<br/>Tomcat: core-api<br/>RMI: pricing-service<br/>192.0.2.32/24"]
+    app03["app-03.example.test<br/>Job 104 batch import<br/>Job 210 nightly export<br/>192.0.2.33/24"]
+  end
+  subgraph cache["Cache Servers"]
+  end
+  subgraph ora["Oracle DB Cluster"]
+    db01[("db-01.example.test<br/>Oracle RAC node 1<br/>SID demo1<br/>192.0.2.41/24")]
+    db02[("db-02.example.test<br/>Oracle RAC node 2<br/>SID demo2<br/>192.0.2.42/24")]
+    db03[("db-03.example.test<br/>Oracle RAC node 3<br/>SID demo3<br/>192.0.2.43/24")]
+  end
+  subgraph mongo["Mongo DB Servers"]
+    mongo01[("mongo-01.example.test<br/>MongoDB 6 replica set<br/>192.0.2.51/24")]
+  end
+  subgraph nas["NAS"]
+    nas01["nas-01.example.test<br/>NFS share /export/archive<br/>198.51.100.200/25"]
+  end
+  stats01["stats-01.example.test<br/>Grafana dashboards<br/>198.51.100.150/25"]
+
+  web01 -->|"TCP · HTTPS"| app01
+  web02 -->|"TCP · HTTPS"| app02
+  app01 -->|"TCP · SQL*Net"| ora
+  app02 -->|"TCP · SQL*Net"| ora
+  app01 -->|"TCP · MongoDB"| mongo01
+  ifc01 -->|"TCP · RMI · Job 104 · firewall"| app03
+  app03 -->|"TCP · SQL*Net · Job 104"| db01
+  app03 -->|"NFS · Job 210 archive · firewall"| nas01
+  stats01 -->|"TCP · metrics"| app
+  app02 -.->|"TCP · proposed cache"| cache
+
+  linkStyle 9 stroke-dasharray:6 4
+
+  classDef web fill:#FCE4EC,stroke:#C2185B
+  classDef interface fill:#E0F7FA,stroke:#00838F
+  classDef application fill:#E3F2FD,stroke:#1565C0
+  classDef cache fill:#FFF8E1,stroke:#B8860B
+  classDef oracle fill:#FFF3E0,stroke:#E65100
+  classDef mongo fill:#E8F5E9,stroke:#2E7D32
+  classDef nas fill:#ECEFF1,stroke:#546E7A
+  classDef statistics fill:#EFEBE9,stroke:#6D4C41
+  classDef proposed stroke-dasharray:6 4
+
+  class web,web01,web02 web
+  class ifc,ifc01 interface
+  class app,app01,app02,app03 application
+  class cache cache
+  class cache proposed
+  class ora,db01,db02,db03 oracle
+  class mongo,mongo01 mongo
+  class nas,nas01 nas
+  class stats01 statistics

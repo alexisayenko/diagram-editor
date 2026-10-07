@@ -1,0 +1,18 @@
+svg.s-dark .d{fill:var(--clf);stroke:var(--clln)}
+svg.s-dark .cd{fill:var(--card);stroke:var(--cardln)}
+svg.s-dark .hd{fill:#12203A}
+svg.s-dark .ab{fill:var(--tc)}
+svg.s-dark .tp{fill:var(--tc)}
+svg.s-dark .tt{fill:#0A1020;font-size:7.5px;font-weight:700;letter-spacing:.5px}
+svg.s-dark .ic{stroke:var(--tc)}
+svg.s-dark .ip{fill:var(--ipf);stroke:var(--ipln);stroke-width:1}
+svg.s-dark .ni{fill:var(--ipt);font-size:10px}
+svg.s-dark .nt{fill:var(--fg);font-weight:500;font-size:10.5px}
+svg.s-dark .nb{fill:#A9BCD9;font-size:10.5px}
+svg.s-dark .ct{fill:#9DB3D6;text-transform:uppercase;letter-spacing:1px;font-size:10px;font-weight:500}
+svg.s-dark .cch .tp{fill:none;stroke:var(--tc)}
+svg.s-dark .cch .tt{fill:var(--tc)}
+svg.s-dark .r{filter:drop-shadow(0 0 2px rgba(226,232,240,.35))}
+svg.s-dark .fwz{filter:drop-shadow(0 0 3px var(--red))}
+svg.s-dark .k{filter:drop-shadow(0 0 3px var(--mv))}
+svg.s-dark .lp{rx:3}

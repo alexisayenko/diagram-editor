@@ -1,0 +1,13 @@
+.tcp{fill:var(--tcp);font-size:10px}
+.fwb{fill:none;stroke:var(--bg);stroke-width:6;stroke-linejoin:round}
+.fwz{fill:none;stroke:var(--red);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.fwt{fill:var(--red);font-size:9px}
+#ar .mo{stroke:var(--tcp);fill:none;stroke-width:1.5}
+#ak .mo{stroke:var(--mv);fill:none;stroke-width:1.5}
+#ar .mf{fill:var(--tcp)}
+#ak .mf{fill:var(--mv)}
+.mf{display:none}
+[data-ent]{transition:opacity .25s ease}
+@media (prefers-reduced-motion:reduce){[data-ent]{transition:none}}
+.dim,.nf{opacity:.16}
+.off{opacity:.1;pointer-events:none}

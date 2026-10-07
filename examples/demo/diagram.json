@@ -1,0 +1,17 @@
+{
+  "title": "Demo infrastructure (synthetic)",
+  "proposedLabel": "Proposed",
+  "groups": {
+    "job-104": {
+      "label": "Job 104 connections",
+      "color": "#D32F2F",
+      "darkColor": "#FF6B6B",
+      "edges": ["ifc01>app03", "app03>db01"]
+    }
+  },
+  "processes": {
+    "ifc01>app03": { "from": "Job 104", "to": "Job 104" },
+    "app03>db01": { "from": "Job 104" },
+    "app03>nas01": { "from": "Job 210" }
+  }
+}

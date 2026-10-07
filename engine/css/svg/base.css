@@ -1,0 +1,6 @@
+text{fill:var(--fg);font-family:var(--font);font-size:11px}
+.b{fill:none;stroke:var(--fg);stroke-width:1.5;pointer-events:all}
+.d{fill:none;stroke:var(--fg);stroke-width:1.2;stroke-dasharray:2 3;pointer-events:all}
+.r{fill:none;stroke:var(--tcp);stroke-width:1.5}
+svg.nolabels .tcp,svg.nolabels .mvl,svg.nolabels .lp{display:none}
+.k{fill:none;stroke:var(--fg);stroke-width:1.3;stroke-dasharray:6 4}

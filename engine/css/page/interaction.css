@@ -1,0 +1,39 @@
+svg.edit{touch-action:none;user-select:none}
+svg.edit [data-e]{cursor:grab}
+svg.edit .b[data-e]:hover,svg.edit .cd:hover{stroke-opacity:.6}
+svg.edit .d[data-e]:hover{stroke:var(--red)}
+body{-webkit-user-select:none;user-select:none}
+#pn,.note,#dl,input,textarea{-webkit-user-select:text;user-select:text}
+#pn button,.cph{-webkit-user-select:none;user-select:none}
+svg:not(.edit) .nt,svg:not(.edit) .ct,svg:not(.edit) .ch:not(.cch) .hd,svg:not(.edit) .ch:not(.cch) .ab,svg:not(.edit) .ch:not(.cch) .tp,svg:not(.edit) .ch:not(.cch) .tt,svg:not(.edit) .ch:not(.cch) .sq,svg:not(.edit) .ch:not(.cch) .ic{cursor:pointer}
+svg:not(.edit) .nb,svg:not(.edit) .ni,svg:not(.edit) .ip{cursor:copy}
+svg:not(.edit) .nb:hover,svg:not(.edit) .ni:hover{text-decoration:underline dotted;text-underline-offset:2px}
+svg:not(.edit) .ip:hover{filter:brightness(.93)}
+#ch{position:fixed;padding:2px 8px;border-radius:4px;background:var(--fg);color:var(--bg);font:12px system-ui,sans-serif;pointer-events:none;opacity:0;transition:opacity .3s;z-index:9}
+#ch.on{opacity:1;transition:none}
+.nwb{cursor:pointer;outline:none}
+.nwr{fill:var(--panel);stroke:var(--line);stroke-width:1;rx:3}
+.nwi{fill:none;stroke:var(--mut);stroke-width:1.1;stroke-linejoin:round}
+.nwb:hover .nwr,.nwb:focus-visible .nwr{stroke:var(--fg)}
+.nwb:hover .nwi{stroke:var(--fg)}
+.nwb.on .nwr{fill:var(--fg);stroke:var(--fg)}
+.nwb.on .nwi{stroke:var(--bg)}
+svg.s-sketch .nwr{fill:var(--bg);stroke:var(--fg);rx:2}
+svg.s-clean .nwr{fill:var(--ipf);stroke:none;rx:6.5}
+svg.s-clean .nwi{stroke:var(--ipt)}
+svg.s-clean .nwb:hover .nwr,svg.s-clean .nwb:focus-visible .nwr{stroke:var(--ipt)}
+svg.s-dark .nwr{fill:var(--ipf);stroke:var(--ipln)}
+svg.s-dark .nwi{stroke:var(--ipt)}
+svg.s-dark .nwb.on .nwr{fill:var(--ipt);stroke:var(--ipt)}
+svg.s-dark .nwb.on .nwi{stroke:var(--ipf)}
+svg.s-swiss .nwr{fill:var(--bg);stroke:var(--ipln);stroke-width:.75;rx:0}
+svg.s-swiss .nwi{stroke:var(--ipt)}
+svg.edit .nwb{display:none}
+.nwd{display:inline-flex;align-items:center;justify-content:center;margin:0 2px 0 4px;padding:1px 3px;vertical-align:-2px;background:none;border:1px solid var(--line);border-radius:5px;color:var(--mut);cursor:pointer}
+.nwd svg{display:block;fill:none;stroke:currentColor;stroke-width:1.1;stroke-linejoin:round}
+.nwd:hover,.nwd:focus-visible{color:var(--fg);border-color:var(--fg)}
+.nwd.on{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+:root[data-style="swiss"] .nwd{border-radius:0}
+svg.edit .ch.bad .cd{stroke:var(--red);stroke-width:2}
+svg.edit.s-sketch .b.bad{stroke:var(--red);stroke-width:2.5}
+svg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}

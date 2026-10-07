@@ -1,0 +1,14 @@
+svg.s-clean .d{fill:var(--clf);stroke:var(--clln)}
+svg.s-clean .cd{fill:var(--card);stroke:var(--cardln);filter:drop-shadow(0 2px 4px rgba(15,23,42,.14))}
+svg.s-clean .hd{fill:var(--tc)}
+svg.s-clean .tp{fill:rgba(255,255,255,.26)}
+svg.s-clean .tt{fill:#fff;font-size:7.5px;font-weight:600;letter-spacing:.5px}
+svg.s-clean .ic{stroke:#fff}
+svg.s-clean .cch .tp{fill:var(--tc);fill-opacity:.14}
+svg.s-clean .cch .tt{fill:var(--tc)}
+svg.s-clean .ip{fill:var(--ipf)}
+svg.s-clean .ni{fill:var(--ipt);font-family:var(--mono);font-size:10px}
+svg.s-clean .nt{fill:#fff;font-weight:600}
+svg.s-clean .nb{fill:#475569}
+svg.s-clean .ct{fill:#334155;font-weight:600;font-size:12.5px}
+svg.s-clean .lp{rx:9}

@@ -1,0 +1,8 @@
+svg .nb.pl{font-weight:600}
+svg [data-g].r,svg [data-g].k{stroke:var(--gc)}
+svg [data-g].lpr,svg [data-g].lpm{stroke:var(--gc)}
+svg [data-g].tcp,svg [data-g].mvl{fill:var(--gc)}
+svg.s-dark [data-g].r,svg.s-dark [data-g].k{filter:drop-shadow(0 0 3px var(--gc))}
+marker[data-g] .mo{stroke:var(--gc);fill:none;stroke-width:1.5}
+marker[data-g] .mf{fill:var(--gc)}
+svg [data-g].nb{fill:var(--gc);font-weight:600}

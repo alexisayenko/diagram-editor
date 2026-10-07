@@ -1,0 +1,15 @@
+svg:not(.showos) .osg{display:none}
+.osg{cursor:pointer}
+.osp{fill:var(--bg);stroke:var(--mut);stroke-width:.75}
+.ost{fill:var(--mut);font-family:var(--mono);font-size:8.5px}
+.osg.unk{opacity:.65}
+.osg.unk .osp{stroke-dasharray:2 2}
+.osg.eol .osp{fill:var(--eolf);stroke:var(--eol);stroke-width:1.25}
+.osg.eol .ost{fill:var(--eolt)}
+.ose{fill:var(--eol);font-weight:700}
+svg.s-clean .osp{fill:var(--card)}
+svg.s-clean .osg.eol .osp{fill:var(--eolf)}
+svg.s-dark .osp{fill:var(--card)}
+svg.s-dark .osg.eol .osp{fill:var(--eolf)}
+svg.s-swiss .ost{letter-spacing:.3px}
+svg.s-swiss .osg.eol .osp{stroke-width:1}

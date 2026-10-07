@@ -1,0 +1,20 @@
+svg.s-sketch .ch,svg.s-sketch .lp{display:none}
+svg.s-sketch .b.sel{stroke-width:3}
+svg:not(.s-sketch) .mf{display:inline}
+svg:not(.s-sketch) .mo{display:none}
+svg:not(.s-sketch) .b{stroke:none;pointer-events:none}
+svg:not(.s-sketch) .d{stroke-dasharray:none;stroke-width:1.2}
+svg:not(.s-sketch) .tcp,svg:not(.s-sketch) .mvl{font-size:10px;font-weight:600}
+svg:not(.s-sketch) .tcp{fill:var(--tcp)}
+svg:not(.s-sketch) .fwt{font-weight:600}
+svg:not(.s-sketch) .mvl{fill:var(--mv)}
+svg:not(.s-sketch) .r{stroke:var(--tcp);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+svg:not(.s-sketch) .k{stroke:var(--mv);stroke-width:2;stroke-dasharray:7 5;stroke-linecap:round}
+svg:not(.s-sketch) .lp{stroke-width:1}
+svg:not(.s-sketch) .lpr{fill:var(--bg);stroke:var(--tcp)}
+svg:not(.s-sketch) .lpm{fill:var(--bg);stroke:var(--mv)}
+svg:not(.s-sketch) .d.prop{fill:none;stroke:var(--tc);stroke-width:1.5;stroke-dasharray:5 4}
+svg:not(.s-sketch) .ch .sel,svg:not(.s-sketch) .ch.sel .cd{stroke:var(--tc);stroke-width:2}
+svg:not(.s-sketch) .ic{fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+svg:not(.s-sketch) .nt{font-size:11px}
+svg:not(.s-sketch) .cch .cd{display:none}

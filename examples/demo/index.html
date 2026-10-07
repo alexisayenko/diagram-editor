@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo infrastructure (synthetic)</title>
+<style>
+:root{--bg:#fff;--fg:#1d2433;--muted:#5b6475;--line:#d6dae3;--note-bg:#fff4b8;--note-fg:#3b3200;--note-line:#e2c94a;--red:#d62728}
+@media (prefers-color-scheme:dark){:root{--bg:#14171f;--fg:#e6e9f0;--muted:#9aa3b5;--line:#2c3342;--note-bg:#4a4116;--note-fg:#fff3b0;--note-line:#8a7a2a;--red:#ff6b6b}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
+main{padding:16px;max-width:1600px;margin:0 auto}
+h1{font-size:1.3rem;margin:0 0 12px}
+.layout{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.diagram{flex:1 1 640px;min-width:0;overflow-x:auto;border:1px solid var(--line);border-radius:8px;padding:12px}
+.side{flex:0 0 300px;max-width:100%}
+.note{background:var(--note-bg);color:var(--note-fg);border:1px solid var(--note-line);border-radius:6px;padding:10px 14px;margin-bottom:12px}
+.note h2{font-size:.95rem;margin:0 0 6px}
+.note p{margin:4px 0}
+.legend{font-size:.85rem;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:8px 12px}
+.legend div{display:flex;align-items:center;gap:8px;margin:4px 0}
+.legend i{display:inline-block;width:36px;border-top:3px solid var(--red)}
+.legend i.dash{border-top:2px dashed var(--fg)}
+.details{margin-top:24px;border-top:1px solid var(--line);padding-top:8px}
+.details h1{font-size:1.4rem}
+.details h2{font-size:1.15rem;margin-top:1.6em;border-bottom:1px solid var(--line);padding-bottom:2px}
+.details table{border-collapse:collapse;margin:8px 0}
+.details th,.details td{border:1px solid var(--line);padding:4px 10px;text-align:left}
+</style>
+</head>
+<body>
+<main>
+<h1>Demo infrastructure (synthetic)</h1>
+<div class="layout">
+<div class="diagram">
+<pre class="mermaid">
+%% Demo diagram: synthetic data only (RFC 5737 IPs, *.example.test hosts).
+flowchart LR
+  subgraph web["Web Servers"]
+    web01["web-01.example.test&lt;br/>nginx reverse proxy&lt;br/>Customer portal&lt;br/>203.0.113.10/24&lt;br/>192.0.2.10/24"]
+    web02["web-02.example.test&lt;br/>nginx reverse proxy&lt;br/>Customer portal&lt;br/>203.0.113.11/24&lt;br/>192.0.2.11/24"]
+  end
+  subgraph ifc["Interface Servers"]
+    ifc01["ifc-01.example.test&lt;br/>SFTP gateway&lt;br/>Job 104 #quot;Batch import#quot;&lt;br/>198.51.100.20/25&lt;br/>192.0.2.20/24"]
+  end
+  subgraph app["Application Servers"]
+    app01["app-01.example.test&lt;br/>Tomcat: core-api&lt;br/>RMI: order-service&lt;br/>192.0.2.31/24"]
+    app02["app-02.example.test&lt;br/>Tomcat: core-api&lt;br/>RMI: pricing-service&lt;br/>192.0.2.32/24"]
+    app03["app-03.example.test&lt;br/>Job 104 batch import&lt;br/>Job 210 nightly export&lt;br/>192.0.2.33/24"]
+  end
+  subgraph cache["Cache Servers"]
+  end
+  subgraph ora["Oracle DB Cluster"]
+    db01[("db-01.example.test&lt;br/>Oracle RAC node 1&lt;br/>SID demo1&lt;br/>192.0.2.41/24")]
+    db02[("db-02.example.test&lt;br/>Oracle RAC node 2&lt;br/>SID demo2&lt;br/>192.0.2.42/24")]
+    db03[("db-03.example.test&lt;br/>Oracle RAC node 3&lt;br/>SID demo3&lt;br/>192.0.2.43/24")]
+  end
+  subgraph mongo["Mongo DB Servers"]
+    mongo01[("mongo-01.example.test&lt;br/>MongoDB 6 replica set&lt;br/>192.0.2.51/24")]
+  end
+  subgraph nas["NAS"]
+    nas01["nas-01.example.test&lt;br/>NFS share /export/archive&lt;br/>198.51.100.200/25"]
+  end
+  stats01["stats-01.example.test&lt;br/>Grafana dashboards&lt;br/>198.51.100.150/25"]
+
+  web01 -->|"TCP · HTTPS"| app01
+  web02 -->|"TCP · HTTPS"| app02
+  app01 -->|"TCP · SQL*Net"| ora
+  app02 -->|"TCP · SQL*Net"| ora
+  app01 -->|"TCP · MongoDB"| mongo01
+  ifc01 -->|"TCP · RMI · Job 104 · firewall"| app03
+  app03 -->|"TCP · SQL*Net · Job 104"| db01
+  app03 -->|"NFS · Job 210 archive · firewall"| nas01
+  stats01 -->|"TCP · metrics"| app
+  app02 -.->|"TCP · proposed cache"| cache
+
+  linkStyle 9 stroke-dasharray:6 4
+
+  classDef web fill:#FCE4EC,stroke:#C2185B
+  classDef interface fill:#E0F7FA,stroke:#00838F
+  classDef application fill:#E3F2FD,stroke:#1565C0
+  classDef cache fill:#FFF8E1,stroke:#B8860B
+  classDef oracle fill:#FFF3E0,stroke:#E65100
+  classDef mongo fill:#E8F5E9,stroke:#2E7D32
+  classDef nas fill:#ECEFF1,stroke:#546E7A
+  classDef statistics fill:#EFEBE9,stroke:#6D4C41
+  classDef proposed stroke-dasharray:6 4
+
+  class web,web01,web02 web
+  class ifc,ifc01 interface
+  class app,app01,app02,app03 application
+  class cache cache
+  class cache proposed
+  class ora,db01,db02,db03 oracle
+  class mongo,mongo01 mongo
+  class nas,nas01 nas
+  class stats01 statistics
+</pre>
+</div>
+<aside class="side">
+<div class="note">
+<h2>Demo data only, 2026-10-07</h2>
+<p>Every host, IP and link in this diagram is invented: IPs from the RFC 5737 documentation ranges, host names under example.test.</p>
+</div>
+<div class="note">
+<h2>Cache tier proposed, 2026-09-15</h2>
+<p>The cache region is empty on purpose; app-02 would move lookups there (dashed connection).</p>
+</div>
+<div class="note">
+<h2>Firewall review, 2026-08-01</h2>
+<p>Job 104 imports cross the DMZ firewall; the NFS archive path crosses the storage firewall.</p>
+</div>
+<div class="legend">
+<div><i></i> connection</div>
+<div><i class="dash"></i> proposed move</div>
+</div>
+</aside>
+</div>
+<section class="details" id="details"></section>
+</main>
+<script type="text/markdown" id="details-md">
+# Demo infrastructure details
+
+## Web Servers
+
+Public entry point; both nodes sit behind a load balancer on 203.0.113.0/24.
+
+## web-01.example.test
+
+| Key | Value |
+|---|---|
+| OS | Ubuntu 24.04 |
+| Confluence | [web-01](https://wiki.example.test/display/DEMO/web-01) |
+| CPU / RAM | 4 vCPU / 8 GB |
+
+- nginx reverse proxy for the customer portal
+
+## web-02.example.test
+
+| Key | Value |
+|---|---|
+| OS | Ubuntu 18.04 |
+| Confluence | [web-02](https://wiki.example.test/display/DEMO/web-02) |
+
+## Interface Servers
+
+DMZ hosts for partner file exchange.
+
+## ifc-01.example.test
+
+| Key | Value |
+|---|---|
+| OS | Windows Server 2012 R2 |
+| Confluence | [ifc-01](https://wiki.example.test/display/DEMO/ifc-01) |
+
+- SFTP gateway on 198.51.100.20
+- Job 104 pulls batch files and hands them to app-03
+
+## Application Servers
+
+## app-01.example.test
+
+| Key | Value |
+|---|---|
+| OS | Oracle Linux 8 |
+| Confluence | [app-01](https://wiki.example.test/display/DEMO/app-01) |
+
+## app-02.example.test
+
+| Key | Value |
+|---|---|
+| OS | Oracle Linux 8 |
+
+## app-03.example.test
+
+| Key | Value |
+|---|---|
+| OS | CentOS 7 |
+| Confluence | [app-03](https://wiki.example.test/display/DEMO/app-03) |
+
+- Job 104 batch import
+- Job 210 nightly export to nas-01
+
+## Cache Servers
+
+Proposed tier, no hosts yet.
+
+## Oracle DB Cluster
+
+Three-node RAC; clients connect to the cluster service name.
+
+## db-01.example.test
+
+| Key | Value |
+|---|---|
+| OS | Oracle Linux 7 |
+
+## db-02.example.test
+
+| Key | Value |
+|---|---|
+| OS | Oracle Linux 7 |
+
+## db-03.example.test
+
+| Key | Value |
+|---|---|
+| OS | Oracle Linux 9 |
+
+## Mongo DB Servers
+
+## mongo-01.example.test
+
+| Key | Value |
+|---|---|
+| OS | Debian 12 |
+
+## NAS
+
+## nas-01.example.test
+
+| Key | Value |
+|---|---|
+| OS | TBD |
+
+## stats-01.example.test
+
+| Key | Value |
+|---|---|
+| OS | Debian 13 |
+| Confluence | <https://wiki.example.test/display/DEMO/stats-01> |
+</script>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
+const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default" });
+await mermaid.run();
+document.getElementById("details").innerHTML = marked.parse(document.getElementById("details-md").textContent);
+</script>
+</body>
+</html>

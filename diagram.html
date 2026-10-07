@@ -1,0 +1,1492 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Infrastructure diagrams</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:14px system-ui,sans-serif;color:#172b45;background:#f3f5f9;display:flex;flex-direction:column;height:100vh}header{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 16px;background:white;border-bottom:1px solid #cbd5e1}button,select{font:inherit;border:1px solid #a8b5c8;background:#fff;border-radius:5px;padding:7px 12px}button{cursor:pointer}button:disabled,select:disabled{opacity:.5;cursor:default}#save{background:#1565c0;color:#fff;border-color:#1565c0}#status{padding:8px 16px;min-height:36px;font-size:13px;overflow-wrap:anywhere}.error{color:#a31c1c}iframe{width:100%;flex:1;border:0;min-height:0}#welcome{max-width:620px;margin:64px auto;padding:28px;background:#fff;border:1px solid #d9e1eb;border-radius:10px;line-height:1.7}h1{font-size:24px;margin-top:0}code{background:#edf2f7;padding:2px 5px;border-radius:3px}[hidden]{display:none!important}
+</style></head><body>
+<header><strong>Infrastructure diagrams</strong><button id="open">Open folder</button><select id="diagram" aria-label="Diagram TOML file" disabled><option>Choose a folder first</option></select><button id="reload" disabled>Reload TOML</button><button id="save" disabled>Save layout</button></header>
+<div id="status" role="status" aria-live="polite">Choose the folder containing your TOML diagram.</div>
+<main id="welcome"><h1>From servers to a diagram</h1><p>Open a folder and select its TOML file. The engine arranges your servers and connections automatically.</p><p>Use <b>Edit layout</b> to move servers and regions, then <b>Save layout</b>. Your arrangement is stored beside the TOML as <code>&lt;name&gt;.layout.json</code>.</p><p>After changing services or adding servers, press <b>Reload TOML</b>. Existing positions are restored and new objects are placed automatically.</p><p>Start with <code>examples/demo/demo.toml</code>. See <code>AUTHORING.md</code> for the format. Folder access requires desktop Edge or Chrome.</p></main>
+<iframe id="view" title="Infrastructure diagram" hidden></iframe>
+<script>const factories = {"browser/render.mjs": function(require, exports) {
+const { tomlModel } = require("parse/toml.mjs");
+const { parseConfig, checkConnections } = require("parse/config.mjs");
+const { resolveTypes } = require("parse/types.mjs");
+const { osOf } = require("parse/details.mjs");
+const { osInfo } = require("parse/os-eol.mjs");
+const { edgeKey } = require("parse/mmd.mjs");
+const { geometryKit, geometryMeta } = require("render/geometry.mjs");
+const { autoLayoutKit } = require("render/auto-layout.mjs");
+const { renderSvgBody } = require("render/svg.mjs");
+const { computeViewBox } = require("render/viewbox.mjs");
+const { buildEdgeKey, groupAssets } = require("render/edge-key.mjs");
+const { buildDataJson } = require("page/data.mjs");
+const { renderLayoutHtml } = require("page/layout-html.mjs");
+
+// Restore positions by stable object id; prune removed objects and refresh text geometry.
+function prepareDiagram(source, filename, saved = null) {
+  const { config: raw, model, sections } = tomlModel(source, filename);
+  const config = parseConfig(JSON.stringify(raw), raw.id);
+  checkConnections(config, model.edges.map(edgeKey), model.nodes);
+  const meta = geometryMeta(model, config.groups, config.processes), kit = geometryKit();
+  const layout = { clusters: {}, nodes: {}, edges: {} };
+  const point = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
+  if (saved !== null && (!saved || typeof saved !== "object" || Array.isArray(saved))) throw new Error("Layout must be a JSON object");
+  if (saved?.diagramId && saved.diagramId !== config.id) throw new Error("Saved layout belongs to another diagram id");
+  if (saved?.version !== undefined && saved.version !== 1) throw new Error("Unsupported saved layout version");
+  for (const kind of ["nodes", "clusters", "edges"]) {
+    if (saved?.[kind] !== undefined && (!saved[kind] || typeof saved[kind] !== "object" || Array.isArray(saved[kind]))) throw new Error(`Layout '${kind}' must be an object`);
+  }
+  for (const [id] of model.clusters) {
+    const c = saved?.clusters?.[id];
+    if (!c) continue;
+    if (![c.x, c.y, c.w, c.h].every(Number.isFinite) || c.w <= 0 || c.h <= 0 || !point(c.title)) throw new Error(`Invalid saved region geometry: ${id}`);
+    layout.clusters[id] = JSON.parse(JSON.stringify(c));
+  }
+  for (const [id, n] of model.nodes) {
+    const g = saved?.nodes?.[id];
+    if (!g) continue;
+    if (![g.x, g.y, g.w, g.h].every(Number.isFinite) || g.w <= 0 || g.h <= 0 || !point(g.title)) throw new Error(`Invalid saved server geometry: ${id}`);
+    // Text positions depend on the current services, preserving the server's position.
+    layout.nodes[id] = { x: g.x, y: g.y, w: g.w, h: Math.max(g.h, 20 + 16 * n.body.length + 18 * n.ip.length), title: g.title.slice(),
+      body: n.body.map((_, i) => [g.x + 10, g.y + 18 + 16 * i]), ip: n.ip.map((_, i) => [g.x + 10, g.y + 22 + 16 * n.body.length + 18 * i]) };
+  }
+  for (const e of model.edges) {
+    const k = edgeKey(e), old = saved?.edges?.[k];
+    if (old && (typeof old !== "object" || Array.isArray(old))) throw new Error(`Invalid saved connection: ${k}`);
+    const g = {};
+    if (old?.via !== undefined) {
+      if (!Array.isArray(old.via) || !old.via.every(point)) throw new Error(`Invalid connection waypoints: ${k}`);
+      g.via = old.via.map((p) => p.slice());
+    }
+    if (old?.label !== undefined) { if (!point(old.label)) throw new Error(`Invalid connection label position: ${k}`); g.label = old.label.slice(); }
+    if (e.fw) g.firewall = true;
+    layout.edges[k] = g;
+  }
+  autoLayoutKit(kit).fill(layout, meta);
+  for (const id of model.nodes.keys()) kit.fitBox(layout.nodes[id], meta.nodes[id]);
+  for (const id of model.clusters.keys()) kit.fitRegion(layout, meta, id);
+  return { config, model, sections, meta, layout, kit };
+}
+
+function renderDiagram(source, filename, saved, assets) {
+  const { config, model, sections, meta, layout, kit } = prepareDiagram(source, filename, saved);
+  const routes = kit.route(layout, meta);
+  const { ent, typeList, typeCss } = resolveTypes(model, layout, config.proposedLabel);
+  for (const n of model.nodes.values()) ent["n:" + n.id].os = osInfo(osOf(sections[n.title]));
+  const { body: svgBody, idx } = renderSvgBody(model, layout, ent, null, {}, routes, config.groups, meta);
+  const edgeKeys = buildEdgeKey(model, config.edgeLabels, config.groups), groupKit = groupAssets(config.groups);
+  const viewBox = computeViewBox(model, layout, routes);
+  const dataJson = buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes: [], nets: null, ipNet: {}, edgeKeyRows: edgeKeys.rows });
+  const html = renderLayoutHtml({ title: config.title, cssSvg: assets.cssSvg + "\n" + typeCss + groupKit.css, cssPage: assets.cssPage,
+    viewBox, svgBody, markers: groupKit.markers, edgeKeyHtml: edgeKeys.html, notes: [], docs: [], nets: null, dataJson, js: assets.js });
+  return { html, layout, id: config.id, problems: Object.keys(kit.problems(layout, meta)).length };
+}
+
+Object.assign(exports, {prepareDiagram,renderDiagram});
+},
+"parse/toml.mjs": function(require, exports) {
+// The diagram authoring subset of TOML: scalar keys and top-level arrays of tables.
+// Kept dependency-free and shared by Node tests and the standalone browser page.
+function parseToml(src) {
+  src = src.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+  let p = 0, table;
+  const root = Object.create(null);
+  table = root;
+  const error = (message) => { throw new Error(`TOML:${src.slice(0, p).split("\n").length}: ${message}`); };
+  function space(lines = true) {
+    while (p < src.length) {
+      if (src[p] === "#") { while (p < src.length && src[p] !== "\n") p++; }
+      else if ((lines ? /\s/ : /[ \t]/).test(src[p])) p++;
+      else break;
+      if (!lines && src[p] === "\n") break;
+    }
+  }
+  function string() {
+    const quote = src[p++];
+    let out = "";
+    while (p < src.length) {
+      const c = src[p++];
+      if (c === quote) return out;
+      if (c === "\n" || c.charCodeAt(0) < 32) error("strings must be on one line; use \\n in a double-quoted string");
+      if (c !== "\\" || quote === "'") { out += c; continue; }
+      const e = src[p++], escapes = { b: "\b", t: "\t", n: "\n", f: "\f", r: "\r", '"': '"', "\\": "\\" };
+      if (Object.hasOwn(escapes, e)) out += escapes[e];
+      else if (e === "u" || e === "U") {
+        const n = e === "u" ? 4 : 8, h = src.slice(p, p + n), v = parseInt(h, 16);
+        if (h.length !== n || !/^[0-9a-f]+$/i.test(h) || v > 0x10ffff || (v >= 0xd800 && v <= 0xdfff)) error("invalid Unicode escape");
+        out += String.fromCodePoint(v); p += n;
+      } else error("unsupported string escape");
+    }
+    error("unterminated string");
+  }
+  function value() {
+    space();
+    if (src[p] === '"' || src[p] === "'") return string();
+    if (src[p] === "[") {
+      p++; const values = []; space();
+      while (src[p] !== "]") {
+        if (p >= src.length) error("unterminated array");
+        values.push(value()); space();
+        if (src[p] === "]") break;
+        if (src[p++] !== ",") error("expected ',' in array");
+        space();
+      }
+      p++; return values;
+    }
+    const m = src.slice(p).match(/^(true|false)(?=[\s,#\]]|$)/);
+    if (m) { p += m[0].length; return m[0] === "true"; }
+    error("expected a quoted string, boolean, or array (see AUTHORING.md)");
+  }
+  while (p < src.length) {
+    space(); if (p >= src.length) break;
+    if (src[p] === "[") {
+      const m = src.slice(p).match(/^\[\[([a-z][a-z0-9_]*)\]\]/);
+      if (!m) error("expected [[regions]], [[servers]], or [[connections]]");
+      p += m[0].length;
+      if (Object.hasOwn(root, m[1]) && !Array.isArray(root[m[1]])) error("table name already used as a key");
+      table = Object.create(null); (root[m[1]] ||= []).push(table);
+    } else {
+      const m = src.slice(p).match(/^([a-z][a-z0-9_]*)[ \t]*=/);
+      if (!m) error("expected key = value");
+      p += m[0].length;
+      if (Object.hasOwn(table, m[1])) error(`duplicate key '${m[1]}'`);
+      table[m[1]] = value();
+    }
+    space(false);
+    if (p < src.length && src[p] !== "\n") error("unexpected text after value");
+    p++;
+  }
+  return root;
+}
+
+const COLORS = { web: "#C2185B", application: "#1565C0", interface: "#00838F", external: "#7E57C2", cache: "#B8860B", oracle: "#E65100", mongo: "#2E7D32", nas: "#546E7A", statistics: "#6D4C41" };
+function tomlModel(src, filename = "diagram.toml") {
+  const t = parseToml(src), fail = (m) => { throw new Error("TOML: " + m); };
+  function keys(o, allowed, at) {
+    const unknown = Object.keys(o).filter((k) => !allowed.includes(k));
+    if (unknown.length) fail(`${at}: unknown key ${unknown.join(", ")}`);
+  }
+  function str(v, at) { if (typeof v !== "string" || !v.trim()) fail(`${at} must be a non-empty string`); return v; }
+  function list(v, at) { if (v === undefined) return []; if (!Array.isArray(v) || v.some((s) => typeof s !== "string" || !s.trim())) fail(`${at} must be an array of non-empty strings`); return v; }
+  function bool(v, at) { if (v !== undefined && typeof v !== "boolean") fail(`${at} must be true or false`); return v || false; }
+  function type(v, at) { if (!Object.hasOwn(COLORS, v)) fail(`${at}: server_type must be one of ${Object.keys(COLORS).join(", ")}`); return v; }
+  keys(t, ["id", "title", "regions", "servers", "connections"], "diagram");
+  for (const key of ["regions", "servers", "connections"]) {
+    if (t[key] !== undefined && (!Array.isArray(t[key]) || t[key].some((v) => !v || typeof v !== "object" || Array.isArray(v)))) fail(`${key} must use [[${key}]] tables`);
+  }
+  const id = t.id ?? filename.replace(/\.toml$/i, "");
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) fail("id must contain lowercase letters, digits and hyphens");
+  const config = { id, title: str(t.title, "title"), groups: {}, processes: {} };
+  const model = { clusters: new Map(), nodes: new Map(), edges: [], linkStyles: new Map(), classDefs: new Map(), classes: new Map() };
+  const sections = Object.create(null), used = new Set();
+  function entity(o, at) {
+    const eid = str(o.id, at + ".id");
+    if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(eid) || ["constructor", "prototype"].includes(eid) || used.has(eid)) fail(`${at}: invalid or duplicate id '${eid}'`);
+    used.add(eid); return eid;
+  }
+  function classes(eid, ty, proposed) {
+    model.classes.set(eid, proposed ? [ty, "proposed"] : [ty]);
+    model.classDefs.set(ty, "stroke:" + COLORS[ty]);
+  }
+  for (const r of t.regions || []) {
+    keys(r, ["id", "title", "server_type", "proposed"], "region");
+    const eid = entity(r, "region"), ty = type(r.server_type, eid);
+    model.clusters.set(eid, { id: eid, title: str(r.title, eid + ".title") });
+    classes(eid, ty, bool(r.proposed, eid + ".proposed"));
+  }
+  const names = new Set();
+  for (const s of t.servers || []) {
+    keys(s, ["id", "name", "server_type", "region", "services", "ips", "os", "details", "proposed"], "server");
+    const eid = entity(s, "server"), cluster = s.region ?? null;
+    if (cluster !== null && !model.clusters.has(cluster)) fail(`${eid}: unknown region '${cluster}'`);
+    const ty = type(s.server_type ?? (cluster && (t.regions || []).find((r) => r.id === cluster).server_type), eid);
+    const ips = list(s.ips, eid + ".ips");
+    for (const ip of ips) {
+      const m = ip.match(/^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/);
+      if (!m || m[1].split(".").some((n) => +n > 255) || +m[2] > 32) fail(`${eid}: invalid IPv4 CIDR '${ip}'`);
+    }
+    const title = str(s.name ?? eid, eid + ".name");
+    if (names.has(title)) fail(`${eid}: duplicate server name '${title}'`);
+    names.add(title);
+    model.nodes.set(eid, { id: eid, title, cluster, db: ty === "oracle" || ty === "mongo", body: list(s.services, eid + ".services"), ip: ips });
+    classes(eid, ty, bool(s.proposed, eid + ".proposed"));
+    if (s.os !== undefined) str(s.os, eid + ".os");
+    if (s.details !== undefined && typeof s.details !== "string") fail(`${eid}.details must be a string`);
+    sections[title] = (s.os ? `| OS | ${s.os} |\n\n` : "") + (s.details || "");
+  }
+  if (!model.nodes.size && !model.clusters.size) fail("define at least one server or region");
+  const edgeIds = new Set();
+  for (const e of t.connections || []) {
+    keys(e, ["from", "to", "label", "firewall", "proposed", "from_service", "to_service"], "connection");
+    const from = str(e.from, "connection.from"), to = str(e.to, "connection.to"), k = from + ">" + to;
+    if (!used.has(from) || !used.has(to)) fail(`${k}: unknown connection endpoint`);
+    if (from === to || edgeIds.has(k)) fail(`${k}: self-connections and duplicate endpoint pairs are unsupported`);
+    edgeIds.add(k);
+    if (e.label !== undefined && typeof e.label !== "string") fail(`${k}.label must be a string`);
+    const dashed = bool(e.proposed, k + ".proposed");
+    model.edges.push({ from, to, label: e.label || "", fw: bool(e.firewall, k + ".firewall"), dashed });
+    if (dashed) model.linkStyles.set(model.edges.length - 1, "stroke-dasharray:6 4");
+    if (e.from_service !== undefined || e.to_service !== undefined) {
+      const process = { from: e.from_service ?? null, to: e.to_service ?? null };
+      for (const [end, prefix] of [[from, process.from], [to, process.to]]) {
+        if (prefix === null) continue;
+        str(prefix, k + ".service");
+        const matches = model.nodes.get(end)?.body.filter((line) => line.startsWith(prefix)) || [];
+        if (matches.length !== 1) fail(`${k}: service '${prefix}' must match exactly one service on '${end}'`);
+      }
+      config.processes[k] = Object.fromEntries(Object.entries(process).filter(([, v]) => v !== null));
+    }
+  }
+  return { config, model, sections };
+}
+
+Object.assign(exports, {parseToml,tomlModel});
+},
+"parse/config.mjs": function(require, exports) {
+const { basename } = require("node:path");
+const { fail } = require("lib/util.mjs");
+
+const ID = /^[a-z0-9][a-z0-9-]*$/;
+const COLOR = /^#[0-9A-Fa-f]{6}$/;
+const EDGE_LABELS = { request: "connection", dashed: "proposed move", firewall: "firewall on the path" };
+const KEYS = ["title", "id", "legacyId", "proposedLabel", "edgeLabels", "groups", "processes"];
+const GROUP_KEYS = ["label", "color", "darkColor", "edges"];
+
+const str = (v, key) => {
+  if (typeof v !== "string" || !v.trim()) fail(`diagram.json: "${key}" must be a non-empty string`);
+  return v;
+};
+const obj = (v, key) => {
+  if (!v || typeof v !== "object" || Array.isArray(v)) fail(`diagram.json: "${key}" must be an object`);
+  return v;
+};
+
+// Connection groups: { id: { label, color, darkColor?, edges: ["from>to", ...] } }; ids are checked against diagram.mmd by checkConnections.
+function parseGroups(g) {
+  const out = {};
+  for (const [id, d] of Object.entries(obj(g, "groups"))) {
+    const at = `groups.${id}`;
+    if (!ID.test(id)) fail(`diagram.json: group id "${id}" must match ${ID}`);
+    obj(d, at);
+    const bad = Object.keys(d).filter((k) => !GROUP_KEYS.includes(k));
+    if (bad.length) fail(`diagram.json: unknown key ${bad.map((k) => `"${k}"`).join(", ")} in ${at} (allowed: ${GROUP_KEYS.join(", ")})`);
+    if (!COLOR.test(d.color ?? "")) fail(`diagram.json: ${at}.color must be #rrggbb`);
+    if (d.darkColor !== undefined && !COLOR.test(d.darkColor)) fail(`diagram.json: ${at}.darkColor must be #rrggbb`);
+    if (!Array.isArray(d.edges) || !d.edges.length || d.edges.some((e) => typeof e !== "string")) fail(`diagram.json: ${at}.edges must be a non-empty list of "from>to" connection ids`);
+    out[id] = { label: str(d.label, at + ".label"), color: d.color, darkColor: d.darkColor ?? d.color, edges: d.edges };
+  }
+  return out;
+}
+
+// Process endpoints: { "from>to": { from?: "body line prefix", to?: "body line prefix" } }.
+function parseProcesses(p) {
+  const out = {};
+  for (const [k, d] of Object.entries(obj(p, "processes"))) {
+    const at = `processes.${k}`;
+    obj(d, at);
+    const bad = Object.keys(d).filter((x) => x !== "from" && x !== "to");
+    if (bad.length || !Object.keys(d).length) fail(`diagram.json: ${at} needs "from" and/or "to" (a body line prefix), got ${JSON.stringify(d)}`);
+    out[k] = { from: d.from === undefined ? null : str(d.from, at + ".from"), to: d.to === undefined ? null : str(d.to, at + ".to") };
+  }
+  return out;
+}
+
+const lineOf = (node, prefix) => node.body.findIndex((l) => l.startsWith(prefix));
+
+function checkConnections({ groups, processes }, edgeIds, nodes) {
+  const seen = {};
+  for (const [id, g] of Object.entries(groups)) for (const k of g.edges) {
+    if (!edgeIds.includes(k)) fail(`diagram.json: groups.${id}: connection "${k}" is not in diagram.mmd (ids are "from>to")`);
+    if (seen[k]) fail(`diagram.json: connection "${k}" is in groups "${seen[k]}" and "${id}"; a connection belongs to one group at most`);
+    seen[k] = id;
+  }
+  for (const [k, d] of Object.entries(processes)) {
+    if (!edgeIds.includes(k)) fail(`diagram.json: processes: connection "${k}" is not in diagram.mmd (ids are "from>to")`);
+    k.split(">").forEach((n, i) => {
+      const prefix = i ? d.to : d.from, at = `diagram.json: processes.${k}.${i ? "to" : "from"}: `;
+      if (prefix === null) return;
+      if (!nodes.has(n)) fail(at + `"${n}" is a region; a process endpoint must be a server's body line`);
+      if (lineOf(nodes.get(n), prefix) < 0) fail(at + `no body line of "${n}" starts with "${prefix}"`);
+    });
+  }
+}
+
+// Body line index per process endpoint: { "from>to": { fl, tl } } (null = server endpoint).
+function processAnchors(processes, nodes) {
+  const out = {};
+  for (const [k, d] of Object.entries(processes || {})) {
+    const [a, b] = k.split(">");
+    out[k] = { fl: d.from == null ? null : lineOf(nodes.get(a), d.from), tl: d.to == null ? null : lineOf(nodes.get(b), d.to) };
+  }
+  return out;
+}
+
+function parseConfig(src, dir) {
+  let c;
+  try {
+    c = JSON.parse(src);
+  } catch (e) {
+    fail("diagram.json: " + e.message);
+  }
+  if (!c || typeof c !== "object" || Array.isArray(c)) fail("diagram.json: must be an object");
+  const unknown = Object.keys(c).filter((k) => !KEYS.includes(k));
+  if (unknown.length) fail(`diagram.json: unknown key ${unknown.map((k) => `"${k}"`).join(", ")} (allowed: ${KEYS.join(", ")})`);
+  const id = c.id === undefined ? basename(dir) : str(c.id, "id");
+  if (!ID.test(id)) fail(`diagram.json: id "${id}" must match ${ID} (it defaults to the folder name)`);
+  if (c.legacyId !== undefined && !ID.test(str(c.legacyId, "legacyId"))) fail(`diagram.json: legacyId "${c.legacyId}" must match ${ID}`);
+  const el = c.edgeLabels ?? {};
+  if (typeof el !== "object" || Array.isArray(el)) fail('diagram.json: "edgeLabels" must be an object');
+  const badEl = Object.keys(el).filter((k) => !(k in EDGE_LABELS));
+  if (badEl.length) fail(`diagram.json: unknown edgeLabels key ${badEl.join(", ")} (allowed: ${Object.keys(EDGE_LABELS).join(", ")})`);
+  return {
+    title: str(c.title, "title"),
+    id,
+    legacyId: c.legacyId ?? null,
+    proposedLabel: c.proposedLabel === undefined ? "Proposed" : str(c.proposedLabel, "proposedLabel"),
+    edgeLabels: Object.fromEntries(Object.entries(EDGE_LABELS).map(([k, d]) => [k, el[k] === undefined ? d : str(el[k], "edgeLabels." + k)])),
+    groups: c.groups === undefined ? {} : parseGroups(c.groups),
+    processes: c.processes === undefined ? {} : parseProcesses(c.processes),
+  };
+}
+
+Object.assign(exports, {checkConnections,processAnchors,parseConfig});
+},
+"node:path": function(require, exports) {
+exports.basename = s => s.split(/[\\/]/).pop();
+},
+"lib/util.mjs": function(require, exports) {
+exports.fail = m => { throw new Error(m); }; exports.esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); exports.unq = s => s.trim().replace(/^"(.*)"$/, "$1");
+},
+"parse/types.mjs": function(require, exports) {
+const { fail } = require("lib/util.mjs");
+
+const TYPES = {
+  web: { label: "Web Server", dark: "#F28FB0" },
+  application: { label: "Application Server", dark: "#7DB6F2" },
+  interface: { label: "Internal Interface Server", dark: "#4DD0E1" },
+  external: { label: "External Interface Server", dark: "#C39BE8" },
+  cache: { label: "Cache Server", dark: "#E6D36A" },
+  oracle: { label: "Oracle Database Server", dark: "#F2B24C" },
+  mongo: { label: "Mongo Database Server", dark: "#6FD3A0" },
+  nas: { label: "NAS", dark: "#B0BEC5", infra: true },
+  statistics: { label: "Statistics Server", dark: "#D7B8A8", infra: true },
+};
+for (const t of Object.values(TYPES)) t.tag = t.label.toUpperCase();
+const MODS = new Set(["proposed"]);
+
+function resolveTypes({ clusters, nodes, classDefs, classes }, layout, proposedLabel) {
+  const typeColors = {};
+  for (const [name, def] of classDefs) {
+    if (MODS.has(name)) continue;
+    if (!TYPES[name]) fail(`classDef "${name}" is neither a known server type (${Object.keys(TYPES).join(", ")}) nor a modifier (${[...MODS].join(", ")})`);
+    const m = def.match(/stroke:(#[0-9A-Fa-f]{6})/);
+    if (!m) fail(`classDef "${name}" has no stroke:#rrggbb colour`);
+    typeColors[name] = m[1];
+  }
+
+  const ent = {};
+  const typeProblems = [];
+  const addEnt = (key, id, base) => {
+    const cls = classes.get(id) || [];
+    const tys = cls.filter((c) => TYPES[c]);
+    const mods = cls.filter((c) => MODS.has(c));
+    const unknown = cls.filter((c) => !TYPES[c] && !MODS.has(c));
+    if (unknown.length) typeProblems.push(`${key}: unknown class ${unknown.join(", ")}`);
+    if (tys.length !== 1) typeProblems.push(`${key}: needs exactly one server type class (${Object.keys(TYPES).join("/")}), has ${tys.length ? tys.join(",") : "none"}`);
+    const ty = tys[0];
+    if (ty && !typeColors[ty]) typeProblems.push(`${key}: server type "${ty}" has no classDef in diagram.mmd`);
+    const prop = mods.includes("proposed");
+    ent[key] = { ...base, ty, prop, tk: prop ? "proposed" : ty, tag: ty ? TYPES[ty].tag + (prop ? " · PROPOSED" : "") : "" };
+  };
+  for (const c of clusters.values()) addEnt("c:" + c.id, c.id, { title: c.title, cl: null, db: false });
+  for (const n of nodes.values()) if (!layout.nodes[n.id].hidden) addEnt("n:" + n.id, n.id, { title: n.title, cl: n.cluster, db: n.db, body: n.body, ip: n.ip });
+  if (typeProblems.length) fail("\n  " + typeProblems.join("\n  "));
+
+  const used = new Set(Object.values(ent).map((e) => e.tk));
+  const firstProposed = Object.values(ent).find((e) => e.prop);
+  const typeList = [
+    ...Object.keys(TYPES).filter((k) => used.has(k) && !TYPES[k].infra).map((k) => ({ k, label: TYPES[k].label, ty: k })),
+    ...(firstProposed ? [{ k: "proposed", label: proposedLabel, ty: firstProposed.ty, dash: true }] : []),
+    ...Object.keys(TYPES).filter((k) => used.has(k) && TYPES[k].infra).map((k) => ({ k, label: TYPES[k].label, ty: k, infra: true })),
+  ];
+  const colored = Object.keys(TYPES).filter((k) => typeColors[k]);
+  const typeCss =
+    colored.map((k) => `[data-ty="${k}"]{--tc:var(--t-${k})}`).join("\n") +
+    "\n:root{" + colored.map((k) => `--t-${k}:${typeColors[k]}`).join(";") + "}\n" +
+    ':root[data-style="dark"]{' + colored.map((k) => `--t-${k}:${TYPES[k].dark}`).join(";") + "}\n";
+  return { ent, typeList, typeCss, typeColors };
+}
+
+Object.assign(exports, {resolveTypes});
+},
+"parse/details.mjs": function(require, exports) {
+function parseDetails(src) {
+  const sections = {};
+  src.split(/^## /m).slice(1).forEach((s) => {
+    const nl = s.indexOf("\n");
+    sections[s.slice(0, nl).trim()] = s.slice(nl + 1).trim();
+  });
+  return sections;
+}
+
+function osOf(section) {
+  const m = (section || "").match(/^\s*\|\s*OS\s*\|\s*(.*?)\s*\|\s*$/im);
+  return m && m[1] && !/^TBD$/i.test(m[1]) ? m[1] : null;
+}
+
+Object.assign(exports, {parseDetails,osOf});
+},
+"parse/os-eol.mjs": function(require, exports) {
+// End of standard support (extended for Windows Server 2016, Premier for Oracle Linux), "YYYY-MM": EOL once that month has passed.
+const EOL = {
+  ubuntu: { "14.04": "2019-04", "16.04": "2021-04", "18.04": "2023-05", "20.04": "2025-05", "22.04": "2027-04", "24.04": "2029-05" },
+  debian: { 8: "2018-06", 9: "2020-07", 10: "2022-09", 11: "2024-08", 12: "2026-06", 13: "2028-08" },
+  centos: { 7: "2024-06" },
+  oracle: { 7: "2024-12", 8: "2029-07", 9: "2032-06" },
+  windows: { 2012: "2023-10", "2012 R2": "2023-10", 2016: "2027-01" },
+};
+
+function eolOf(os) {
+  let m;
+  if ((m = os.match(/^Ubuntu (\d+)(?:\.(\d+))?/i))) return EOL.ubuntu[`${m[1]}.${m[2] || "04"}`] || null;
+  if ((m = os.match(/^Debian (\d+)/i))) return EOL.debian[m[1]] || null;
+  if ((m = os.match(/^CentOS (\d+)/i))) return EOL.centos[m[1]] || null;
+  if ((m = os.match(/^Oracle Linux (\d+)/i))) return EOL.oracle[m[1]] || null;
+  if ((m = os.match(/^Windows Server (\d{4})( R2)?/i))) return EOL.windows[m[1] + (m[2] ? " R2" : "")] || null;
+  return null;
+}
+
+function osInfo(os, today = new Date()) {
+  if (!os) return null;
+  const eol = eolOf(os);
+  return { v: os, eol: eol && today.toISOString().slice(0, 7) > eol ? eol : null };
+}
+
+Object.assign(exports, {osInfo});
+},
+"parse/mmd.mjs": function(require, exports) {
+const { fail, unq } = require("lib/util.mjs");
+
+const IP = /^(\d{1,3}(?:\.\d{1,3}){3}\/\d+)/;
+const FW = /\s*·\s*firewall$/;
+const ENT = { quot: '"', amp: "&", lt: "<", gt: ">" };
+// Mermaid entity codes (#quot;, #35;) become plain characters in the view and details.
+const decode = (s) => s.replace(/#(\w+);/g, (m, c) => (/^\d+$/.test(c) ? String.fromCharCode(+c) : ENT[c] ?? m));
+
+const edgeKey = (e) => `${e.from}>${e.to}`;
+
+function parseMmd(src) {
+  const clusters = new Map();
+  const nodes = new Map();
+  const edges = [];
+  const linkStyles = new Map();
+  const classDefs = new Map();
+  const classes = new Map();
+  let current = null;
+  src.split("\n").forEach((raw, i) => {
+    const line = raw.trim();
+    if (!line || line.startsWith("%%") || line.startsWith("flowchart") || line.startsWith("direction")) return;
+    let m;
+    if ((m = line.match(/^subgraph\s+(\w+)\["(.*)"\]$/))) {
+      clusters.set(m[1], { id: m[1], title: decode(m[2]) });
+      current = m[1];
+    } else if (line === "end") {
+      current = null;
+    } else if ((m = line.match(/^linkStyle\s+([\d,]+)\s+(.*)$/))) {
+      for (const n of m[1].split(",")) linkStyles.set(+n, m[2]);
+    } else if ((m = line.match(/^classDef\s+(\w+)\s+(.*)$/))) {
+      classDefs.set(m[1], m[2]);
+    } else if ((m = line.match(/^class\s+([\w,]+)\s+(\w+)$/))) {
+      for (const id of m[1].split(",")) (classes.get(id) || classes.set(id, []).get(id)).push(m[2]);
+    } else if (line.startsWith("style ")) {
+      return;
+    } else if ((m = line.match(/^(\w+)\s+(-->|-\.->)(?:\|(.*?)\|)?\s*(\w+)$/))) {
+      const label = m[3] ? decode(unq(m[3])) : "";
+      edges.push({ from: m[1], to: m[4], label: label.replace(FW, ""), fw: FW.test(label), dashed: m[2] === "-.->" });
+    } else if ((m = line.match(/^(\w+)(\[\(|\[)"(.*)"(\)\]|\])$/))) {
+      const parts = m[3].split(/<br\s*\/?>/).map(decode);
+      const title = parts.shift();
+      const body = [];
+      const ip = [];
+      for (const p of parts) {
+        const mm = p.match(IP);
+        if (mm) ip.push(mm[1]);
+        else if (ip.length) fail(`diagram.mmd:${i + 1}: text line "${p}" after IP lines in node ${m[1]}`);
+        else body.push(p);
+      }
+      nodes.set(m[1], { id: m[1], db: m[2] === "[(", title, body, ip, cluster: current });
+    } else {
+      fail(`diagram.mmd:${i + 1}: unsupported syntax: ${line}`);
+    }
+  });
+  return { clusters, nodes, edges, linkStyles, classDefs, classes };
+}
+
+const isDashed = (model, ei) => /stroke-dasharray/.test(model.linkStyles.get(ei) || "");
+const endKey = (model, id) => (model.nodes.has(id) ? "n:" : "c:") + id;
+
+Object.assign(exports, {edgeKey,parseMmd,isDashed,endKey});
+},
+"render/geometry.mjs": function(require, exports) {
+const { edgeKey, endKey } = require("parse/mmd.mjs");
+const { processAnchors } = require("parse/config.mjs");
+
+// Static facts the kit needs besides layout.json geometry; built once, shipped to the runtime as D.meta.
+// Node nb / ni: body and IP line counts (auto-layout). Edge lv: "process" when an endpoint is a body line (diagram.json processes), else "server".
+function geometryMeta(model, groups, processes) {
+  const len = (a) => a.reduce((m, s) => Math.max(m, s.length), 0);
+  const gOf = {}, pa = processAnchors(processes, model.nodes);
+  for (const [g, d] of Object.entries(groups || {})) for (const k of d.edges) gOf[k] = g;
+  return {
+    clusters: Object.fromEntries([...model.clusters.values()].map((c) => [c.id, { tl: c.title.length }])),
+    nodes: Object.fromEntries([...model.nodes.values()].map((n) => [n.id, { tl: n.title.length, bl: len(n.body), il: len(n.ip), nb: n.body.length, ni: n.ip.length, cl: n.cluster }])),
+    edges: model.edges.map((e) => ({ k: edgeKey(e), from: endKey(model, e.from), to: endKey(model, e.to), ll: e.label.length, fw: e.fw, g: gOf[edgeKey(e)] || null, fl: pa[edgeKey(e)]?.fl ?? null, tl: pa[edgeKey(e)]?.tl ?? null, lv: pa[edgeKey(e)] ? "process" : "server" })),
+  };
+}
+
+// Box extents, box / region auto-sizing, connection routing, label and firewall placement, spacing checks.
+// Self-contained on purpose: assets.mjs inlines this function's source as the "canvas/geometry" runtime module,
+// so the build and edit mode compute identical geometry.
+function geometryKit() {
+  var HEAD = 20, TITLE_CW = 6.6, BODY_CW = 6.6, IP_CW = 7, TEXT_X = 10;
+  var BAND = 30, BAND_GAP = 10, MIN_GAP = 20, PAD = 16;
+  var M = 10, BEND = 50, REGION = 1.5, HUG = 2, TIGHT = 0.3, RAD = 22;
+  var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
+  var cache = { n: 0 };
+
+  function r1(v) { return Math.round(v * 10) / 10; }
+  function num(a, b) { return a - b; }
+
+  function boxExtent(g, tl, w) {
+    var bottom = g.y + g.h;
+    for (var i = 0; i < g.ip.length; i++) bottom = Math.max(bottom, g.ip[i][1] + 7);
+    return { x0: g.x, y0: g.y - HEAD, x1: g.x + (w || Math.max(g.w, g.title[0] - g.x + tl * TITLE_CW + 28)), y1: bottom };
+  }
+
+  // Body and IP lines sit at the box's text padding; the box is wide enough for its title, body lines and IP pills plus network buttons.
+  function fitBox(g, t) {
+    g.body.forEach(function (p) { p[0] = g.x + TEXT_X; });
+    g.ip.forEach(function (p) { p[0] = g.x + TEXT_X; });
+    var need = Math.max(g.title[0] - g.x + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0);
+    g.w = Math.max(g.w, Math.ceil(need));
+  }
+
+  // Region grown (never shrunk below base) to hold its servers with padding and the header band.
+  function fitRegion(s, meta, cid, baseRect, w) {
+    var c = s.clusters[cid], b = baseRect || c, x0 = b.x, y0 = b.y, x1 = b.x + b.w, y1 = b.y + b.h;
+    Object.keys(meta.nodes).forEach(function (id) {
+      var g = s.nodes[id];
+      if (meta.nodes[id].cl !== cid || !g || g.hidden) return;
+      var e = boxExtent(g, meta.nodes[id].tl, w && w[id]);
+      x0 = Math.min(x0, e.x0 - PAD); x1 = Math.max(x1, e.x1 + PAD); y1 = Math.max(y1, e.y1 + PAD);
+      y0 = Math.min(y0, e.y0 - BAND - BAND_GAP);
+    });
+    var t = baseRect ? baseRect.title : c.title, centred = Math.abs(t[0] - (b.x + b.w / 2)) <= 2;
+    c.title = [centred ? r1((x0 + x1) / 2) : t[0] + (x0 - b.x), t[1] + (y0 - b.y)];
+    c.x = x0; c.y = y0; c.w = x1 - x0; c.h = y1 - y0;
+  }
+
+  function shapes(s, meta, w) {
+    var ent = {}, nodes = [], titles = [], clusters = [];
+    Object.keys(meta.clusters).forEach(function (id, i) {
+      var c = s.clusters[id], hw = meta.clusters[id].tl * 3.9 + 4;
+      var r = { k: "c:" + id, i: i, x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.h };
+      ent[r.k] = r; clusters.push(r);
+      titles.push({ x0: c.title[0] - hw, y0: c.title[1] - 13, x1: c.title[0] + hw, y1: c.title[1] + 4 });
+    });
+    Object.keys(meta.nodes).forEach(function (id) {
+      var g = s.nodes[id];
+      if (!g || g.hidden) return;
+      var r = boxExtent(g, meta.nodes[id].tl, w && w[id]);
+      r.k = "n:" + id;
+      r.cl = meta.nodes[id].cl ? ent["c:" + meta.nodes[id].cl].i : -1;
+      ent[r.k] = r; nodes.push(r);
+    });
+    var bands = [];
+    clusters.forEach(function (c) {
+      bands.push({ x0: c.x0, y0: c.y0 - 3, x1: c.x1, y1: c.y0 + 3 }, { x0: c.x0, y0: c.y1 - 3, x1: c.x1, y1: c.y1 + 3 });
+      bands.push({ x0: c.x0 - 3, y0: c.y0, x1: c.x0 + 3, y1: c.y1 }, { x0: c.x1 - 3, y0: c.y0, x1: c.x1 + 3, y1: c.y1 });
+    });
+    return { ent: ent, nodes: nodes, titles: titles, clusters: clusters, bands: bands };
+  }
+
+  function uniq(a) {
+    a.sort(num);
+    var out = [];
+    a.forEach(function (v) { if (!out.length || v - out[out.length - 1] > 0.5) out.push(v); });
+    var mid = [];
+    out.forEach(function (v, i) {
+      mid.push(v);
+      if (i + 1 < out.length && out[i + 1] - v > 30) mid.push((v + out[i + 1]) / 2);
+    });
+    return mid;
+  }
+  function inside(x, y, r, m) { return x > r.x0 - m + 0.01 && x < r.x1 + m - 0.01 && y > r.y0 - m + 0.01 && y < r.y1 + m - 0.01; }
+
+  // Sparse orthogonal grid over obstacle borders (servers +M, titles +4, regions +-M), extra points and channel midpoints.
+  function grid(S, extra) {
+    var xs = [], ys = [], lo = [Infinity, Infinity], hi = [-Infinity, -Infinity];
+    function add(r, m) {
+      xs.push(r.x0 - m, r.x1 + m); ys.push(r.y0 - m, r.y1 + m);
+      lo = [Math.min(lo[0], r.x0 - m), Math.min(lo[1], r.y0 - m)]; hi = [Math.max(hi[0], r.x1 + m), Math.max(hi[1], r.y1 + m)];
+    }
+    S.nodes.forEach(function (r) { add(r, M); });
+    S.titles.forEach(function (r) { add(r, 4); });
+    S.clusters.forEach(function (r) { add(r, M); add(r, -M); });
+    extra.forEach(function (p) { xs.push(p[0]); ys.push(p[1]); });
+    xs.push(lo[0] - 30, hi[0] + 30); ys.push(lo[1] - 30, hi[1] + 30);
+    xs = uniq(xs); ys = uniq(ys);
+    var nx = xs.length, ny = ys.length, P = nx * ny;
+    var blk = new Uint8Array(P), hb = new Uint8Array(P), vb = new Uint8Array(P), hc = new Int16Array(P), vc = new Int16Array(P), hh = new Uint8Array(P), vh = new Uint8Array(P);
+    var obst = S.nodes.map(function (r) { return [r, M]; }).concat(S.titles.map(function (r) { return [r, 4]; }));
+    function hit(x, y) { for (var k = 0; k < obst.length; k++) if (inside(x, y, obst[k][0], obst[k][1])) return 1; return 0; }
+    // Bit 2: a segment within 5px of the narrowest allowed clearance (narrow channel).
+    function tight(x, y) { for (var k = 0; k < S.nodes.length; k++) if (inside(x, y, S.nodes[k], M + 5)) return 2; return 0; }
+    function region(x, y) { for (var k = 0; k < S.clusters.length; k++) if (inside(x, y, S.clusters[k], 0)) return k; return -1; }
+    function hug(x, y, horiz) {
+      for (var k = 0; k < S.clusters.length; k++) {
+        var c = S.clusters[k];
+        if (horiz ? x > c.x0 && x < c.x1 && (Math.abs(y - c.y0) < 9 || Math.abs(y - c.y1) < 9) : y > c.y0 && y < c.y1 && (Math.abs(x - c.x0) < 9 || Math.abs(x - c.x1) < 9)) return 1;
+      }
+      return 0;
+    }
+    for (var i = 0; i < nx; i++) for (var j = 0; j < ny; j++) {
+      var p = i * ny + j;
+      blk[p] = hit(xs[i], ys[j]);
+      if (i + 1 < nx) { var mx = (xs[i] + xs[i + 1]) / 2; hb[p] = hit(mx, ys[j]); hc[p] = region(mx, ys[j]); hh[p] = hug(mx, ys[j], true) | tight(mx, ys[j]); }
+      if (j + 1 < ny) { var my = (ys[j] + ys[j + 1]) / 2; vb[p] = hit(xs[i], my); vc[p] = region(xs[i], my); vh[p] = hug(xs[i], my, false) | tight(xs[i], my); }
+    }
+    return { xs: xs, ys: ys, nx: nx, ny: ny, blk: blk, hb: hb, vb: vb, hc: hc, vc: vc, hh: hh, vh: vh };
+  }
+  function at(G, x, y) {
+    var i = G.xs.findIndex(function (v) { return Math.abs(v - x) < 0.6; }), j = G.ys.findIndex(function (v) { return Math.abs(v - y) < 0.6; });
+    return i < 0 || j < 0 ? -1 : i * G.ny + j;
+  }
+
+  // A* over (grid point, heading); cost = length (x region / hug penalties) + bends. starts / goals: {p, d, c}.
+  function search(G, starts, goals, home) {
+    var n = G.nx * G.ny * 4;
+    if (cache.n < n) { cache.n = n; cache.dist = new Float64Array(n); cache.prev = new Int32Array(n); }
+    var dist = cache.dist, prev = cache.prev;
+    dist.fill(Infinity, 0, n); prev.fill(-1, 0, n);
+    var goalAt = {}, hx = [], heap = [];
+    goals.forEach(function (g) { (goalAt[g.p] = goalAt[g.p] || []).push(g); hx.push([G.xs[Math.floor(g.p / G.ny)], G.ys[g.p % G.ny]]); });
+    function h(p) {
+      var x = G.xs[Math.floor(p / G.ny)], y = G.ys[p % G.ny], m = Infinity;
+      for (var k = 0; k < hx.length; k++) m = Math.min(m, Math.abs(x - hx[k][0]) + Math.abs(y - hx[k][1]));
+      return m;
+    }
+    function push(f, st) {
+      heap.push([f, st]);
+      for (var i = heap.length - 1; i > 0;) { var q = (i - 1) >> 1; if (heap[q][0] <= heap[i][0]) break; var t = heap[q]; heap[q] = heap[i]; heap[i] = t; i = q; }
+    }
+    function pop() {
+      var top = heap[0], last = heap.pop();
+      if (heap.length) {
+        heap[0] = last;
+        for (var i = 0; ;) {
+          var l = 2 * i + 1, r = l + 1, m = i;
+          if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+          if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+          if (m === i) break;
+          var t = heap[m]; heap[m] = heap[i]; heap[i] = t; i = m;
+        }
+      }
+      return top;
+    }
+    starts.forEach(function (s) {
+      var st = s.p * 4 + s.d;
+      if (s.c < dist[st]) { dist[st] = s.c; prev[st] = -1; push(s.c + h(s.p), st); }
+    });
+    var best = Infinity, bestSt = -1, bestGoal = null;
+    while (heap.length) {
+      var e = pop(), st = e[1], d0 = dist[st];
+      if (e[0] >= best) break;
+      if (e[0] > d0 + h(Math.floor(st / 4)) + 1e-6) continue;
+      var p = Math.floor(st / 4), d = st % 4;
+      (goalAt[p] || []).forEach(function (g) {
+        var extra = g.d < 0 || g.d === d ? 0 : g.d === (d + 2) % 4 ? Infinity : BEND;
+        if (d0 + extra + g.c < best) { best = d0 + extra + g.c; bestSt = st; bestGoal = g; }
+      });
+      var i = Math.floor(p / G.ny), j = p % G.ny;
+      for (var d2 = 0; d2 < 4; d2++) {
+        if (d2 === (d + 2) % 4) continue;
+        var i2 = i + DX[d2], j2 = j + DY[d2];
+        if (i2 < 0 || j2 < 0 || i2 >= G.nx || j2 >= G.ny) continue;
+        var p2 = i2 * G.ny + j2;
+        if (G.blk[p2]) continue;
+        var horiz = d2 % 2 === 0, si = horiz ? (d2 === 0 ? p : p2) : (d2 === 1 ? p : p2);
+        if ((horiz ? G.hb : G.vb)[si]) continue;
+        var cl = (horiz ? G.hc : G.vc)[si];
+        var len = horiz ? Math.abs(G.xs[i2] - G.xs[i]) : Math.abs(G.ys[j2] - G.ys[j]);
+        var cost = len * (1 + (cl >= 0 && home.indexOf(cl) < 0 ? REGION : 0) + ((horiz ? G.hh : G.vh)[si] & 1 ? HUG : 0) + ((horiz ? G.hh : G.vh)[si] & 2 ? TIGHT : 0)) + (d2 === d ? 0 : BEND);
+        var st2 = p2 * 4 + d2, nd = d0 + cost;
+        if (nd < dist[st2]) { dist[st2] = nd; prev[st2] = st; push(nd + h(p2), st2); }
+      }
+    }
+    if (bestSt < 0) return null;
+    var pts = [];
+    for (var s2 = bestSt; s2 >= 0; s2 = prev[s2]) { var pp = Math.floor(s2 / 4); pts.unshift([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]); }
+    var first = starts.find(function (s) { return s.p * 4 + (s.d) === firstState(bestSt); });
+    return { pts: pts, start: first, goal: bestGoal, cost: best };
+    function firstState(s3) { while (prev[s3] >= 0) s3 = prev[s3]; return s3; }
+  }
+
+  // Port on side sd (0 right, 1 bottom, 2 left, 3 top; = outward heading) at position v along the side.
+  function port(r, sd, v) {
+    if (sd === 0) return { pt: [r.x1, v], stub: [r.x1 + M, v] };
+    if (sd === 2) return { pt: [r.x0, v], stub: [r.x0 - M, v] };
+    if (sd === 1) return { pt: [v, r.y1], stub: [v, r.y1 + M] };
+    return { pt: [v, r.y0], stub: [v, r.y0 - M] };
+  }
+  function centre(r, sd) { return Math.round(sd % 2 === 0 ? (r.y0 + r.y1) / 2 : (r.x0 + r.x1) / 2); }
+  function span(r, sd) { return sd % 2 === 0 ? [r.y0, r.y1] : [r.x0, r.x1]; }
+  function facing(r, sd, o) {
+    var cx = (o.x0 + o.x1) / 2 - (r.x0 + r.x1) / 2, cy = (o.y0 + o.y1) / 2 - (r.y0 + r.y1) / 2;
+    return DX[sd] * cx + DY[sd] * cy > 0;
+  }
+
+  function simplify(pts) {
+    var out = [];
+    pts.forEach(function (p) {
+      var n = out.length;
+      if (n && Math.abs(out[n - 1][0] - p[0]) < 0.01 && Math.abs(out[n - 1][1] - p[1]) < 0.01) return;
+      if (n >= 2) {
+        var a = out[n - 2], b = out[n - 1];
+        if ((Math.abs(a[0] - b[0]) < 0.01 && Math.abs(b[0] - p[0]) < 0.01) || (Math.abs(a[1] - b[1]) < 0.01 && Math.abs(b[1] - p[1]) < 0.01)) { out[n - 1] = p; return; }
+      }
+      out.push(p);
+    });
+    return out;
+  }
+
+  // Rounded orthogonal path: corner radius up to RAD, keeping 6px straight at the start and 12px before the arrowhead.
+  function shape(pts) {
+    var n = pts.length, seg = [], rad = [0];
+    for (var k = 0; k + 1 < n; k++) seg.push(Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1]));
+    for (k = 1; k + 1 < n; k++) {
+      var a = k - 1 === 0 ? seg[k - 1] - 6 : seg[k - 1] / 2, b = k + 1 === n - 1 ? seg[k] - 12 : seg[k] / 2;
+      rad.push(Math.max(0, Math.min(RAD, a, b)));
+    }
+    rad.push(0);
+    var d = "M" + r1(pts[0][0]) + " " + r1(pts[0][1]), pieces = [], arc = 0;
+    for (k = 0; k + 1 < n; k++) {
+      var ux = (pts[k + 1][0] - pts[k][0]) / (seg[k] || 1), uy = (pts[k + 1][1] - pts[k][1]) / (seg[k] || 1);
+      var s0 = [pts[k][0] + ux * rad[k], pts[k][1] + uy * rad[k]], s1 = [pts[k + 1][0] - ux * rad[k + 1], pts[k + 1][1] - uy * rad[k + 1]];
+      var sl = Math.max(0, seg[k] - rad[k] - rad[k + 1]);
+      pieces.push({ a: s0, u: [ux, uy], len: sl, arc: arc });
+      arc += sl;
+      d += "L" + r1(s1[0]) + " " + r1(s1[1]);
+      if (k + 2 < n) {
+        var r = rad[k + 1], c = pts[k + 1], vx = (pts[k + 2][0] - c[0]) / (seg[k + 1] || 1), vy = (pts[k + 2][1] - c[1]) / (seg[k + 1] || 1);
+        var e1 = [c[0] + vx * r, c[1] + vy * r];
+        d += "C" + r1(s1[0] + ux * r * 0.55) + " " + r1(s1[1] + uy * r * 0.55) + " " + r1(e1[0] - vx * r * 0.55) + " " + r1(e1[1] - vy * r * 0.55) + " " + r1(e1[0]) + " " + r1(e1[1]);
+        arc += r * 1.571;
+      }
+    }
+    return { d: d, pieces: pieces, len: arc };
+  }
+
+  function overlap(a, b) { return Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)); }
+  function cost(boxes, list) {
+    var s = 0;
+    boxes.forEach(function (b) { list.forEach(function (o) { s += overlap(b, o); }); });
+    return s;
+  }
+  // Candidate points along straight pieces, nearest the path's arc midpoint first.
+  function stations(sh, margin, ends) {
+    var out = [];
+    sh.pieces.forEach(function (pc) {
+      for (var t = margin; t <= pc.len - margin; t += 4) {
+        var a = pc.arc + t;
+        if (a < ends || a > sh.len - ends) continue;
+        out.push({ x: pc.a[0] + pc.u[0] * t, y: pc.a[1] + pc.u[1] * t, h: Math.abs(pc.u[0]) > 0.5, off: Math.abs(a - sh.len / 2) });
+      }
+    });
+    return out.sort(function (a, b) { return a.off - b.off; });
+  }
+
+  function placeFirewall(sh, hard, soft) {
+    var best = null;
+    var st = stations(sh, 6, 26);
+    if (!st.length) st = stations(sh, 2, 6);
+    if (!st.length) st = stations(sh, 0, 0);
+    st.forEach(function (s) {
+      if (best && best.clear) return;
+      var mk = s.h ? { x0: s.x - 6, y0: s.y - 12, x1: s.x + 6, y1: s.y + 12 } : { x0: s.x - 12, y0: s.y - 6, x1: s.x + 12, y1: s.y + 6 };
+      var opts = s.h
+        ? [{ label: [s.x, s.y + 21], anchor: "middle", box: { x0: s.x - 26, y0: s.y + 12, x1: s.x + 26, y1: s.y + 24 } }, { label: [s.x, s.y - 15], anchor: "middle", box: { x0: s.x - 26, y0: s.y - 25, x1: s.x + 26, y1: s.y - 13 } }]
+        : [{ label: [s.x + 15, s.y + 3], anchor: "start", box: { x0: s.x + 14, y0: s.y - 7, x1: s.x + 66, y1: s.y + 5 } }, { label: [s.x - 15, s.y + 3], anchor: "end", box: { x0: s.x - 66, y0: s.y - 7, x1: s.x - 14, y1: s.y + 5 } }];
+      opts.forEach(function (o) {
+        var hit = cost([mk, o.box], hard) * 100 + cost([mk, o.box], soft) * 10, sc = hit + s.off * 0.01;
+        if (!best || sc < best.score) best = { score: sc, clear: hit === 0, at: [r1(s.x), r1(s.y)], a: s.h ? 0 : 90, label: [r1(o.label[0]), r1(o.label[1])], anchor: o.anchor, boxes: [mk, o.box] };
+      });
+    });
+    return best;
+  }
+
+  function placeLabel(sh, lw, hard, soft) {
+    var best = null;
+    stations(sh, 4, 22).forEach(function (s) {
+      if (best && best.clear) return;
+      var b = { x0: s.x - lw / 2, y0: s.y - 8.5, x1: s.x + lw / 2, y1: s.y + 8.5 };
+      var hit = cost([b], hard) * 100 + cost([b], soft) * 5 + (s.h ? 0 : 400), sc = hit + s.off * 0.01;
+      if (!best || sc < best.score) best = { score: sc, clear: hit === 0, label: [r1(b.x0 + 7), r1(s.y + 3.5)], box: b };
+    });
+    return best;
+  }
+
+  // Routes every connection. o: { w: measured box widths, lw: measured label pill widths } (both optional).
+  function route(s, meta, o) {
+    o = o || {};
+    var S = shapes(s, meta, o.w), E = meta.edges, ov = s.edges || {};
+    var res = {};
+    function home(e) {
+      var h = [];
+      [e.from, e.to].forEach(function (k) {
+        var r = S.ent[k];
+        if (!r) return;
+        if (k.charAt(0) === "n" && r.cl >= 0) h.push(r.cl);
+      });
+      return h;
+    }
+    function cands(r, other, v) {
+      return [0, 1, 2, 3].map(function (sd) {
+        var p = port(r, sd, v === undefined ? centre(r, sd) : v);
+        return { sd: sd, p: p, c: facing(r, sd, other) ? 0 : BEND / 2 };
+      });
+    }
+    // A process endpoint (body line) is a port on its server's left or right side at that line's height; end 0 = from, 1 = to.
+    function lineY(e, end) {
+      var li = end ? e.tl : e.fl, id = (end ? e.to : e.from).slice(2);
+      return li === null || li === undefined || !s.nodes[id] ? null : Math.round(s.nodes[id].body[li][1] - 4);
+    }
+    function endCands(e, end, r, other) {
+      var y = lineY(e, end);
+      return y === null ? cands(r, other) : cands(r, other, y).filter(function (c) { return c.sd % 2 === 0; });
+    }
+    function run(G, A, B, from, to, h) {
+      var st = from.map(function (c) { return { p: at(G, c.p.stub[0], c.p.stub[1]), d: c.sd, c: c.c, cand: c }; }).filter(function (c) { return c.p >= 0 && !G.blk[c.p]; });
+      var gl = to.map(function (c) { return { p: at(G, c.p.stub[0], c.p.stub[1]), d: c.sd < 0 ? -1 : (c.sd + 2) % 4, c: c.c, cand: c }; }).filter(function (c) { return c.p >= 0 && !G.blk[c.p]; });
+      if (!st.length || !gl.length) return null;
+      return search(G, st, gl, h);
+    }
+
+    // Pass 1: free sides, centred ports (process endpoints: left / right at their line).
+    var extra = [];
+    E.forEach(function (e) {
+      [S.ent[e.from], S.ent[e.to]].forEach(function (r, end) {
+        if (!r) return;
+        [0, 1, 2, 3].forEach(function (sd) { var p = port(r, sd, centre(r, sd)); extra.push(p.pt, p.stub); });
+        if (lineY(e, end) !== null) [0, 2].forEach(function (sd) { var p = port(r, sd, lineY(e, end)); extra.push(p.pt, p.stub); });
+      });
+      ((ov[e.k] || {}).via || []).forEach(function (v) { extra.push(v); });
+    });
+    var G = grid(S, extra), first = {};
+    E.forEach(function (e) {
+      var A = S.ent[e.from], B = S.ent[e.to];
+      if (!A || !B) return;
+      var via = (ov[e.k] || {}).via || [], h = home(e);
+      if (!via.length) {
+        var r = run(G, A, B, endCands(e, 0, A, B), endCands(e, 1, B, A), h);
+        if (r) first[e.k] = { sa: r.start.cand.sd, sb: (r.goal.d + 2) % 4, pts: [r.start.cand.p.pt].concat(r.pts, [r.goal.cand.p.pt]) };
+        return;
+      }
+      var pts = [], cur = endCands(e, 0, A, B), ok = true, sa = -1, sb = -1;
+      via.concat([null]).forEach(function (v, i) {
+        if (!ok) return;
+        var tgt = v ? [{ sd: -1, p: { pt: v, stub: v }, c: 0 }] : endCands(e, 1, B, A);
+        var rr = run(G, A, B, cur, tgt, h);
+        if (!rr) { ok = false; return; }
+        if (i === 0) { sa = rr.start.cand.sd; pts.push(rr.start.cand.p.pt); }
+        pts = pts.concat(rr.pts);
+        if (!v) { sb = (rr.goal.d + 2) % 4; pts.push(rr.goal.cand.p.pt); }
+        else cur = [0, 1, 2, 3].map(function (d) { return { sd: d, p: { pt: v, stub: v }, c: 0 }; });
+      });
+      if (ok) first[e.k] = { sa: sa, sb: sb, pts: pts, via: true };
+    });
+
+    // Pass 2: a port wants the other end's position (a facing pair with overlapping sides: the overlap's middle, so it runs straight;
+    // a process endpoint: its line); ports sharing a side keep up to 20px apart; then re-route with the ports fixed.
+    var bySide = {}, ports = {};
+    E.forEach(function (e) {
+      var f = first[e.k];
+      if (!f || f.via) return;
+      var A = S.ent[e.from], B = S.ent[e.to], sa = span(A, f.sa), sb = span(B, f.sb), mid = null, ly = [lineY(e, 0), lineY(e, 1)];
+      if ((f.sa + 2) % 4 === f.sb && facing(A, f.sa, B)) {
+        var lo = Math.max(sa[0], sb[0]) + 8, hi = Math.min(sa[1], sb[1]) - 8;
+        if (hi >= lo) mid = (lo + hi) / 2;
+        if (ly[0] !== null) mid = ly[0];
+        else if (ly[1] !== null) mid = ly[1];
+      }
+      [[e.from, f.sa, B, 0, A], [e.to, f.sb, A, 1, B]].forEach(function (x) {
+        if (ly[x[3]] !== null) { ports[e.k + "|" + x[3]] = { v: ly[x[3]], r: x[4], sd: x[1] }; return; }
+        var o2 = x[2], want = mid !== null ? mid : x[1] % 2 === 0 ? (o2.y0 + o2.y1) / 2 : (o2.x0 + o2.x1) / 2;
+        (bySide[x[0] + "|" + x[1]] = bySide[x[0] + "|" + x[1]] || []).push({ k: e.k, end: x[3], r: S.ent[x[0]], sd: x[1], want: want });
+      });
+    });
+    Object.keys(bySide).forEach(function (key) {
+      var l = bySide[key].sort(function (a, b) { return a.want - b.want; }), sp = span(l[0].r, l[0].sd);
+      var lo = sp[0] + 8, hi = sp[1] - 8, step = Math.min(20, (hi - lo) / Math.max(1, l.length - 1)), v = [], i;
+      for (i = 0; i < l.length; i++) v[i] = Math.max(Math.min(Math.max(l[i].want, lo), hi), i ? v[i - 1] + step : lo);
+      for (i = l.length - 1; i >= 0; i--) v[i] = Math.min(v[i], i < l.length - 1 ? v[i + 1] - step : hi);
+      l.forEach(function (it, j) { ports[it.k + "|" + it.end] = { v: Math.round(v[j]), r: it.r, sd: it.sd }; });
+    });
+    var extra2 = extra.slice();
+    Object.keys(ports).forEach(function (k) { var q = ports[k], p = port(q.r, q.sd, q.v); extra2.push(p.pt, p.stub); });
+    var G2 = grid(S, extra2);
+    E.forEach(function (e) {
+      var f = first[e.k], A = S.ent[e.from], B = S.ent[e.to], pts = null;
+      if (!f) {
+        if (A && B) pts = [[(A.x0 + A.x1) / 2, (A.y0 + A.y1) / 2], [(B.x0 + B.x1) / 2, (B.y0 + B.y1) / 2]];
+      } else if (f.via) pts = f.pts;
+      else {
+        var a = ports[e.k + "|0"], b = ports[e.k + "|1"];
+        var r = run(G2, A, B, [{ sd: a.sd, p: port(A, a.sd, a.v), c: 0 }], [{ sd: b.sd, p: port(B, b.sd, b.v), c: 0 }], home(e));
+        pts = r ? [r.start.cand.p.pt].concat(r.pts, [r.goal.cand.p.pt]) : f.pts;
+      }
+      if (pts) res[e.k] = { pts: simplify(pts) };
+    });
+
+    // Firewall markers, then connection labels, each clear of servers, region titles and borders where possible.
+    var hard = S.nodes.concat(S.titles), placed = [];
+    E.forEach(function (e) {
+      var rt = res[e.k];
+      if (!rt) return;
+      var sh = shape(rt.pts);
+      rt.d = sh.d; rt.sh = sh;
+      rt.fw = null;
+      if (e.fw) {
+        var f = placeFirewall(sh, hard.concat(placed), S.bands);
+        if (f) { placed = placed.concat(f.boxes); rt.fw = { at: f.at, a: f.a, label: f.label, anchor: f.anchor }; }
+      }
+    });
+    E.forEach(function (e) {
+      var rt = res[e.k];
+      if (!rt) return;
+      rt.label = null;
+      if (e.ll) {
+        var fix = (ov[e.k] || {}).label;
+        if (fix) rt.label = fix.slice();
+        else {
+          var lw = (o.lw && o.lw[e.k]) || e.ll * 6 + 14, l = placeLabel(rt.sh, lw, hard.concat(placed), S.bands);
+          if (l) { placed.push(l.box); rt.label = l.label; }
+        }
+      }
+      delete rt.sh;
+    });
+    return res;
+  }
+
+  // Keys ("n:id" / "c:id") of servers and regions breaking the spacing rules (validate.mjs states them for the build).
+  function problems(s, meta, w) {
+    var S = shapes(s, meta, w), bad = {};
+    function gap(a, b) { return Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b.y1); }
+    var nodes = S.nodes;
+    for (var i = 0; i < nodes.length; i++) for (var j = i + 1; j < nodes.length; j++) if (gap(nodes[i], nodes[j]) < MIN_GAP) bad[nodes[i].k] = bad[nodes[j].k] = 1;
+    nodes.forEach(function (b) {
+      if (b.cl < 0) return;
+      var c = S.clusters[b.cl];
+      if (b.x0 - c.x0 < PAD || c.x1 - b.x1 < PAD || c.y1 - b.y1 < PAD || b.y0 < c.y0 + BAND + BAND_GAP) bad[b.k] = 1;
+    });
+    var cl = S.clusters;
+    for (i = 0; i < cl.length; i++) for (j = i + 1; j < cl.length; j++) if (gap(cl[i], cl[j]) < MIN_GAP) bad[cl[i].k] = bad[cl[j].k] = 1;
+    cl.forEach(function (c) { nodes.forEach(function (b) { if (b.cl !== c.i && gap(c, b) < MIN_GAP) bad[c.k] = bad[b.k] = 1; }); });
+    return bad;
+  }
+
+  return { boxExtent: boxExtent, fitBox: fitBox, fitRegion: fitRegion, route: route, problems: problems };
+}
+
+Object.assign(exports, {geometryMeta,geometryKit});
+},
+"render/auto-layout.mjs": function(require, exports) {
+// Auto-layout: geometry for servers, regions and connections missing from layout.json; existing entries always win.
+// Fresh regions are packed in rows (diagram.mmd order), their servers in a grid; standalone servers go in a final row.
+// Missing servers of a placed region go below or right of its servers, whichever clashes less; new regions and
+// standalone servers go below the existing content. Deterministic: same layout + meta, same result.
+// Self-contained on purpose: assets.mjs inlines this function's source as the "canvas/auto-layout" runtime module,
+// so the build and edit mode fill in identical geometry. geometry: the geometryKit() object.
+function autoLayoutKit(geometry) {
+  var HEAD = 20, PAD = 16, TOP = 40, GAP = 20, RGAP = 60, ORIGIN = 20, MAXW = 1200, COLS = 3, EMPTY_W = 220, EMPTY_H = 120;
+
+  function r1(v) { return Math.round(v * 10) / 10; }
+  function range(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
+  function dup(o) { return JSON.parse(JSON.stringify(o)); }
+
+  // Box size from text lengths and line counts (same width rule as geometryKit.fitBox).
+  function size(t) {
+    return { w: Math.ceil(Math.max(t.tl * 6.6 + 38, 20 + t.bl * 6.6, t.il ? 36 + t.il * 7 : 0)), h: 20 + 16 * t.nb + 18 * t.ni };
+  }
+  // Server whose drawn box (incl. header) has its top-left corner at x, y.
+  function box(t, x, y) {
+    var z = size(t), by = y + HEAD;
+    return {
+      x: x, y: by, w: z.w, h: z.h, title: [x + 10, by - 6],
+      body: range(t.nb).map(function (i) { return [x + 10, by + 18 + 16 * i]; }),
+      ip: range(t.ni).map(function (i) { return [x + 10, by + 22 + 16 * t.nb + 18 * i]; }),
+    };
+  }
+
+  function gridSize(meta, ids) {
+    var cols = Math.min(ids.length, COLS), rows = Math.ceil(ids.length / cols), cw = 0, ch = 0;
+    ids.forEach(function (id) { var z = size(meta.nodes[id]); cw = Math.max(cw, z.w); ch = Math.max(ch, z.h + HEAD); });
+    return { cols: cols, cw: cw, ch: ch, w: cols * cw + (cols - 1) * GAP, h: rows * ch + (rows - 1) * GAP };
+  }
+  function grid(s, meta, ids, x, y) {
+    var g = gridSize(meta, ids);
+    ids.forEach(function (id, i) { s.nodes[id] = box(meta.nodes[id], x + (i % g.cols) * (g.cw + GAP), y + Math.floor(i / g.cols) * (g.ch + GAP)); });
+  }
+  function regionSize(meta, cid, ids) {
+    var g = ids.length ? gridSize(meta, ids) : null;
+    return { w: Math.max(g ? g.w + 2 * PAD : EMPTY_W, Math.ceil(meta.clusters[cid].tl * 7.8 + 2 * PAD)), h: g ? TOP + g.h + PAD : EMPTY_H };
+  }
+
+  function ext(s, meta, id) { return geometry.boxExtent(s.nodes[id], meta.nodes[id].tl); }
+  function rect(c) { return { x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.h }; }
+  function union(a) {
+    return a.reduce(function (u, r) { return u ? { x0: Math.min(u.x0, r.x0), y0: Math.min(u.y0, r.y0), x1: Math.max(u.x1, r.x1), y1: Math.max(u.y1, r.y1) } : r; }, null);
+  }
+  function placed(s, meta) {
+    var nodes = Object.keys(meta.nodes).filter(function (id) { return s.nodes[id] && !s.nodes[id].hidden; });
+    var clusters = Object.keys(meta.clusters).filter(function (id) { return s.clusters[id]; });
+    return { nodes: nodes, clusters: clusters };
+  }
+  function bounds(s, meta) {
+    var p = placed(s, meta);
+    return union(p.clusters.map(function (id) { return rect(s.clusters[id]); }).concat(p.nodes.map(function (id) { return ext(s, meta, id); })));
+  }
+  function gap(a, b) { return Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b.y1); }
+
+  // Spacing clashes of region cid (and its servers ids) with every other placed region and server.
+  function clashes(s, meta, cid, ids) {
+    var p = placed(s, meta), own = [rect(s.clusters[cid])].concat(ids.map(function (id) { return ext(s, meta, id); })), n = 0;
+    var others = p.clusters.filter(function (id) { return id !== cid; }).map(function (id) { return rect(s.clusters[id]); })
+      .concat(p.nodes.filter(function (id) { return meta.nodes[id].cl !== cid; }).map(function (id) { return ext(s, meta, id); }));
+    own.forEach(function (a) { others.forEach(function (b) { if (gap(a, b) < GAP) n++; }); });
+    return n;
+  }
+
+  function fill(s, meta) {
+    s.clusters = s.clusters || {}; s.nodes = s.nodes || {}; s.edges = s.edges || {};
+    meta.edges.forEach(function (e) { if (!s.edges[e.k]) s.edges[e.k] = e.fw ? { firewall: true } : {}; });
+    var cids = Object.keys(meta.clusters), nids = Object.keys(meta.nodes);
+    var missing = nids.filter(function (id) { return !s.nodes[id]; });
+    if (!missing.length && cids.every(function (id) { return s.clusters[id]; })) return s;
+    function kids(cid) { return missing.filter(function (id) { return meta.nodes[id].cl === cid; }); }
+
+    // A missing region around already placed servers starts as their bounding box.
+    cids.forEach(function (cid) {
+      if (s.clusters[cid]) return;
+      var have = placed(s, meta).nodes.filter(function (id) { return meta.nodes[id].cl === cid; });
+      if (!have.length) return;
+      var u = union(have.map(function (id) { return ext(s, meta, id); }));
+      s.clusters[cid] = { x: u.x0 - PAD, y: u.y0 - TOP, w: u.x1 - u.x0 + 2 * PAD, h: u.y1 - u.y0 + TOP + PAD, title: [r1((u.x0 + u.x1) / 2), u.y0 - TOP + 20] };
+    });
+
+    // Missing servers of a placed region: a grid below its servers or right of them, whichever clashes less (ties: below).
+    cids.forEach(function (cid) {
+      var c = s.clusters[cid], ids = kids(cid);
+      if (!c || !ids.length) return;
+      var have = placed(s, meta).nodes.filter(function (id) { return meta.nodes[id].cl === cid; });
+      var u = union(have.map(function (id) { return ext(s, meta, id); }));
+      var spots = u ? [[c.x + PAD, u.y1 + GAP], [u.x1 + GAP, c.y + TOP]] : [[c.x + PAD, c.y + TOP]], best = null;
+      spots.forEach(function (p) {
+        var t = dup(s);
+        grid(t, meta, ids, p[0], p[1]);
+        geometry.fitRegion(t, meta, cid);
+        var n = clashes(t, meta, cid, ids);
+        if (!best || n < best.n) best = { n: n, t: t };
+      });
+      ids.forEach(function (id) { s.nodes[id] = best.t.nodes[id]; });
+      s.clusters[cid] = best.t.clusters[cid];
+    });
+
+    // New regions in rows below the existing content, then standalone servers in a final row.
+    var b = bounds(s, meta), x0 = b ? b.x0 : ORIGIN, y = b ? b.y1 + RGAP : ORIGIN, x = x0, rowH = 0;
+    function slot(w, h) {
+      if (x > x0 && x + w > x0 + MAXW) { y += rowH + RGAP; x = x0; rowH = 0; }
+      var at = [x, y];
+      x += w + RGAP; rowH = Math.max(rowH, h);
+      return at;
+    }
+    cids.forEach(function (cid) {
+      if (s.clusters[cid]) return;
+      var ids = kids(cid), z = regionSize(meta, cid, ids), at = slot(z.w, z.h);
+      if (ids.length) grid(s, meta, ids, at[0] + PAD, at[1] + TOP);
+      s.clusters[cid] = { x: at[0], y: at[1], w: z.w, h: z.h, title: [r1(at[0] + z.w / 2), at[1] + 20] };
+    });
+    if (rowH) { y += rowH + RGAP; x = x0; rowH = 0; }
+    missing.filter(function (id) { return !meta.nodes[id].cl; }).forEach(function (id) {
+      var z = size(meta.nodes[id]), at = slot(z.w, z.h + HEAD);
+      s.nodes[id] = box(meta.nodes[id], at[0], at[1]);
+    });
+    return s;
+  }
+
+  return { fill: fill };
+}
+
+Object.assign(exports, {autoLayoutKit});
+},
+"render/svg.mjs": function(require, exports) {
+const { esc } = require("lib/util.mjs");
+const { edgeKey, endKey, isDashed } = require("parse/mmd.mjs");
+const { fwGlyph } = require("render/firewall.mjs");
+
+const NET_ICON = "M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75";
+
+// routes: geometry.mjs route() result; groups: diagram.json connection groups.
+function renderSvgBody(model, layout, ent, nets, ipNet, routes, groups, meta) {
+  const { clusters, nodes, edges } = model;
+  const gOf = {};
+  for (const [g, d] of Object.entries(groups)) for (const k of d.edges) gOf[k] = g;
+  const hl = {};
+  // Process endpoint lines ("node:line" → group id or ""): bold, in the group colour when grouped.
+  const lvOf = {};
+  for (const m of meta.edges) {
+    lvOf[m.k] = m.lv;
+    if (m.fl !== null) hl[m.from.slice(2) + ":" + m.fl] = m.g || "";
+    if (m.tl !== null) hl[m.to.slice(2) + ":" + m.tl] = m.g || "";
+  }
+  const out = [];
+  let cnt = 0;
+  const add = (s) => (out.push(s), cnt++);
+  const idx = { clusters: {}, nodes: {}, edges: {} };
+  const A = (k) => ` data-ent="${k}" data-ty="${ent[k].ty}" data-tk="${ent[k].tk}"`;
+  const t = (x, y, s, attrs = "") => `<text${attrs} x="${x}" y="${y}">${esc(s)}</text>`;
+
+  for (const c of clusters.values()) {
+    const g = layout.clusters[c.id], k = "c:" + c.id;
+    const r = add(`<rect class="d${ent[k].prop ? " prop" : ""}"${A(k)} x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="14"/>`);
+    const tt = add(`<text class="ct"${A(k)} x="${g.title[0]}" y="${g.title[1]}" text-anchor="middle">${esc(c.title)}</text>`);
+    const ch = add(`<g class="ch cch"${A(k)}></g>`);
+    idx.clusters[c.id] = [r, tt, ch];
+    out.push("");
+  }
+
+  for (const n of nodes.values()) {
+    const g = layout.nodes[n.id];
+    if (g.hidden) continue;
+    const k = "n:" + n.id;
+    const e = { c: add(`<g class="ch"${A(k)}></g>`) };
+    e.t = add(t(g.title[0], g.title[1], n.title, ` class="nt"${A(k)}`));
+    e.r = add(`<rect class="b"${A(k)} x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="14"/>`);
+    e.b = n.body.map((s, i) => {
+      const h = hl[n.id + ":" + i];
+      return add(t(g.body[i][0], g.body[i][1], s, ` class="nb${h === undefined ? "" : " pl"}"${A(k)}${h ? ` data-g="${h}"` : ""}`));
+    });
+    e.i = n.ip.map((s, i) => add(t(g.ip[i][0], g.ip[i][1], s, ` class="ni"${A(k)}`)));
+    e.w = n.ip.map((s, i) => {
+      const j = nets ? ipNet[s.split("/")[0]] : undefined;
+      if (j === undefined) return -1;
+      const lbl = esc(`Show network ${nets[j].cidr} ${nets[j].name}`).replace(/"/g, "&quot;");
+      const at = `${g.ip[i][0] + s.length * 6 + 7} ${g.ip[i][1] - 10}`;
+      return add(`<g class="nwb"${A(k)} data-n="${j}" data-i="${i}" role="button" tabindex="0" aria-pressed="false" aria-label="${lbl}" transform="translate(${at})"><title>${lbl}</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="${NET_ICON}"/></g>`);
+    });
+    const os = ent[k].os;
+    const ol = os ? esc(os.v) + (os.eol ? ' <tspan class="ose">EOL</tspan>' : "") : "OS ?";
+    e.o = add(`<g class="osg${os ? (os.eol ? " eol" : "") : " unk"}"${A(k)}><rect class="osp" height="12"/><text class="ost" x="4" y="9">${ol}</text></g>`);
+    idx.nodes[n.id] = e;
+    out.push("");
+  }
+
+  edges.forEach((e, ei) => {
+    const k = edgeKey(e), rt = routes[k], grp = gOf[k];
+    const dashed = isDashed(model, ei);
+    const tk = [...new Set([ent[endKey(model, e.from)].tk, ent[endKey(model, e.to)].tk]), "lv:" + lvOf[k], ...(grp ? ["g:" + grp] : [])].join(" ");
+    const ea = ` data-ent="e:${k}" data-tk="${tk}"`, ga = grp ? ` data-g="${grp}"` : "";
+    const marker = grp ? `ag-${grp}` : dashed ? "ak" : "ar";
+    const p = add(`<path class="${dashed ? "k" : "r"}"${ea}${ga} d="${rt.d}" marker-end="url(#${marker})"/>`);
+    let lp = -1, l = -1;
+    if (e.label) {
+      const lb = rt.label || rt.pts[0];
+      lp = add(`<rect class="lp ${dashed ? "lpm" : "lpr"}"${ea}${ga} x="${lb[0] - 7}" y="${lb[1] - 12}" width="${e.label.length * 6 + 14}" height="17"/>`);
+      l = add(t(lb[0], lb[1], e.label, ` class="${dashed ? "mvl" : "tcp"}"${ea}${ga}`));
+    }
+    const ie = { p, l, lp };
+    if (rt.fw) {
+      const f = rt.fw;
+      ie.fw = add(`<g class="fw"${ea}>${fwGlyph(f.at, f.a)}<text class="fwt" x="${f.label[0]}" y="${f.label[1]}" text-anchor="${f.anchor}">firewall</text></g>`);
+    }
+    idx.edges[k] = ie;
+  });
+
+  return { body: out.join("\n"), idx };
+}
+
+Object.assign(exports, {renderSvgBody});
+},
+"render/firewall.mjs": function(require, exports) {
+const FW_D = "M-3.5 -11L3.5 -6.6L-3.5 -2.2L3.5 2.2L-3.5 6.6L3.5 11";
+
+// Firewall zigzag at [x, y], rotated a degrees; placement comes from geometry.mjs (route → fw).
+const fwGlyph = ([x, y], a) => `<path class="fwb" d="${FW_D}" transform="translate(${x} ${y}) rotate(${a})"/><path class="fwz" d="${FW_D}" transform="translate(${x} ${y}) rotate(${a})"/>`;
+
+Object.assign(exports, {fwGlyph});
+},
+"render/viewbox.mjs": function(require, exports) {
+const { edgeKey } = require("parse/mmd.mjs");
+
+const PAD = 20;
+const CW = 7;
+
+function computeViewBox({ clusters, nodes, edges }, layout, routes) {
+  const bb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+  const grow = (x0, y0, x1, y1) => {
+    bb.x0 = Math.min(bb.x0, x0);
+    bb.y0 = Math.min(bb.y0, y0);
+    bb.x1 = Math.max(bb.x1, x1);
+    bb.y1 = Math.max(bb.y1, y1);
+  };
+  const txt = (x, y, s, anchor, fs = 11) => {
+    const tw = (s.length * CW * fs) / 11;
+    const x0 = anchor === "middle" ? x - tw / 2 : anchor === "end" ? x - tw : x;
+    grow(x0, y - 12, x0 + tw, y + 4);
+  };
+  for (const c of clusters.values()) {
+    const g = layout.clusters[c.id];
+    grow(g.x, g.y, g.x + g.w, g.y + g.h);
+    txt(g.title[0], g.title[1], c.title, "middle");
+  }
+  for (const n of nodes.values()) {
+    const g = layout.nodes[n.id];
+    if (g.hidden) continue;
+    grow(g.x, g.y, g.x + g.w, g.y + g.h);
+    txt(g.title[0], g.title[1], n.title);
+    n.body.forEach((s, i) => txt(g.body[i][0], g.body[i][1], s));
+    n.ip.forEach((s, i) => txt(g.ip[i][0], g.ip[i][1], s));
+  }
+  edges.forEach((e) => {
+    const r = routes[edgeKey(e)];
+    if (!r) return;
+    for (const p of r.pts) grow(p[0], p[1], p[0], p[1]);
+    if (e.label && r.label) txt(r.label[0], r.label[1], e.label);
+    if (r.fw) {
+      grow(r.fw.at[0] - 12, r.fw.at[1] - 12, r.fw.at[0] + 12, r.fw.at[1] + 12);
+      txt(r.fw.label[0], r.fw.label[1], "firewall", r.fw.anchor);
+    }
+  });
+  const vx = Math.floor(bb.x0 - PAD), vy = Math.floor(bb.y0 - PAD);
+  const vw = Math.ceil(bb.x1 + PAD) - vx, vh = Math.ceil(bb.y1 + PAD) - vy;
+  return `${vx} ${vy} ${vw} ${vh}`;
+}
+
+Object.assign(exports, {computeViewBox});
+},
+"render/edge-key.mjs": function(require, exports) {
+const { esc } = require("lib/util.mjs");
+const { isDashed } = require("parse/mmd.mjs");
+const { fwGlyph } = require("render/firewall.mjs");
+
+// labels: { request, dashed, firewall } from diagram.json edgeLabels. kinds feeds the index.html legend.
+// rows (export legend) end with one row per connection group; the page legend shows groups as switches instead (ui/legend).
+function buildEdgeKey(model, labels, groups) {
+  const { edges } = model;
+  const hasDashed = edges.some((e, ei) => isDashed(model, ei));
+  const keyed = [
+    ["request", '<line x1="2" y1="12" x2="40" y2="12" class="r" marker-end="url(#ar)"/>'],
+    ...(hasDashed ? [["dashed", '<line x1="2" y1="12" x2="40" y2="12" class="k" marker-end="url(#ak)"/>']] : []),
+    ...(edges.some((e) => e.fw) ? [["firewall", `<line x1="2" y1="12" x2="42" y2="12" class="r"/>${fwGlyph([22, 12], 0)}`]] : []),
+  ];
+  const base = keyed.map(([k, s]) => [s, labels[k]]);
+  const html = base.map(([s, l]) => `<div class="lkr"><svg class="lks" viewBox="0 0 44 24" width="44" height="24" aria-hidden="true">${s}</svg><span>${esc(l)}</span></div>`).join("");
+  const grows = Object.entries(groups).map(([g, d]) => [`<line x1="2" y1="12" x2="40" y2="12" class="r" data-g="${g}" marker-end="url(#ag-${g})"/>`, d.label]);
+  return { rows: [...base, ...grows], html, kinds: keyed.map(([k]) => [k, labels[k]]) };
+}
+
+// Per-group arrowhead markers and colour variables (--gc; darkColor in the Dark skin).
+function groupAssets(groups) {
+  const ids = Object.keys(groups);
+  const markers = ids.map((g) => `<marker id="ag-${g}" data-g="${g}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path class="mo" d="M1 1L9 5L1 9"/><path class="mf" d="M2 2L9 5L2 8Z"/></marker>`).join("\n");
+  const css = ids.map((g) => `[data-g="${g}"]{--gc:${groups[g].color}}\n:root[data-style="dark"] [data-g="${g}"]{--gc:${groups[g].darkColor}}`).join("\n");
+  return { markers, css };
+}
+
+Object.assign(exports, {buildEdgeKey,groupAssets});
+},
+"page/data.mjs": function(require, exports) {
+function buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes, nets, ipNet, edgeKeyRows }) {
+  const kids = {};
+  for (const n of model.nodes.values()) if (n.cluster) (kids[n.cluster] ||= []).push(n.id);
+  const ends = meta.edges.map(({ k, from, to }) => ({ k, from, to }));
+  const levels = meta.edges.some((e) => e.lv === "process") ? [{ k: "lv:server", label: "Server connections" }, { k: "lv:process", label: "Process connections" }] : [];
+  const edgeSwitches = [...levels, ...Object.entries(config.groups).map(([g, d]) => ({ k: "g:" + g, g, label: d.label }))];
+  const data = { id: config.id, legacyId: config.legacyId, layout, meta, idx, kids, edges: ends, edgeSwitches, ent, types: typeList, sections, notes: notes.map(({ title, date, paras }) => ({ title, date, paras })), edgeKey: edgeKeyRows };
+  if (nets) Object.assign(data, { nets: nets.map(({ cidr, name, m }) => ({ cidr, name, m })), ipNet });
+  return JSON.stringify(data).replace(/</g, String.fromCharCode(92) + "u003c");
+}
+
+Object.assign(exports, {buildDataJson});
+},
+"page/layout-html.mjs": function(require, exports) {
+const { esc } = require("lib/util.mjs");
+
+const FONTS = "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap";
+const STYLES = [["sketch", "Sketch"], ["clean", "Clean"], ["dark", "Dark"], ["swiss", "Swiss"]];
+
+const notesHtml = (notes) => notes
+  .map((n) => `<article class="note"><h3>${esc(n.title)}</h3>${n.paras.map((p) => `<p>${esc(p)}</p>`).join("")}<time>${esc(n.date)}</time></article>`)
+  .join("\n");
+const docsHtml = (docs) => docs
+  .map((d) => `<li><a href="${esc(d.url).replace(/"/g, "&quot;")}" target="_blank" rel="noopener">${esc(d.title)}</a>${d.desc ? ` <span>— ${esc(d.desc)}</span>` : ""}</li>`)
+  .join("\n");
+const netsHtml = (nets) => nets
+  .map((n, i) => `<button type="button" class="nw${n.hosts ? "" : " z"}" data-n="${i}" aria-pressed="false" style="--d:${n.depth}"><span>${n.cidr ? `<code>${esc(n.cidr)}</code> ` : ""}${esc(n.name)}</span><span class="nk" title="${n.hosts} host${n.hosts === 1 ? "" : "s"}">${n.hosts}</span></button>`)
+  .join("\n");
+const netsPanel = (nets) => nets
+  ? `\n<aside id="wp" class="cp" aria-label="Networks"><button id="wh" class="cph" type="button" aria-expanded="true" aria-controls="wb">Networks</button><div id="wb" class="cpb"><div id="wl" role="group" aria-label="Network filter">\n${netsHtml(nets)}\n</div><button type="button" class="reset" id="wr">Show all</button></div></aside>`
+  : "";
+const styleBtns = STYLES
+  .map(([k, l]) => `<button type="button" data-s="${k}" aria-pressed="${k === "clean"}">${l}</button>`)
+  .join("");
+
+function renderLayoutHtml({ title, cssSvg, cssPage, viewBox, svgBody, markers, edgeKeyHtml, notes, docs, nets, dataJson, js }) {
+  return `<!doctype html>
+<html lang="en" data-style="clean">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(title)}</title>
+<link rel="stylesheet" href="${FONTS}">
+<style id="css-svg">
+${cssSvg}
+</style>
+<style id="css-page">
+${cssPage}
+</style>
+</head>
+<body>
+<div id="ta"><span id="tal"><span id="ss" role="group" aria-label="Diagram style">${styleBtns}</span><span id="zm" role="group" aria-label="Zoom"><button id="zo" type="button" aria-label="Zoom out" title="Zoom out (-)">−</button><button id="zi" type="button" aria-label="Zoom in" title="Zoom in (+)">+</button><button id="zf" type="button" title="Fit to window (0)">Fit</button></span></span><span id="tar"><button id="xs" type="button">SVG</button><button id="xp" type="button">PNG</button> <button id="te" type="button" aria-pressed="false">Edit layout</button><span id="tx" hidden><button id="tc" type="button">Copy layout.json</button> <button id="td" type="button">Download</button> <button id="tr" type="button">Reset</button> <label><input id="ts" type="checkbox" checked>Snap 5px (Shift: off)</label> <span id="tm"></span></span></span></div>
+<svg class="s-clean" viewBox="${viewBox}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path class="mo" d="M1 1L9 5L1 9"/><path class="mf" d="M2 2L9 5L2 8Z"/></marker>
+<marker id="ak" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path class="mo" d="M1 1L9 5L1 9"/><path class="mf" d="M2 2L9 5L2 8Z"/></marker>${markers ? "\n" + markers : ""}
+</defs>
+
+${svgBody}
+</svg>
+<div id="lc">
+<aside id="lp" class="cp" aria-label="Legend"><button id="lh" class="cph" type="button" aria-expanded="true" aria-controls="lb">Legend</button><div id="lb" class="cpb"><div id="lg" role="group" aria-label="Server types"></div><div class="lk"><b>Connections</b>${edgeKeyHtml}</div></div></aside>${netsPanel(nets)}
+</div>
+<aside id="pn" aria-label="Details" hidden></aside>
+<div id="ch" role="status" aria-live="polite"></div>
+<div id="rc">
+<aside id="np" class="cp" aria-label="Notes"><button id="nh" class="cph" type="button" aria-expanded="true" aria-controls="nl">Notes (${notes.length})</button><div id="nl" class="cpb">
+${notesHtml(notes)}
+</div></aside>
+<aside id="dp" class="cp" aria-label="Related documents"><button id="dh" class="cph" type="button" aria-expanded="true" aria-controls="dl">Related documents</button><ul id="dl" class="cpb">
+${docsHtml(docs)}
+</ul></aside>
+</div>
+<script type="application/json" id="layout-data">${dataJson}<\/script>
+<script>
+${js}
+<\/script>
+</body>
+</html>
+`;
+}
+
+Object.assign(exports, {renderLayoutHtml});
+}};
+const cache = Object.create(null);
+function require(id) { if (!cache[id]) { const exports = cache[id] = {}; factories[id](require, exports); } return cache[id]; }
+const ASSETS = {"cssSvg":":root,:root[data-style=\"sketch\"]{--bg:#fff;--fg:#1a1a1a;--red:#d62728;--mut:#666;--line:#c9c9c9;--panel:#fff;--tcp:#1a1a1a;--mv:#222;--font:'Segoe Print','Comic Sans MS',monospace;--mono:'Segoe Print','Comic Sans MS',monospace;--eol:#D97706;--eolf:#FFF7E6;--eolt:#92400E}\n@media (prefers-color-scheme: dark){/*DARK<*/:root[data-style=\"sketch\"]{--bg:#16181c;--fg:#e8e8e8;--red:#ff6b6b;--mut:#a0a4ab;--line:#3a3d44;--panel:#1d2025;--tcp:#e8e8e8;--mv:#e8e8e8;--nbg:#3a3318;--nfg:#F0E6C2;--nmut:#B8AA78;--nsh:rgba(0,0,0,.5);--eol:#FBBF24;--eolf:#2A1F08;--eolt:#FCD34D}/*>DARK*/}\n:root[data-style=\"clean\"]{--bg:#F3F5F9;--fg:#1E293B;--red:#E5484D;--mut:#64748B;--line:#DDE3EC;--panel:#fff;--tcp:#1a1a1a;--mv:#475569;--font:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;--mono:'IBM Plex Mono',Consolas,monospace;--card:#fff;--cardln:#E3E8EF;--ipf:#EAF0F8;--ipln:none;--ipt:#334155;--clf:#E9EDF4;--clln:#CBD4E1;--eol:#D97706;--eolf:#FFF7E6;--eolt:#92400E}\n:root[data-style=\"dark\"]{--bg:#0A1020;--fg:#E2E8F0;--red:#FF4D5E;--mut:#7F93B3;--line:#22324F;--panel:#0F1A30;--tcp:#E2E8F0;--mv:#2DD4BF;--font:'JetBrains Mono','Cascadia Mono',Consolas,monospace;--mono:'JetBrains Mono','Cascadia Mono',Consolas,monospace;--card:#0F1A30;--cardln:#22324F;--ipf:#0C1830;--ipln:#2A4A7A;--ipt:#7DD3FC;--clf:#0C1527;--clln:#2F4468;--eol:#FBBF24;--eolf:#2A1F08;--eolt:#FCD34D}\n:root[data-style=\"swiss\"]{--bg:#fff;--fg:#111;--red:#D7261E;--mut:#8A8A8A;--line:#CFCFCF;--panel:#fff;--tcp:#1a1a1a;--mv:#111;--font:'Instrument Sans','Helvetica Neue',Arial,sans-serif;--mono:'IBM Plex Mono',Consolas,monospace;--card:#fff;--cardln:#CFCFCF;--ipf:none;--ipln:#CFCFCF;--ipt:#111;--clf:none;--clln:#9A9A9A;--eol:#D7261E;--eolf:#fff;--eolt:#D7261E}\ntext{fill:var(--fg);font-family:var(--font);font-size:11px}\n.b{fill:none;stroke:var(--fg);stroke-width:1.5;pointer-events:all}\n.d{fill:none;stroke:var(--fg);stroke-width:1.2;stroke-dasharray:2 3;pointer-events:all}\n.r{fill:none;stroke:var(--tcp);stroke-width:1.5}\nsvg.nolabels .tcp,svg.nolabels .mvl,svg.nolabels .lp{display:none}\n.k{fill:none;stroke:var(--fg);stroke-width:1.3;stroke-dasharray:6 4}\n:root{--nbg:#ffdc5e;--nfg:#222;--nmut:#5c4f1a;--nsh:rgba(0,0,0,.18)}\n:root[data-style=\"dark\"]{--nbg:#3a3318;--nfg:#F0E6C2;--nmut:#B8AA78;--nsh:rgba(0,0,0,.5)}\n.xn .c{fill:var(--nbg);filter:drop-shadow(1px 2px 2px var(--nsh))}\n.xn text{fill:var(--nfg);font-size:10.5px}\n.xn .h{font-weight:600;font-size:11.5px}\n.xn .m{fill:var(--nmut);font-size:8px}\nsvg.s-swiss .xn .c{filter:none}\n.xl .c{fill:var(--panel);stroke:var(--line)}\n.xl text{font-size:10.5px}\n.xl .h{fill:var(--mut);font-size:8.5px;letter-spacing:.08em}\n.xl .sf{fill:var(--tc)}\n.xl .sd{fill:none;stroke:var(--tc);stroke-width:2;stroke-dasharray:3 2}\n.xl .fwb{stroke:var(--panel)}\n.tcp{fill:var(--tcp);font-size:10px}\n.fwb{fill:none;stroke:var(--bg);stroke-width:6;stroke-linejoin:round}\n.fwz{fill:none;stroke:var(--red);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}\n.fwt{fill:var(--red);font-size:9px}\n#ar .mo{stroke:var(--tcp);fill:none;stroke-width:1.5}\n#ak .mo{stroke:var(--mv);fill:none;stroke-width:1.5}\n#ar .mf{fill:var(--tcp)}\n#ak .mf{fill:var(--mv)}\n.mf{display:none}\n[data-ent]{transition:opacity .25s ease}\n@media (prefers-reduced-motion:reduce){[data-ent]{transition:none}}\n.dim,.nf{opacity:.16}\n.off{opacity:.1;pointer-events:none}\nsvg.s-sketch .ch,svg.s-sketch .lp{display:none}\nsvg.s-sketch .b.sel{stroke-width:3}\nsvg:not(.s-sketch) .mf{display:inline}\nsvg:not(.s-sketch) .mo{display:none}\nsvg:not(.s-sketch) .b{stroke:none;pointer-events:none}\nsvg:not(.s-sketch) .d{stroke-dasharray:none;stroke-width:1.2}\nsvg:not(.s-sketch) .tcp,svg:not(.s-sketch) .mvl{font-size:10px;font-weight:600}\nsvg:not(.s-sketch) .tcp{fill:var(--tcp)}\nsvg:not(.s-sketch) .fwt{font-weight:600}\nsvg:not(.s-sketch) .mvl{fill:var(--mv)}\nsvg:not(.s-sketch) .r{stroke:var(--tcp);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}\nsvg:not(.s-sketch) .k{stroke:var(--mv);stroke-width:2;stroke-dasharray:7 5;stroke-linecap:round}\nsvg:not(.s-sketch) .lp{stroke-width:1}\nsvg:not(.s-sketch) .lpr{fill:var(--bg);stroke:var(--tcp)}\nsvg:not(.s-sketch) .lpm{fill:var(--bg);stroke:var(--mv)}\nsvg:not(.s-sketch) .d.prop{fill:none;stroke:var(--tc);stroke-width:1.5;stroke-dasharray:5 4}\nsvg:not(.s-sketch) .ch .sel,svg:not(.s-sketch) .ch.sel .cd{stroke:var(--tc);stroke-width:2}\nsvg:not(.s-sketch) .ic{fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}\nsvg:not(.s-sketch) .nt{font-size:11px}\nsvg:not(.s-sketch) .cch .cd{display:none}\nsvg.s-clean .d{fill:var(--clf);stroke:var(--clln)}\nsvg.s-clean .cd{fill:var(--card);stroke:var(--cardln);filter:drop-shadow(0 2px 4px rgba(15,23,42,.14))}\nsvg.s-clean .hd{fill:var(--tc)}\nsvg.s-clean .tp{fill:rgba(255,255,255,.26)}\nsvg.s-clean .tt{fill:#fff;font-size:7.5px;font-weight:600;letter-spacing:.5px}\nsvg.s-clean .ic{stroke:#fff}\nsvg.s-clean .cch .tp{fill:var(--tc);fill-opacity:.14}\nsvg.s-clean .cch .tt{fill:var(--tc)}\nsvg.s-clean .ip{fill:var(--ipf)}\nsvg.s-clean .ni{fill:var(--ipt);font-family:var(--mono);font-size:10px}\nsvg.s-clean .nt{fill:#fff;font-weight:600}\nsvg.s-clean .nb{fill:#475569}\nsvg.s-clean .ct{fill:#334155;font-weight:600;font-size:12.5px}\nsvg.s-clean .lp{rx:9}\nsvg.s-dark .d{fill:var(--clf);stroke:var(--clln)}\nsvg.s-dark .cd{fill:var(--card);stroke:var(--cardln)}\nsvg.s-dark .hd{fill:#12203A}\nsvg.s-dark .ab{fill:var(--tc)}\nsvg.s-dark .tp{fill:var(--tc)}\nsvg.s-dark .tt{fill:#0A1020;font-size:7.5px;font-weight:700;letter-spacing:.5px}\nsvg.s-dark .ic{stroke:var(--tc)}\nsvg.s-dark .ip{fill:var(--ipf);stroke:var(--ipln);stroke-width:1}\nsvg.s-dark .ni{fill:var(--ipt);font-size:10px}\nsvg.s-dark .nt{fill:var(--fg);font-weight:500;font-size:10.5px}\nsvg.s-dark .nb{fill:#A9BCD9;font-size:10.5px}\nsvg.s-dark .ct{fill:#9DB3D6;text-transform:uppercase;letter-spacing:1px;font-size:10px;font-weight:500}\nsvg.s-dark .cch .tp{fill:none;stroke:var(--tc)}\nsvg.s-dark .cch .tt{fill:var(--tc)}\nsvg.s-dark .r{filter:drop-shadow(0 0 2px rgba(226,232,240,.35))}\nsvg.s-dark .fwz{filter:drop-shadow(0 0 3px var(--red))}\nsvg.s-dark .k{filter:drop-shadow(0 0 3px var(--mv))}\nsvg.s-dark .lp{rx:3}\nsvg.s-swiss .d{fill:none;stroke:var(--clln);stroke-width:.75}\nsvg.s-swiss .d.prop{stroke-width:1;stroke-dasharray:4 3}\nsvg.s-swiss .cd{fill:var(--card);stroke:var(--cardln);stroke-width:.75}\nsvg.s-swiss .ab,svg.s-swiss .sq{fill:var(--tc)}\nsvg.s-swiss .sep{fill:none;stroke:var(--cardln);stroke-width:.75}\nsvg.s-swiss .tp,svg.s-swiss .hd,svg.s-swiss .ic{display:none}\nsvg.s-swiss .tt{fill:var(--mut);font-size:7.5px;font-weight:500;letter-spacing:1.2px}\nsvg.s-swiss .ip{fill:none;stroke:var(--ipln);stroke-width:.75}\nsvg.s-swiss .ni{fill:var(--ipt);font-family:var(--mono);font-size:10px}\nsvg.s-swiss .nt{font-weight:600;fill:#111}\nsvg.s-swiss .nb{fill:#333}\nsvg.s-swiss .ct{fill:#111;text-transform:uppercase;letter-spacing:1.4px;font-weight:600;font-size:10px}\nsvg.s-swiss .r{stroke-width:1.5}\nsvg.s-swiss .k{stroke-width:1.5}\nsvg.s-swiss .tcp,svg.s-swiss .mvl,svg.s-swiss .fwt{text-transform:uppercase;letter-spacing:1px;font-size:8.5px}\nsvg.s-swiss .fwz{stroke-width:1.5;stroke-linecap:square;stroke-linejoin:miter}\nsvg.s-swiss .lp{rx:0}\nsvg:not(.showos) .osg{display:none}\n.osg{cursor:pointer}\n.osp{fill:var(--bg);stroke:var(--mut);stroke-width:.75}\n.ost{fill:var(--mut);font-family:var(--mono);font-size:8.5px}\n.osg.unk{opacity:.65}\n.osg.unk .osp{stroke-dasharray:2 2}\n.osg.eol .osp{fill:var(--eolf);stroke:var(--eol);stroke-width:1.25}\n.osg.eol .ost{fill:var(--eolt)}\n.ose{fill:var(--eol);font-weight:700}\nsvg.s-clean .osp{fill:var(--card)}\nsvg.s-clean .osg.eol .osp{fill:var(--eolf)}\nsvg.s-dark .osp{fill:var(--card)}\nsvg.s-dark .osg.eol .osp{fill:var(--eolf)}\nsvg.s-swiss .ost{letter-spacing:.3px}\nsvg.s-swiss .osg.eol .osp{stroke-width:1}\nsvg .nb.pl{font-weight:600}\nsvg [data-g].r,svg [data-g].k{stroke:var(--gc)}\nsvg [data-g].lpr,svg [data-g].lpm{stroke:var(--gc)}\nsvg [data-g].tcp,svg [data-g].mvl{fill:var(--gc)}\nsvg.s-dark [data-g].r,svg.s-dark [data-g].k{filter:drop-shadow(0 0 3px var(--gc))}\nmarker[data-g] .mo{stroke:var(--gc);fill:none;stroke-width:1.5}\nmarker[data-g] .mf{fill:var(--gc)}\nsvg [data-g].nb{fill:var(--gc);font-weight:600}","cssPage":"html,body{margin:0;background:var(--bg);color:var(--fg)}\nhtml,body{width:100%;height:100%;overflow:hidden}\nbody>svg{display:block;width:100vw;height:100vh;height:100dvh;background:var(--bg)}\nbody>svg.s-dark{background-image:linear-gradient(#14213A 1px,transparent 1px),linear-gradient(90deg,#14213A 1px,transparent 1px);background-size:24px 24px}\n[hidden]{display:none!important}\n#ta{position:fixed;top:8px;left:8px;right:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;justify-content:space-between;font:12px system-ui,sans-serif;z-index:5;pointer-events:none}\n#ta>*{pointer-events:auto}\n#tar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end;margin-left:auto}\n#ta button{font:inherit;padding:3px 8px;border:1px solid var(--fg);border-radius:4px;background:var(--panel);color:var(--fg);cursor:pointer}\n#ta button:focus-visible,.sw:focus-visible,.reset:focus-visible,#pc:focus-visible{outline:2px solid var(--fg);outline-offset:2px}\n#ta[data-on=\"1\"] #te{background:var(--red);border-color:var(--red);color:#fff}\n#ta label,#tm:not(:empty){display:flex;gap:3px;align-items:center;padding:3px 6px;border-radius:4px;background:var(--panel);color:var(--fg)}\n#tal{display:flex;flex-wrap:wrap;gap:6px;align-items:center}\n#ss,#zm{display:inline-flex}\n#ss button,#zm button{border-radius:0;margin-left:-1px}\n#ss button:first-child,#zm button:first-child{border-radius:4px 0 0 4px;margin-left:0}\n#ss button:last-child,#zm button:last-child{border-radius:0 4px 4px 0}\n#zo,#zi{min-width:26px}\nbody>svg:not(.edit){cursor:grab;touch-action:none}\nbody>svg.panning{cursor:grabbing}\n#ss button[aria-pressed=\"true\"]{background:var(--fg);color:var(--bg)}\nsvg.edit{touch-action:none;user-select:none}\nsvg.edit [data-e]{cursor:grab}\nsvg.edit .b[data-e]:hover,svg.edit .cd:hover{stroke-opacity:.6}\nsvg.edit .d[data-e]:hover{stroke:var(--red)}\nbody{-webkit-user-select:none;user-select:none}\n#pn,.note,#dl,input,textarea{-webkit-user-select:text;user-select:text}\n#pn button,.cph{-webkit-user-select:none;user-select:none}\nsvg:not(.edit) .nt,svg:not(.edit) .ct,svg:not(.edit) .ch:not(.cch) .hd,svg:not(.edit) .ch:not(.cch) .ab,svg:not(.edit) .ch:not(.cch) .tp,svg:not(.edit) .ch:not(.cch) .tt,svg:not(.edit) .ch:not(.cch) .sq,svg:not(.edit) .ch:not(.cch) .ic{cursor:pointer}\nsvg:not(.edit) .nb,svg:not(.edit) .ni,svg:not(.edit) .ip{cursor:copy}\nsvg:not(.edit) .nb:hover,svg:not(.edit) .ni:hover{text-decoration:underline dotted;text-underline-offset:2px}\nsvg:not(.edit) .ip:hover{filter:brightness(.93)}\n#ch{position:fixed;padding:2px 8px;border-radius:4px;background:var(--fg);color:var(--bg);font:12px system-ui,sans-serif;pointer-events:none;opacity:0;transition:opacity .3s;z-index:9}\n#ch.on{opacity:1;transition:none}\n.nwb{cursor:pointer;outline:none}\n.nwr{fill:var(--panel);stroke:var(--line);stroke-width:1;rx:3}\n.nwi{fill:none;stroke:var(--mut);stroke-width:1.1;stroke-linejoin:round}\n.nwb:hover .nwr,.nwb:focus-visible .nwr{stroke:var(--fg)}\n.nwb:hover .nwi{stroke:var(--fg)}\n.nwb.on .nwr{fill:var(--fg);stroke:var(--fg)}\n.nwb.on .nwi{stroke:var(--bg)}\nsvg.s-sketch .nwr{fill:var(--bg);stroke:var(--fg);rx:2}\nsvg.s-clean .nwr{fill:var(--ipf);stroke:none;rx:6.5}\nsvg.s-clean .nwi{stroke:var(--ipt)}\nsvg.s-clean .nwb:hover .nwr,svg.s-clean .nwb:focus-visible .nwr{stroke:var(--ipt)}\nsvg.s-dark .nwr{fill:var(--ipf);stroke:var(--ipln)}\nsvg.s-dark .nwi{stroke:var(--ipt)}\nsvg.s-dark .nwb.on .nwr{fill:var(--ipt);stroke:var(--ipt)}\nsvg.s-dark .nwb.on .nwi{stroke:var(--ipf)}\nsvg.s-swiss .nwr{fill:var(--bg);stroke:var(--ipln);stroke-width:.75;rx:0}\nsvg.s-swiss .nwi{stroke:var(--ipt)}\nsvg.edit .nwb{display:none}\n.nwd{display:inline-flex;align-items:center;justify-content:center;margin:0 2px 0 4px;padding:1px 3px;vertical-align:-2px;background:none;border:1px solid var(--line);border-radius:5px;color:var(--mut);cursor:pointer}\n.nwd svg{display:block;fill:none;stroke:currentColor;stroke-width:1.1;stroke-linejoin:round}\n.nwd:hover,.nwd:focus-visible{color:var(--fg);border-color:var(--fg)}\n.nwd.on{background:var(--fg);border-color:var(--fg);color:var(--bg)}\n:root[data-style=\"swiss\"] .nwd{border-radius:0}\nsvg.edit .ch.bad .cd{stroke:var(--red);stroke-width:2}\nsvg.edit.s-sketch .b.bad{stroke:var(--red);stroke-width:2.5}\nsvg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}\n#lg{display:flex;flex-direction:column;align-items:flex-start;gap:0}\n#lg b,.lk b,.lo b{display:block;margin:4px 0 2px;font:500 10px ui-monospace,Consolas,monospace;color:var(--mut);letter-spacing:.06em;text-transform:uppercase}\n.sw{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:4px 2px;color:var(--fg);font:inherit;cursor:pointer;border-radius:6px}\n.sw i{width:12px;height:12px;border-radius:3px;flex:none;background:var(--tc)}\n.sw i.dash{background:none;border:2px dashed var(--tc);box-sizing:border-box}\n.sw .trk{width:26px;height:16px;border-radius:8px;background:var(--line);position:relative;transition:background .2s;flex:none}\n.sw .trk:after{content:\"\";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--panel);box-shadow:0 0 0 1px var(--mut);transition:transform .2s}\n.sw[aria-checked=true] .trk{background:var(--fg)}\n.sw[aria-checked=true] .trk:after{transform:translateX(10px)}\n.sw[aria-checked=false] .t{color:var(--mut)}\n.reset{font:inherit;font-size:11px;background:none;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:2px 8px;cursor:pointer}\n.sw i.ln{height:3px;width:14px;border-radius:2px;background:var(--gc,var(--fg))}\n.lk .sw.es{display:flex}\n#pn{position:fixed;top:var(--ta-b,48px);right:12px;width:min(360px,calc(100vw - 24px));max-height:calc(100vh - var(--ta-b,48px) - 8px);box-sizing:border-box;overflow:auto;overscroll-behavior:contain;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.2);padding:40px 16px 16px;font:14px/1.5 system-ui,sans-serif;z-index:6}\n#pn h1{font-size:17px;margin:0 0 4px}\n#pl{display:inline-block;margin-left:6px;padding:0 6px;font-size:13px;line-height:20px;vertical-align:2px;text-decoration:none;color:var(--fg);border:1px solid var(--line);border-radius:6px}\n#pl:hover,#pl:focus-visible{background:var(--line)}\n#pn h2{font-size:15px;margin:14px 0 4px}\n#pn h3{font-size:13px}\n#pn table{border-collapse:collapse;margin:8px 0;font-size:13px}\n#pn th,#pn td{border:1px solid var(--line);padding:3px 8px;text-align:left;vertical-align:top}\n#pn ul{padding-left:20px}\n#pn code{font-family:ui-monospace,Consolas,monospace;font-size:12px}\n#pn .tg{display:inline-block;font:600 10px ui-monospace,Consolas,monospace;letter-spacing:.06em;color:#fff;background:var(--tc);border-radius:9px;padding:1px 8px;margin-bottom:8px}\n#pn .eolb{display:inline-block;font:700 10px ui-monospace,Consolas,monospace;letter-spacing:.06em;color:var(--eolt,#92400E);background:var(--eolf,#FFF7E6);border:1px solid var(--eol,#D97706);border-radius:9px;padding:0 6px;vertical-align:1px}\n#pn hr{border:0;border-top:1px solid var(--line);margin:14px 0}\n#pn .pm{color:var(--mut);font-size:12px}\n#pc{position:absolute;top:8px;right:10px;font:inherit;border:1px solid var(--line);background:none;color:var(--fg);border-radius:6px;padding:2px 10px;cursor:pointer}\n:root[data-style=\"swiss\"] #pn{border-radius:0}\n@media (max-width:759px){#pn{top:auto;left:0;right:0;bottom:0;width:auto;height:45vh;max-height:none;border-width:1px 0 0;border-radius:12px 12px 0 0}}\n.cp{position:fixed;top:var(--ta-b,48px);overscroll-behavior:contain;max-height:calc(100vh - 64px);max-width:40vw;box-sizing:border-box;display:flex;flex-direction:column;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.14);font:13px/1.45 system-ui,sans-serif;z-index:5}\n#rc{position:fixed;top:var(--ta-b,48px);overscroll-behavior:contain;right:12px;width:min(320px,40vw);box-sizing:border-box;max-height:calc(100vh - 64px);overflow-x:hidden;overflow-y:auto;display:flex;flex-direction:column;gap:8px;z-index:5}\n#rc .cp{position:static;max-height:none;max-width:none;width:100%;flex:none}\n#dl{margin:0;padding:2px 10px 10px 26px}\n#dl li{margin:0 0 6px;overflow-wrap:anywhere}\n#dl a{color:var(--fg);font-weight:500}\n#dl span{color:var(--mut)}\n#lc{position:fixed;top:var(--ta-b,48px);left:8px;width:220px;box-sizing:border-box;max-height:calc(100vh - 64px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:8px;z-index:5}\n#lc .cp{position:static;max-height:none;max-width:none;width:100%;flex:none;font-size:12px}\n#wl{display:flex;flex-direction:column}\n.nw{display:grid;grid-template-columns:1fr auto;column-gap:6px;align-items:baseline;width:100%;box-sizing:border-box;text-align:left;font:inherit;color:var(--fg);background:none;border:0;border-radius:4px;padding:2px 4px 2px calc(4px + var(--d,0) * 10px);cursor:pointer}\n.nw:hover{background:color-mix(in srgb,var(--line) 50%,transparent)}\n.nw[aria-pressed=true]{background:var(--line);font-weight:600}\n.nw:focus-visible{outline:2px solid var(--fg);outline-offset:-2px}\n.nw code{font:11px ui-monospace,Consolas,monospace}\n.nk{font:11px ui-monospace,Consolas,monospace;color:var(--mut)}\n.nw.z{color:var(--mut)}\n#wr{margin-top:6px}\n.cph{display:flex;align-items:center;justify-content:space-between;width:100%;font:500 12px system-ui,sans-serif;background:none;border:0;color:var(--fg);padding:7px 10px;cursor:pointer;text-align:left;flex:none}\n.cph:after{content:\"\\25BE\";font-size:11px;transition:transform .2s}\n.cph[aria-expanded=false]:after{transform:rotate(90deg)}\n.cph:focus-visible{outline:2px solid var(--fg);outline-offset:-2px}\n.cpb{overflow:auto;min-height:0;padding:2px 10px 10px}\n#nl{display:flex;flex-direction:column;gap:10px}\n#lg .reset{margin-top:4px}\n.lk,.lo{margin-top:6px}\n.lkr{display:flex;align-items:center;gap:8px}\n.lks{flex:none;overflow:visible}\n.lks .fwb{stroke:var(--panel)}\n.note{position:relative;background:var(--nbg);color:var(--nfg);box-shadow:1px 2px 4px var(--nsh);padding:8px 10px 18px;font-family:var(--font);font-size:12.5px;border-radius:2px}\n.note h3{margin:0 0 4px;font-size:13px;font-weight:600}\n.note p{margin:0 0 5px;overflow-wrap:anywhere}\n.note time{position:absolute;right:8px;bottom:3px;font-size:10px;color:var(--nmut)}\n:root[data-style=\"dark\"] .note{font-size:11.5px;border-radius:4px}\n:root[data-style=\"swiss\"] .note{border-radius:0;box-shadow:none}\n:root[data-style=\"swiss\"] .cp{border-radius:0}\n@media (max-width:699px){.cp{max-width:calc(100vw - 24px)}#rc{width:min(320px,calc(100vw - 24px))}}","js":"window.InfraDiagramFileBacked = true;\nwindow.InfraDiagram = { modules: {} };\nInfraDiagram.define = function (name, deps, factory) {\n  var args = deps.map(function (d) {\n    if (!InfraDiagram.modules[d]) throw new Error(\"InfraDiagram: \" + name + \" needs \" + d + \", which is not loaded yet\");\n    return InfraDiagram.modules[d];\n  });\n  InfraDiagram.modules[name] = factory.apply(null, args);\n};\n\nInfraDiagram.define(\"ui/core\", [], function () {\n  var STYLES = [\"sketch\", \"clean\", \"dark\", \"swiss\"];\n  var CW = { sketch: 7, clean: 6, dark: 6.6, swiss: 6.6 };\n  var BG = { clean: \"#F3F5F9\", dark: \"#0A1020\", swiss: \"#FFFFFF\" };\n  var D = JSON.parse(document.getElementById(\"layout-data\").textContent);\n  var svg = document.querySelector(\"svg\");\n  var els = [].slice.call(svg.children, 1);\n  var ents = [].slice.call(svg.querySelectorAll(\"[data-ent]\"));\n  var ctx = { style: \"clean\", hidden: {}, sel: null, net: null, ready: false };\n  var hooks = { getState: null, isEdit: null, fit: null, route: null };\n\n  // Keys are \"<diagram id>-<name>\"; a value still under \"<legacyId>-<name>\" is copied over on first read.\n  function lsGet(name) {\n    try {\n      var v = localStorage.getItem(D.id + \"-\" + name);\n      if (v === null && D.legacyId) {\n        v = localStorage.getItem(D.legacyId + \"-\" + name);\n        if (v !== null) localStorage.setItem(D.id + \"-\" + name, v);\n      }\n      return v;\n    } catch (e) { return null; }\n  }\n  function lsSet(name, v) { try { localStorage.setItem(D.id + \"-\" + name, v); } catch (e) {} }\n  function lsDel(name) { try { localStorage.removeItem(D.id + \"-\" + name); } catch (e) {} }\n  function esc(s) { return String(s).replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\"); }\n  function $(id) { return document.getElementById(id); }\n\n  function clipboard(text, done) {\n    function fallback() {\n      var ta = document.createElement(\"textarea\");\n      ta.value = text;\n      ta.style.position = \"fixed\";\n      ta.style.opacity = \"0\";\n      document.body.appendChild(ta);\n      ta.select();\n      var ok = false;\n      try { ok = document.execCommand(\"copy\"); } catch (e) {}\n      document.body.removeChild(ta);\n      done(ok);\n    }\n    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);\n    else fallback();\n  }\n  function save(blob, name) {\n    var a = document.createElement(\"a\");\n    a.href = URL.createObjectURL(blob);\n    a.download = name;\n    document.body.appendChild(a);\n    a.click();\n    document.body.removeChild(a);\n    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);\n  }\n\n  return { STYLES: STYLES, CW: CW, BG: BG, D: D, svg: svg, els: els, ents: ents, ctx: ctx, hooks: hooks, lsGet: lsGet, lsSet: lsSet, lsDel: lsDel, esc: esc, $: $, clipboard: clipboard, save: save };\n});\n\nInfraDiagram.define(\"ui/details\", [\"ui/core\"], function (core) {\n  var D = core.D, esc = core.esc, $ = core.$;\n\n  function inline(s) {\n    return esc(s).replace(/`([^`]+)`/g, \"<code>$1</code>\").replace(/\\*\\*([^*]+)\\*\\*/g, \"<strong>$1</strong>\").replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^)\\s\"]+)\\)/g, '<a href=\"$2\" target=\"_blank\" rel=\"noopener\">$1</a>');\n  }\n  function md(src) {\n    var L = src.split(\"\\n\"), o = [], i = 0;\n    function cells(l) { return l.replace(/^\\s*\\|/, \"\").replace(/\\|\\s*$/, \"\").split(\"|\").map(function (c) { return c.trim(); }); }\n    while (i < L.length) {\n      var l = L[i], m;\n      if (!l.trim()) { i++; continue; }\n      if ((m = l.match(/^(#{1,6})\\s+(.*)$/))) { o.push(\"<h\" + m[1].length + \">\" + inline(m[2]) + \"</h\" + m[1].length + \">\"); i++; continue; }\n      if (/^\\s*\\|/.test(l)) {\n        var rows = [];\n        while (i < L.length && /^\\s*\\|/.test(L[i])) { rows.push(L[i]); i++; }\n        var h = cells(rows[0]), t = \"<table><thead><tr>\" + h.map(function (c) { return \"<th>\" + inline(c) + \"</th>\"; }).join(\"\") + \"</tr></thead><tbody>\";\n        rows.slice(/^[\\s|:-]+$/.test(rows[1] || \"\") ? 2 : 1).forEach(function (r) { t += \"<tr>\" + cells(r).map(function (c) { return \"<td>\" + inline(c) + \"</td>\"; }).join(\"\") + \"</tr>\"; });\n        o.push(t + \"</tbody></table>\");\n        continue;\n      }\n      if (/^\\s*[-*]\\s+/.test(l)) {\n        var u = \"<ul>\";\n        while (i < L.length && /^\\s*[-*]\\s+/.test(L[i])) { u += \"<li>\" + inline(L[i].replace(/^\\s*[-*]\\s+/, \"\")) + \"</li>\"; i++; }\n        o.push(u + \"</ul>\");\n        continue;\n      }\n      var p = [];\n      while (i < L.length && L[i].trim() && !/^(#|\\s*\\||\\s*[-*]\\s)/.test(L[i])) { p.push(L[i]); i++; }\n      o.push(\"<p>\" + inline(p.join(\" \")) + \"</p>\");\n    }\n    return o.join(\"\");\n  }\n\n  function confluence(sec) {\n    var url = null;\n    var rest = sec.split(\"\\n\").filter(function (l) {\n      var m = l.match(/^\\s*\\|\\s*Confluence\\s*\\|\\s*(.*?)\\s*\\|\\s*$/i), u;\n      if (!m || url) return true;\n      u = m[1].match(/\\]\\((https?:\\/\\/[^)\\s\"]+)\\)/) || m[1].match(/^<?(https?:\\/\\/[^\\s>\"]+)>?$/);\n      if (!u) return true;\n      url = u[1];\n      return false;\n    }).join(\"\\n\");\n    return { url: url, sec: rest };\n  }\n\n  function osRow(pn, os) {\n    var cell = null;\n    [].forEach.call(pn.querySelectorAll(\"td:first-child\"), function (td) {\n      if (!cell && td.textContent.trim() === \"OS\" && td.nextElementSibling) cell = td.nextElementSibling;\n    });\n    if (!cell) {\n      pn.querySelector(\".tg\").insertAdjacentHTML(\"afterend\", '<table class=\"po\"><tbody><tr><td>OS</td><td>' + esc(os ? os.v : \"TBD\") + \"</td></tr></tbody></table>\");\n      cell = pn.querySelector(\".po td:last-child\");\n    }\n    if (os && os.eol) cell.insertAdjacentHTML(\"beforeend\", ' <span class=\"eolb\" title=\"End of standard support: ' + esc(os.eol) + '\">EOL</span>');\n  }\n\n  // Network button after every IP with a network in D.ipNet (outside links); clicks are wired by ui/init.\n  var NET_ICON = \"M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75\";\n  function netButtons(root) {\n    if (!D.nets || !D.ipNet) return;\n    var re = /(?<![\\d.])(\\d{1,3}(?:\\.\\d{1,3}){3})(?![\\d.])(\\/\\d{1,2}(?!\\d))?/g, tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), list = [], n;\n    while ((n = tw.nextNode())) if (!n.parentNode.closest(\"a,button,h1\")) list.push(n);\n    list.forEach(function (tn) {\n      var s = tn.nodeValue, last = 0, m, frag = null;\n      re.lastIndex = 0;\n      while ((m = re.exec(s))) {\n        var j = D.ipNet[m[1]];\n        if (j === undefined) continue;\n        frag = frag || document.createDocumentFragment();\n        var end = m.index + m[0].length, b = document.createElement(\"button\"), net = D.nets[j], lbl = \"Show network \" + net.cidr + \" \" + net.name;\n        frag.appendChild(document.createTextNode(s.slice(last, end)));\n        b.type = \"button\";\n        b.className = \"nwd\" + (core.ctx.net === j ? \" on\" : \"\");\n        b.setAttribute(\"data-n\", j);\n        b.setAttribute(\"aria-pressed\", core.ctx.net === j ? \"true\" : \"false\");\n        b.setAttribute(\"aria-label\", lbl);\n        b.title = lbl;\n        b.innerHTML = '<svg viewBox=\"0 0 14 13\" width=\"14\" height=\"13\" aria-hidden=\"true\"><path d=\"' + NET_ICON + '\"/></svg>';\n        frag.appendChild(b);\n        last = end;\n      }\n      if (!frag) return;\n      frag.appendChild(document.createTextNode(s.slice(last)));\n      tn.parentNode.replaceChild(frag, tn);\n    });\n  }\n\n  // The \"Close\" button (#pc) is wired once by ui/init.\n  function renderPanel(key) {\n    var e = D.ent[key], pn = $(\"pn\");\n    if (!e) return;\n    var sec = D.sections[e.title], cf = confluence(sec || \"\");\n    var link = cf.url ? ' <a id=\"pl\" href=\"' + esc(cf.url) + '\" target=\"_blank\" rel=\"noopener\" aria-label=\"Open Confluence page\" title=\"' + esc(cf.url) + '\">↗</a>' : \"\";\n    var html = '<button id=\"pc\" type=\"button\" aria-label=\"Close\">Close</button><h1>' + esc(e.title) + link + '</h1><span class=\"tg\" data-ty=\"' + e.ty + '\">' + esc(e.tag) + \"</span>\";\n    if (sec) html += md(cf.sec);\n    else {\n      html += '<p class=\"pm\">No section for this entity in details.md; showing diagram data.</p>';\n      var lines = (e.body || []).concat(e.ip || []);\n      if (lines.length) html += \"<ul>\" + lines.map(function (x) { return \"<li>\" + inline(x) + \"</li>\"; }).join(\"\") + \"</ul>\";\n    }\n    if (e.cl && D.ent[\"c:\" + e.cl]) {\n      var ce = D.ent[\"c:\" + e.cl], cs = D.sections[ce.title];\n      if (cs && !sec) html += '<hr><p class=\"pm\">Part of ' + esc(ce.title) + \"</p>\" + md(cs);\n      else html += '<p class=\"pm\">Part of ' + esc(ce.title) + \"</p>\";\n    }\n    pn.innerHTML = html;\n    if (key.charAt(0) === \"n\") osRow(pn, e.os);\n    netButtons(pn);\n    pn.setAttribute(\"data-ty\", e.ty);\n  }\n\n  return { md: md, renderPanel: renderPanel };\n});\n\nInfraDiagram.define(\"ui/skins\", [\"ui/core\", \"ui/details\"], function (core, details) {\n  var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx, CW = core.CW, STYLES = core.STYLES, hooks = core.hooks;\n  var pillW = {}, boxW = {}, btn = {};\n\n  function measure(el, n, cw) {\n    var w = 0;\n    try { w = el.getComputedTextLength(); } catch (e) {}\n    return w > 0 ? w : n * cw;\n  }\n  function icon(kind) {\n    if (kind === \"db\") return '<ellipse cx=\"8\" cy=\"3.5\" rx=\"6\" ry=\"2.5\"/><path d=\"M2 3.5V12.5C2 15 14 15 14 12.5V3.5M2 8C2 10.5 14 10.5 14 8\"/>';\n    return '<rect x=\"1\" y=\"1\" width=\"14\" height=\"6\" rx=\"1.5\"/><rect x=\"1\" y=\"9\" width=\"14\" height=\"6\" rx=\"1.5\"/><path d=\"M4 4h.01M4 12h.01\"/>';\n  }\n\n  function nodeChrome(id) {\n    var S = ctx.style, g = D.layout.nodes[id], e = D.ent[\"n:\" + id], ix = D.idx.nodes[id];\n    var tl = g.title[0] - g.x;\n    var tw = measure(els[ix.t], e.title.length, CW[S]);\n    var bottom = g.h;\n    var ipw = g.ip.map(function (p, k) {\n      bottom = Math.max(bottom, p[1] - g.y + 7);\n      return measure(els[ix.i[k]], 14, CW[S]);\n    });\n    var W = Math.max(g.w, tl + tw + 28), HH = 20;\n    boxW[id] = W;\n    var h = \"\";\n    if (S === \"clean\") {\n      h = '<rect class=\"cd\" x=\"0\" y=\"-' + HH + '\" width=\"' + W + '\" height=\"' + (bottom + HH) + '\" rx=\"10\"/><path class=\"hd\" d=\"M0 0V-10Q0 -20 10 -20H' + (W - 10) + \"Q\" + W + \" -20 \" + W + ' -10V0Z\"/>';\n    } else if (S === \"dark\") {\n      h = '<rect class=\"cd\" x=\"0\" y=\"-' + HH + '\" width=\"' + W + '\" height=\"' + (bottom + HH) + '\" rx=\"5\"/><rect class=\"hd\" x=\"0\" y=\"-' + HH + '\" width=\"' + W + '\" height=\"' + HH + '\"/><rect class=\"ab\" x=\"0\" y=\"-' + HH + '\" width=\"3\" height=\"' + HH + '\"/>';\n    } else {\n      h = '<rect class=\"cd\" x=\"0\" y=\"-' + HH + '\" width=\"' + W + '\" height=\"' + (bottom + HH) + '\"/><rect class=\"ab\" x=\"0\" y=\"-' + HH + '\" width=\"' + W + '\" height=\"3\"/><path class=\"sep\" d=\"M0 0H' + W + '\"/>';\n    }\n    h += '<g class=\"ic\" transform=\"translate(' + (W - 17) + ' -16) scale(.75)\">' + icon(e.db ? \"db\" : \"server\") + \"</g>\";\n    g.ip.forEach(function (p, k) {\n      var w = Math.round(ipw[k] + 10);\n      h += '<rect class=\"ip\" data-i=\"' + k + '\" x=\"' + (p[0] - g.x - 5) + '\" y=\"' + (p[1] - g.y - 11) + '\" width=\"' + w + '\" height=\"15\" rx=\"' + (S === \"clean\" ? 8 : S === \"dark\" ? 3 : 0) + '\"/>';\n    });\n    return h;\n  }\n\n  function rebuildChrome() {\n    boxW = {};\n    btn = {};\n    Object.keys(D.idx.nodes).forEach(function (id) {\n      var ix = D.idx.nodes[id];\n      els[ix.c].innerHTML = ctx.style === \"sketch\" ? \"\" : nodeChrome(id);\n      if (!ix.w.some(function (w) { return w >= 0; })) return;\n      btn[id] = { W: boxW[id] || D.layout.nodes[id].w, tw: ix.i.map(function (i) { return measure(els[i], 14, CW[ctx.style]); }) };\n    });\n    Object.keys(D.idx.clusters).forEach(function (id) {\n      els[D.idx.clusters[id][2]].innerHTML = \"\";\n    });\n    Object.keys(D.idx.nodes).forEach(function (id) {\n      var o = D.idx.nodes[id].o;\n      if (o === undefined) return;\n      var t = els[o].querySelector(\"text\"), r = els[o].querySelector(\"rect\");\n      r.setAttribute(\"width\", Math.round(measure(t, t.textContent.length, ctx.style === \"sketch\" ? 5.6 : 5.2) + 8));\n      r.setAttribute(\"rx\", ctx.style === \"clean\" ? 6 : ctx.style === \"dark\" ? 3 : ctx.style === \"sketch\" ? 2 : 0);\n    });\n    pillW = {};\n    Object.keys(D.idx.edges).forEach(function (k) {\n      var e = D.idx.edges[k];\n      if (e.l < 0) return;\n      var s = ctx.style, t = els[e.l];\n      pillW[k] = Math.round(measure(t, t.textContent.length, CW[s] * (s === \"swiss\" ? 1.05 : 1)) + 14);\n    });\n    if (hooks.route) hooks.route();\n    sync(hooks.getState());\n  }\n\n  // OS pill: 12px high, left-aligned with the IP pills, 3px above the first one; hidden if it would touch a body line.\n  function placeOs(id, g) {\n    var o = D.idx.nodes[id].o;\n    if (o === undefined) return;\n    var ys = function (a) { return a.map(function (p) { return p[1]; }); };\n    var top = g.ip.length ? Math.min.apply(null, ys(g.ip)) - g.y - 11 : g.h - 3;\n    var floor = g.body.length ? Math.max.apply(null, ys(g.body)) - g.y + 4 : 2;\n    var lx = g.ip.length ? g.ip[0][0] : g.body.length ? g.body[0][0] : g.title[0];\n    var y = top - 3 - 12, fits = y >= floor + 1;\n    els[o].setAttribute(\"transform\", \"translate(\" + (lx - 5) + \" \" + (g.y + y) + \")\");\n    els[o].setAttribute(\"visibility\", fits ? \"visible\" : \"hidden\");\n  }\n\n  // Network button: 14x13, 2px right of the IP pill (Sketch: 4px right of the IP text), 1px inside the box.\n  // Too narrow a box pulls it left over the pill's padding (\"tight\"); if it would cover the IP text it is hidden.\n  function placeNetButtons(id, g) {\n    var b = btn[id];\n    if (!b) return;\n    D.idx.nodes[id].w.forEach(function (wi, k) {\n      if (wi < 0) return;\n      var p = g.ip[k], end = p[0] + b.tw[k], lim = Math.floor(g.x + b.W - 15);\n      var want = Math.round(end + (ctx.style === \"sketch\" ? 4 : 7)), x = Math.min(want, lim);\n      els[wi].setAttribute(\"transform\", \"translate(\" + x + \" \" + (p[1] - 10) + \")\");\n      els[wi].classList.toggle(\"tight\", want > lim);\n      els[wi].setAttribute(\"visibility\", end - x <= 1 ? \"visible\" : \"hidden\");\n    });\n  }\n\n  function sync(s) {\n    if (!ctx.ready || !s) return;\n    Object.keys(D.idx.nodes).forEach(function (id) {\n      var g = s.nodes[id];\n      els[D.idx.nodes[id].c].setAttribute(\"transform\", \"translate(\" + g.x + \" \" + g.y + \")\");\n      placeOs(id, g);\n      placeNetButtons(id, g);\n    });\n    Object.keys(D.idx.clusters).forEach(function (id) {\n      var g = s.clusters[id];\n      els[D.idx.clusters[id][2]].setAttribute(\"transform\", \"translate(\" + g.x + \" \" + g.y + \")\");\n    });\n    Object.keys(D.idx.edges).forEach(function (k) {\n      var e = D.idx.edges[k];\n      if (e.l < 0) return;\n      var p = els[e.lp], r = ctx.routes && ctx.routes[k], l = r && r.label;\n      if (!l) return;\n      p.setAttribute(\"x\", l[0] - 7);\n      p.setAttribute(\"y\", l[1] - 12);\n      p.setAttribute(\"width\", pillW[k] || 60);\n      p.setAttribute(\"height\", 17);\n    });\n  }\n\n  function setStyle(s, persist) {\n    if (STYLES.indexOf(s) < 0) s = \"clean\";\n    ctx.style = s;\n    document.documentElement.setAttribute(\"data-style\", s);\n    STYLES.forEach(function (x) { svg.classList.remove(\"s-\" + x); });\n    svg.classList.add(\"s-\" + s);\n    [].forEach.call(document.querySelectorAll(\".lks\"), function (k) {\n      STYLES.forEach(function (x) { k.classList.remove(\"s-\" + x); });\n      k.classList.add(\"s-\" + s);\n    });\n    [].forEach.call(document.querySelectorAll(\"#ss button\"), function (b) {\n      b.setAttribute(\"aria-pressed\", b.getAttribute(\"data-s\") === s ? \"true\" : \"false\");\n    });\n    rebuildChrome();\n    if (hooks.fit && s !== \"sketch\") hooks.fit();\n    if (persist) {\n      core.lsSet(\"style\", s);\n      try {\n        if (/[?&]style=/.test(location.search)) {\n          var u = new URL(location.href);\n          u.searchParams.set(\"style\", s);\n          history.replaceState(null, \"\", u.toString());\n        }\n      } catch (e) {}\n    }\n    if (ctx.sel) details.renderPanel(ctx.sel);\n  }\n\n  // Measured box widths (none in Sketch) and label pill widths, for connection routing.\n  function widths() { return boxW; }\n  function labelWidths() { return pillW; }\n\n  return { rebuildChrome: rebuildChrome, sync: sync, setStyle: setStyle, widths: widths, labelWidths: labelWidths };\n});\n\nInfraDiagram.define(\"ui/panels\", [\"ui/core\"], function (core) {\n  var $ = core.$;\n  var PANELS = { np: [\"nh\", \"nl\", \"notes-collapsed\"], dp: [\"dh\", \"dl\", \"docs-collapsed\"], lp: [\"lh\", \"lb\", \"legend-collapsed\"], wp: [\"wh\", \"wb\", \"networks-collapsed\"] };\n\n  function isOpen(p) { return $(PANELS[p][0]).getAttribute(\"aria-expanded\") === \"true\"; }\n  function setPanel(p, open, persist) {\n    var c = PANELS[p];\n    $(c[0]).setAttribute(\"aria-expanded\", open ? \"true\" : \"false\");\n    $(c[1]).hidden = !open;\n    if (persist) core.lsSet(c[2], open ? \"0\" : \"1\");\n    placeChrome();\n  }\n  function placeChrome() {\n    var np = $(\"rc\"), lc = $(\"lc\"), W = innerWidth, bottom = innerHeight - 8;\n    if (!np || !lc) return;\n    var top = Math.round($(\"ta\").getBoundingClientRect().bottom + 8);\n    document.documentElement.style.setProperty(\"--ta-b\", top + \"px\");\n    lc.style.top = top + \"px\";\n    lc.style.maxHeight = Math.max(80, bottom - top) + \"px\";\n    var nTop = top;\n    if (W - 12 - np.offsetWidth < 8 + lc.offsetWidth + 8) nTop = Math.round(lc.getBoundingClientRect().bottom + 8);\n    np.style.top = nTop + \"px\";\n    np.style.maxHeight = Math.max(80, bottom - nTop) + \"px\";\n  }\n  function initPanels() {\n    Object.keys(PANELS).forEach(function (p) {\n      if (!$(p)) return;\n      var saved = core.lsGet(PANELS[p][2]);\n      setPanel(p, saved === null ? innerWidth >= 700 : saved !== \"1\", false);\n      $(PANELS[p][0]).addEventListener(\"click\", function () { setPanel(p, !isOpen(p), true); });\n    });\n    addEventListener(\"resize\", placeChrome);\n    try {\n      var ro = new ResizeObserver(placeChrome);\n      ro.observe($(\"ta\"));\n      ro.observe($(\"lc\"));\n    } catch (e) {}\n  }\n\n  return { placeChrome: placeChrome, initPanels: initPanels, setPanel: setPanel };\n});\n\nInfraDiagram.define(\"ui/networks\", [\"ui/core\", \"ui/panels\"], function (core, panels) {\n  var D = core.D, ctx = core.ctx, $ = core.$;\n\n  function initNetworks() {\n    var wl = $(\"wl\");\n    if (!wl || !D.nets) return;\n    wl.addEventListener(\"click\", function (e) {\n      var b = e.target.closest && e.target.closest(\".nw\");\n      if (b) setNet(ctx.net === +b.getAttribute(\"data-n\") ? null : +b.getAttribute(\"data-n\"));\n    });\n    $(\"wr\").addEventListener(\"click\", function () { setNet(null); });\n  }\n  function setNet(i) {\n    if (!D.nets) return;\n    ctx.net = i === null || i === undefined ? null : i;\n    var M = null;\n    if (ctx.net !== null) {\n      M = {};\n      D.nets[ctx.net].m.forEach(function (k) { M[k] = 1; });\n      D.edges.forEach(function (e) { if (M[e.from] && M[e.to]) M[\"e:\" + e.k] = 1; });\n    }\n    core.ents.forEach(function (el) { el.classList.toggle(\"nf\", !!M && !M[el.getAttribute(\"data-ent\")]); });\n    [].forEach.call(document.querySelectorAll(\"#wl .nw, .nwb, .nwd\"), function (b) {\n      var on = +b.getAttribute(\"data-n\") === ctx.net;\n      b.setAttribute(\"aria-pressed\", on ? \"true\" : \"false\");\n      b.classList.toggle(\"on\", on);\n    });\n  }\n  // Network button: activates network i and reveals it in the Networks panel; clears when i is already active.\n  function toggleNet(i) {\n    if (!D.nets || !D.nets[i]) return;\n    if (ctx.net === i) { setNet(null); return; }\n    setNet(i);\n    if ($(\"wh\").getAttribute(\"aria-expanded\") !== \"true\") panels.setPanel(\"wp\", true, false);\n    var b = document.querySelector('#wl .nw[data-n=\"' + i + '\"]');\n    if (b) b.scrollIntoView({ block: \"nearest\" });\n  }\n\n  return { initNetworks: initNetworks, setNet: setNet, toggleNet: toggleNet };\n});\n\nInfraDiagram.define(\"ui/legend\", [\"ui/core\", \"ui/skins\", \"ui/networks\"], function (core, skins, networks) {\n  var D = core.D, svg = core.svg, ctx = core.ctx, esc = core.esc, $ = core.$;\n\n  function applyToggles() {\n    core.ents.forEach(function (el) {\n      var tk = el.getAttribute(\"data-tk\");\n      if (tk === null) return;\n      var off = tk.split(\" \").some(function (k) { return ctx.hidden[k]; });\n      el.classList.toggle(\"off\", off);\n    });\n    [].forEach.call(document.querySelectorAll(\"#lb .sw[data-k]\"), function (b) {\n      b.setAttribute(\"aria-checked\", ctx.hidden[b.getAttribute(\"data-k\")] ? \"false\" : \"true\");\n    });\n  }\n  function loadToggles() {\n    try { JSON.parse(core.lsGet(\"types\") || \"[]\").forEach(function (k) { ctx.hidden[k] = true; }); } catch (e) {}\n  }\n  function saveToggles() { core.lsSet(\"types\", JSON.stringify(Object.keys(ctx.hidden).filter(function (k) { return ctx.hidden[k]; }))); }\n  function toggle(k, force) {\n    ctx.hidden[k] = force === undefined ? !ctx.hidden[k] : !force;\n    saveToggles();\n    applyToggles();\n  }\n  function showAll() { ctx.hidden = {}; saveToggles(); applyToggles(); networks.setNet(null); }\n\n  function buildLegend() {\n    var lg = $(\"lg\");\n    function sw(t) {\n      return '<button type=\"button\" class=\"sw\" role=\"switch\" aria-checked=\"true\" data-k=\"' + t.k + '\" data-ty=\"' + t.ty + '\"><span class=\"trk\"></span><i class=\"' + (t.dash ? \"dash\" : \"\") + '\"></i><span class=\"t\">' + esc(t.label) + '</span></button>';\n    }\n    var ap = D.types.filter(function (t) { return !t.infra; }), inf = D.types.filter(function (t) { return t.infra; });\n    lg.innerHTML = \"<b>Server types</b>\" + ap.map(sw).join(\"\") + (inf.length ? \"<b>Other infrastructure</b>\" + inf.map(sw).join(\"\") : \"\") + '<button type=\"button\" class=\"reset\">Show all</button>';\n    lg.addEventListener(\"click\", function (e) {\n      var b = e.target.closest && e.target.closest(\".sw\");\n      if (b) { toggle(b.getAttribute(\"data-k\")); return; }\n      if (e.target.closest && e.target.closest(\".reset\")) showAll();\n    });\n    var lk = document.querySelector(\"#lp .lk\");\n    // Connection switches (levels \"lv:server\" / \"lv:process\", groups \"g:<id>\"): a connection shows only while all its switches are on.\n    lk.insertAdjacentHTML(\"beforeend\", (D.edgeSwitches || []).map(function (g) {\n      return '<button type=\"button\" class=\"sw es\" role=\"switch\" aria-checked=\"true\" data-k=\"' + g.k + '\"' + (g.g ? ' data-g=\"' + g.g + '\"' : \"\") + '><span class=\"trk\"></span><i class=\"ln\"></i><span class=\"t\">' + esc(g.label) + \"</span></button>\";\n    }).join(\"\"));\n    lk.addEventListener(\"click\", function (e) {\n      var b = e.target.closest && e.target.closest(\".sw.es\");\n      if (b) toggle(b.getAttribute(\"data-k\"));\n    });\n    lk.insertAdjacentHTML(\"beforeend\", '<button type=\"button\" id=\"lbl\" class=\"sw\" role=\"switch\" aria-checked=\"false\"><span class=\"trk\"></span><span class=\"t\">Connection labels</span></button>');\n    $(\"lbl\").addEventListener(\"click\", function () { setLabels(!ctx.labels, true); });\n    lk.insertAdjacentHTML(\"afterend\", '<div class=\"lo\"><b>Servers</b><button type=\"button\" id=\"osv\" class=\"sw\" role=\"switch\" aria-checked=\"false\"><span class=\"trk\"></span><span class=\"t\">Display OS version</span></button></div>');\n    $(\"osv\").addEventListener(\"click\", function () { setOs(!ctx.os, true); });\n  }\n  function setOs(on, persist) {\n    ctx.os = on;\n    svg.classList.toggle(\"showos\", on);\n    $(\"osv\").setAttribute(\"aria-checked\", on ? \"true\" : \"false\");\n    if (persist) { core.lsSet(\"os\", on ? \"1\" : \"0\"); skins.rebuildChrome(); }\n  }\n  function setLabels(on, persist) {\n    ctx.labels = on;\n    svg.classList.toggle(\"nolabels\", !on);\n    $(\"lbl\").setAttribute(\"aria-checked\", on ? \"true\" : \"false\");\n    if (persist) { core.lsSet(\"labels\", on ? \"1\" : \"0\"); skins.rebuildChrome(); }\n  }\n\n  // Builds the legend and restores the saved switches.\n  function initLegend() {\n    loadToggles();\n    buildLegend();\n    setLabels(core.lsGet(\"labels\") === \"1\", false);\n    setOs(core.lsGet(\"os\") === \"1\", false);\n    applyToggles();\n  }\n\n  return { initLegend: initLegend, toggle: toggle, showAll: showAll };\n});\n\nInfraDiagram.define(\"ui/selection\", [\"ui/core\", \"ui/details\", \"ui/panels\"], function (core, details, panels) {\n  var D = core.D, ctx = core.ctx;\n\n  function related(key) {\n    var B = {};\n    B[key] = 1;\n    var near = [key];\n    D.edges.forEach(function (e) {\n      if (e.from === key) { B[e.to] = 1; near.push(e.to); B[\"e:\" + e.k] = 1; }\n      else if (e.to === key) { B[e.from] = 1; near.push(e.from); B[\"e:\" + e.k] = 1; }\n    });\n    near.forEach(function (k) {\n      if (k.charAt(0) === \"c\") (D.kids[k.slice(2)] || []).forEach(function (n) { B[\"n:\" + n] = 1; });\n    });\n    Object.keys(B).forEach(function (k) {\n      if (k.charAt(0) === \"n\" && D.ent[k] && D.ent[k].cl) B[\"c:\" + D.ent[k].cl] = 1;\n    });\n    return B;\n  }\n\n  function select(key) {\n    ctx.sel = key;\n    var B = key ? related(key) : null;\n    core.ents.forEach(function (el) {\n      var k = el.getAttribute(\"data-ent\");\n      el.classList.toggle(\"dim\", !!B && !B[k]);\n      el.classList.toggle(\"sel\", !!B && k === key);\n    });\n    var pn = core.$(\"pn\");\n    if (key) { details.renderPanel(key); pn.hidden = false; }\n    else pn.hidden = true;\n    panels.placeChrome();\n  }\n\n  return { related: related, select: select };\n});\n\nInfraDiagram.define(\"ui/export-columns\", [\"ui/core\"], function (core) {\n  var D = core.D, ctx = core.ctx, esc = core.esc;\n\n  function legendSvg(x0, y0) {\n    var S = ctx.style, W = 190, P = 10, y = y0 + P + 10, h = \"\", inHead = false;\n    h += '<text class=\"h\" x=\"' + (x0 + P) + '\" y=\"' + y + '\">SERVER TYPES</text>';\n    y += 8;\n    D.types.forEach(function (t) {\n      if (t.infra && !inHead) {\n        inHead = true;\n        y += 12;\n        h += '<text class=\"h\" x=\"' + (x0 + P) + '\" y=\"' + y + '\">OTHER INFRASTRUCTURE</text>';\n        y += 8;\n      }\n      var sw = t.dash\n        ? '<rect class=\"sd\" data-ty=\"' + t.ty + '\" x=\"' + (x0 + P + 1) + '\" y=\"' + (y + 3) + '\" width=\"10\" height=\"10\" rx=\"2\"/>'\n        : '<rect class=\"sf\" data-ty=\"' + t.ty + '\" x=\"' + (x0 + P) + '\" y=\"' + (y + 2) + '\" width=\"12\" height=\"12\" rx=\"' + (S === \"swiss\" ? 0 : 3) + '\"/>';\n      h += sw + '<text x=\"' + (x0 + P + 20) + '\" y=\"' + (y + 12) + '\">' + esc(t.label) + \"</text>\";\n      y += 18;\n    });\n    y += 12;\n    h += '<text class=\"h\" x=\"' + (x0 + P) + '\" y=\"' + y + '\">CONNECTIONS</text>';\n    y += 4;\n    D.edgeKey.forEach(function (k) {\n      h += '<g transform=\"translate(' + (x0 + P - 2) + \" \" + y + ')\">' + k[0] + \"</g>\";\n      h += '<text x=\"' + (x0 + P + 48) + '\" y=\"' + (y + 16) + '\">' + esc(k[1]) + \"</text>\";\n      y += 24;\n    });\n    if (D.nets && ctx.net !== null) {\n      var nt = D.nets[ctx.net];\n      y += 12;\n      h += '<text class=\"h\" x=\"' + (x0 + P) + '\" y=\"' + y + '\">NETWORK FILTER</text>';\n      y += 4;\n      wrap((nt.cidr ? nt.cidr + \" \" : \"\") + nt.name, 28).forEach(function (l) { y += 16; h += '<text x=\"' + (x0 + P) + '\" y=\"' + y + '\">' + esc(l) + \"</text>\"; });\n      y += 8;\n    }\n    var H = y - y0 + 6;\n    return { h: '<g class=\"xl\"><rect class=\"c\" x=\"' + x0 + '\" y=\"' + y0 + '\" width=\"' + W + '\" height=\"' + H + '\" rx=\"' + (S === \"swiss\" ? 0 : 6) + '\"/>' + h + \"</g>\", w: W, bottom: y0 + H };\n  }\n\n  function wrap(s, max) {\n    var out = [], cur = \"\";\n    s.split(/\\s+/).forEach(function (w) {\n      if (cur && (cur + \" \" + w).length > max) { out.push(cur); cur = w; }\n      else cur = cur ? cur + \" \" + w : w;\n    });\n    if (cur) out.push(cur);\n    return out;\n  }\n  function notesSvg(x0, y0) {\n    var S = ctx.style, CWN = { sketch: 6.6, clean: 5.6, dark: 6.4, swiss: 5.7 }[S];\n    var W = 250, P = 10, LH = 14, h = \"\", y = y0;\n    var rx = S === \"swiss\" ? 0 : S === \"dark\" ? 4 : 2;\n    D.notes.forEach(function (n) {\n      var max = Math.floor((W - 2 * P) / CWN), ty = y + P + 11, t = \"\";\n      wrap(n.title, Math.floor(max * 0.9)).forEach(function (l) { t += '<text class=\"h\" x=\"' + (x0 + P) + '\" y=\"' + ty + '\">' + esc(l) + \"</text>\"; ty += LH + 1; });\n      ty += 3;\n      n.paras.forEach(function (p) {\n        wrap(p, max).forEach(function (l) { t += '<text x=\"' + (x0 + P) + '\" y=\"' + ty + '\">' + esc(l) + \"</text>\"; ty += LH; });\n        ty += 5;\n      });\n      var ch = ty - y + 8;\n      h += '<rect class=\"c\" x=\"' + x0 + '\" y=\"' + y + '\" width=\"' + W + '\" height=\"' + ch + '\" rx=\"' + rx + '\"/>' + t;\n      h += '<text class=\"m\" x=\"' + (x0 + W - 8) + '\" y=\"' + (y + ch - 6) + '\" text-anchor=\"end\">' + esc(n.date) + \"</text>\";\n      y += ch + 14;\n    });\n    return { h: '<g class=\"xn\">' + h + \"</g>\", w: W, bottom: y - 14 };\n  }\n\n  return { legendSvg: legendSvg, notesSvg: notesSvg };\n});\n\nInfraDiagram.define(\"ui/copy\", [\"ui/core\"], function (core) {\n  var hintT;\n\n  function hint(msg, x, y) {\n    var h = core.$(\"ch\");\n    h.textContent = msg;\n    h.style.left = Math.min(x + 12, innerWidth - 80) + \"px\";\n    h.style.top = Math.max(y - 28, 4) + \"px\";\n    h.classList.add(\"on\");\n    clearTimeout(hintT);\n    hintT = setTimeout(function () { h.classList.remove(\"on\"); }, 1200);\n  }\n  function copyText(s, x, y) {\n    core.clipboard(s, function (ok) { hint(ok ? \"Copied\" : \"Copy failed\", x, y); });\n  }\n\n  return { copyText: copyText };\n});\n\nInfraDiagram.define(\"ui/export-image\", [\"ui/core\", \"ui/export-columns\"], function (core, exportColumns) {\n  var D = core.D, svg = core.svg, ctx = core.ctx;\n\n  function resolveCss() {\n    var css = core.$(\"css-svg\").textContent;\n    var dark = false;\n    try { dark = matchMedia(\"(prefers-color-scheme: dark)\").matches; } catch (e) {}\n    var m = css.match(/@media \\(prefers-color-scheme: dark\\)\\{\\/\\*DARK<\\*\\/([\\s\\S]*?)\\/\\*>DARK\\*\\/\\}/);\n    if (m) css = css.replace(m[0], dark ? m[1] : \"\");\n    return { css: css, dark: dark };\n  }\n\n  function exportSvg() {\n    var c = svg.cloneNode(true);\n    var r = resolveCss();\n    [].forEach.call(c.querySelectorAll(\"[data-e]\"), function (n) { n.removeAttribute(\"data-e\"); });\n    [].forEach.call(c.querySelectorAll(\".nwb\"), function (n) { n.remove(); });\n    c.classList.remove(\"edit\", \"zoomed\", \"panning\");\n    c.removeAttribute(\"style\");\n    if (c.getAttribute(\"data-fit\")) c.setAttribute(\"viewBox\", c.getAttribute(\"data-fit\"));\n    c.removeAttribute(\"data-fit\");\n    c.setAttribute(\"xmlns\", \"http://www.w3.org/2000/svg\");\n    c.setAttribute(\"data-style\", ctx.style);\n    var vb = c.getAttribute(\"viewBox\").split(/\\s+/).map(Number);\n    if (D.notes && D.notes.length) {\n      var ns = exportColumns.notesSvg(vb[0] + vb[2] + 10, vb[1] + 20);\n      c.insertAdjacentHTML(\"beforeend\", ns.h);\n      vb[2] += ns.w + 30;\n      vb[3] = Math.max(vb[3], ns.bottom + 20 - vb[1]);\n    }\n    var lgx = exportColumns.legendSvg(vb[0] - 200, vb[1] + 20);\n    c.insertAdjacentHTML(\"beforeend\", lgx.h);\n    vb[0] -= lgx.w + 10;\n    vb[2] += lgx.w + 10;\n    vb[3] = Math.max(vb[3], lgx.bottom + 20 - vb[1]);\n    c.setAttribute(\"viewBox\", vb.join(\" \"));\n    c.setAttribute(\"width\", vb[2]);\n    c.setAttribute(\"height\", vb[3]);\n    var bg = ctx.style === \"sketch\" ? (r.dark ? \"#16181c\" : \"#ffffff\") : core.BG[ctx.style];\n    var pre = '<style>' + r.css.replace(/<\\/style/g, \"<\\\\/style\") + \"</style>\";\n    if (ctx.style === \"dark\") pre += '<defs><pattern id=\"grid\" width=\"24\" height=\"24\" patternUnits=\"userSpaceOnUse\"><path d=\"M24 0H0V24\" fill=\"none\" stroke=\"#14213A\" stroke-width=\"1\"/></pattern></defs>';\n    pre += '<rect x=\"' + vb[0] + '\" y=\"' + vb[1] + '\" width=\"' + vb[2] + '\" height=\"' + vb[3] + '\" fill=\"' + bg + '\"/>';\n    if (ctx.style === \"dark\") pre += '<rect x=\"' + vb[0] + '\" y=\"' + vb[1] + '\" width=\"' + vb[2] + '\" height=\"' + vb[3] + '\" fill=\"url(#grid)\"/>';\n    var ser = new XMLSerializer().serializeToString(c);\n    var gt = ser.indexOf(\">\", ser.indexOf(\"<svg\")) + 1;\n    var out = ser.slice(0, gt) + pre + ser.slice(gt);\n    return { text: '<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n' + out, w: vb[2], h: vb[3] };\n  }\n\n  function fileName(ext) { return D.id + \"-\" + ctx.style + \".\" + ext; }\n  function downloadSvg() {\n    core.save(new Blob([exportSvg().text], { type: \"image/svg+xml\" }), fileName(\"svg\"));\n  }\n  function downloadPng() {\n    var x = exportSvg(), sc = Math.min(2, 8000 / Math.max(x.w, x.h));\n    var img = new Image();\n    img.onload = function () {\n      var cv = document.createElement(\"canvas\");\n      cv.width = Math.round(x.w * sc);\n      cv.height = Math.round(x.h * sc);\n      var cx = cv.getContext(\"2d\");\n      cx.drawImage(img, 0, 0, cv.width, cv.height);\n      cv.toBlob(function (b) { if (b) core.save(b, fileName(\"png\")); }, \"image/png\");\n    };\n    img.src = \"data:image/svg+xml;charset=utf-8,\" + encodeURIComponent(x.text);\n  }\n\n  return { exportSvg: exportSvg, downloadSvg: downloadSvg, downloadPng: downloadPng };\n});\n\nInfraDiagram.define(\"ui/init\", [\"ui/core\", \"ui/details\", \"ui/skins\", \"ui/networks\", \"ui/legend\", \"ui/panels\", \"ui/selection\", \"ui/copy\", \"ui/export-image\"], function (core, details, skins, networks, legend, panels, selection, copy, exportImage) {\n  var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx, hooks = core.hooks, STYLES = core.STYLES, $ = core.$;\n\n  // o: { getState, isEdit, fit } from the canvas.\n  function init(o) {\n    hooks.getState = o.getState;\n    hooks.isEdit = o.isEdit;\n    hooks.fit = o.fit;\n    ctx.ready = true;\n    legend.initLegend();\n    networks.initNetworks();\n    panels.initPanels();\n    var q = (location.search.match(/[?&]style=(\\w+)/) || [])[1];\n    var s = STYLES.indexOf(q) >= 0 ? q : core.lsGet(\"style\");\n    skins.setStyle(STYLES.indexOf(s) >= 0 ? s : \"clean\", false);\n    [].forEach.call(document.querySelectorAll(\"#ss button\"), function (b) {\n      b.addEventListener(\"click\", function () { skins.setStyle(b.getAttribute(\"data-s\"), true); });\n    });\n    $(\"xs\").addEventListener(\"click\", exportImage.downloadSvg);\n    $(\"xp\").addEventListener(\"click\", exportImage.downloadPng);\n    $(\"pn\").addEventListener(\"click\", function (e) {\n      if (e.target.id === \"pc\") { selection.select(null); return; }\n      var nb = e.target.closest && e.target.closest(\".nwd\");\n      if (nb) networks.toggleNet(+nb.getAttribute(\"data-n\"));\n    });\n    svg.addEventListener(\"keydown\", function (e) {\n      var nb = e.target.closest && e.target.closest(\".nwb\");\n      if (!nb || hooks.isEdit() || (e.key !== \"Enter\" && e.key !== \" \")) return;\n      e.preventDefault();\n      networks.toggleNet(+nb.getAttribute(\"data-n\"));\n    });\n    svg.addEventListener(\"click\", function (e) {\n      if (hooks.isEdit()) return;\n      var tg = e.target, nb = tg.closest && tg.closest(\".nwb\");\n      if (nb) { networks.toggleNet(+nb.getAttribute(\"data-n\")); return; }\n      var t = tg.closest && tg.closest(\"[data-ent]\");\n      var k = t && t.getAttribute(\"data-ent\");\n      if (!k || (k.charAt(0) !== \"n\" && k.charAt(0) !== \"c\")) { selection.select(null); return; }\n      var cl = tg.classList, id = k.slice(2);\n      if (k.charAt(0) === \"n\" && (cl.contains(\"nb\") || cl.contains(\"ni\") || cl.contains(\"ip\"))) {\n        var txt = cl.contains(\"ip\") ? els[D.idx.nodes[id].i[+tg.getAttribute(\"data-i\")]].textContent : tg.textContent;\n        copy.copyText(txt, e.clientX, e.clientY);\n        return;\n      }\n      if (cl.contains(\"nt\") || cl.contains(\"ct\") || t.classList.contains(\"osg\")) { selection.select(k); return; }\n      if (k.charAt(0) === \"n\" && t.classList.contains(\"ch\")) {\n        var m = svg.getScreenCTM(), y = m ? (e.clientY - m.f) / m.d : 0;\n        if (y < hooks.getState().nodes[id].y) { selection.select(k); return; }\n      }\n    });\n    document.addEventListener(\"keydown\", function (e) {\n      if (e.key !== \"Escape\") return;\n      if (ctx.sel) selection.select(null);\n      if (ctx.net !== null) networks.setNet(null);\n    });\n    try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (ctx.style !== \"sketch\") { skins.rebuildChrome(); if (hooks.fit) hooks.fit(); } }); } catch (e) {}\n  }\n  function editChanged(flag) { if (flag && ctx.ready) { selection.select(null); networks.setNet(null); } }\n\n  // Console / automation API, e.g. InfraDiagram.setStyle(\"dark\").\n  var api = {\n    setStyle: skins.setStyle, toggle: legend.toggle, showAll: legend.showAll, select: selection.select,\n    exportSvg: exportImage.exportSvg, md: details.md, related: selection.related, ctx: ctx, setNet: networks.setNet\n  };\n  Object.keys(api).forEach(function (k) { InfraDiagram[k] = api[k]; });\n\n  return { init: init, editChanged: editChanged };\n});\n\nInfraDiagram.define(\"canvas/geometry\", [], function () {\n  var kit = (function geometryKit() {\n    var HEAD = 20, TITLE_CW = 6.6, BODY_CW = 6.6, IP_CW = 7, TEXT_X = 10;\n    var BAND = 30, BAND_GAP = 10, MIN_GAP = 20, PAD = 16;\n    var M = 10, BEND = 50, REGION = 1.5, HUG = 2, TIGHT = 0.3, RAD = 22;\n    var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];\n    var cache = { n: 0 };\n\n    function r1(v) { return Math.round(v * 10) / 10; }\n    function num(a, b) { return a - b; }\n\n    function boxExtent(g, tl, w) {\n      var bottom = g.y + g.h;\n      for (var i = 0; i < g.ip.length; i++) bottom = Math.max(bottom, g.ip[i][1] + 7);\n      return { x0: g.x, y0: g.y - HEAD, x1: g.x + (w || Math.max(g.w, g.title[0] - g.x + tl * TITLE_CW + 28)), y1: bottom };\n    }\n\n    // Body and IP lines sit at the box's text padding; the box is wide enough for its title, body lines and IP pills plus network buttons.\n    function fitBox(g, t) {\n      g.body.forEach(function (p) { p[0] = g.x + TEXT_X; });\n      g.ip.forEach(function (p) { p[0] = g.x + TEXT_X; });\n      var need = Math.max(g.title[0] - g.x + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0);\n      g.w = Math.max(g.w, Math.ceil(need));\n    }\n\n    // Region grown (never shrunk below base) to hold its servers with padding and the header band.\n    function fitRegion(s, meta, cid, baseRect, w) {\n      var c = s.clusters[cid], b = baseRect || c, x0 = b.x, y0 = b.y, x1 = b.x + b.w, y1 = b.y + b.h;\n      Object.keys(meta.nodes).forEach(function (id) {\n        var g = s.nodes[id];\n        if (meta.nodes[id].cl !== cid || !g || g.hidden) return;\n        var e = boxExtent(g, meta.nodes[id].tl, w && w[id]);\n        x0 = Math.min(x0, e.x0 - PAD); x1 = Math.max(x1, e.x1 + PAD); y1 = Math.max(y1, e.y1 + PAD);\n        y0 = Math.min(y0, e.y0 - BAND - BAND_GAP);\n      });\n      var t = baseRect ? baseRect.title : c.title, centred = Math.abs(t[0] - (b.x + b.w / 2)) <= 2;\n      c.title = [centred ? r1((x0 + x1) / 2) : t[0] + (x0 - b.x), t[1] + (y0 - b.y)];\n      c.x = x0; c.y = y0; c.w = x1 - x0; c.h = y1 - y0;\n    }\n\n    function shapes(s, meta, w) {\n      var ent = {}, nodes = [], titles = [], clusters = [];\n      Object.keys(meta.clusters).forEach(function (id, i) {\n        var c = s.clusters[id], hw = meta.clusters[id].tl * 3.9 + 4;\n        var r = { k: \"c:\" + id, i: i, x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.h };\n        ent[r.k] = r; clusters.push(r);\n        titles.push({ x0: c.title[0] - hw, y0: c.title[1] - 13, x1: c.title[0] + hw, y1: c.title[1] + 4 });\n      });\n      Object.keys(meta.nodes).forEach(function (id) {\n        var g = s.nodes[id];\n        if (!g || g.hidden) return;\n        var r = boxExtent(g, meta.nodes[id].tl, w && w[id]);\n        r.k = \"n:\" + id;\n        r.cl = meta.nodes[id].cl ? ent[\"c:\" + meta.nodes[id].cl].i : -1;\n        ent[r.k] = r; nodes.push(r);\n      });\n      var bands = [];\n      clusters.forEach(function (c) {\n        bands.push({ x0: c.x0, y0: c.y0 - 3, x1: c.x1, y1: c.y0 + 3 }, { x0: c.x0, y0: c.y1 - 3, x1: c.x1, y1: c.y1 + 3 });\n        bands.push({ x0: c.x0 - 3, y0: c.y0, x1: c.x0 + 3, y1: c.y1 }, { x0: c.x1 - 3, y0: c.y0, x1: c.x1 + 3, y1: c.y1 });\n      });\n      return { ent: ent, nodes: nodes, titles: titles, clusters: clusters, bands: bands };\n    }\n\n    function uniq(a) {\n      a.sort(num);\n      var out = [];\n      a.forEach(function (v) { if (!out.length || v - out[out.length - 1] > 0.5) out.push(v); });\n      var mid = [];\n      out.forEach(function (v, i) {\n        mid.push(v);\n        if (i + 1 < out.length && out[i + 1] - v > 30) mid.push((v + out[i + 1]) / 2);\n      });\n      return mid;\n    }\n    function inside(x, y, r, m) { return x > r.x0 - m + 0.01 && x < r.x1 + m - 0.01 && y > r.y0 - m + 0.01 && y < r.y1 + m - 0.01; }\n\n    // Sparse orthogonal grid over obstacle borders (servers +M, titles +4, regions +-M), extra points and channel midpoints.\n    function grid(S, extra) {\n      var xs = [], ys = [], lo = [Infinity, Infinity], hi = [-Infinity, -Infinity];\n      function add(r, m) {\n        xs.push(r.x0 - m, r.x1 + m); ys.push(r.y0 - m, r.y1 + m);\n        lo = [Math.min(lo[0], r.x0 - m), Math.min(lo[1], r.y0 - m)]; hi = [Math.max(hi[0], r.x1 + m), Math.max(hi[1], r.y1 + m)];\n      }\n      S.nodes.forEach(function (r) { add(r, M); });\n      S.titles.forEach(function (r) { add(r, 4); });\n      S.clusters.forEach(function (r) { add(r, M); add(r, -M); });\n      extra.forEach(function (p) { xs.push(p[0]); ys.push(p[1]); });\n      xs.push(lo[0] - 30, hi[0] + 30); ys.push(lo[1] - 30, hi[1] + 30);\n      xs = uniq(xs); ys = uniq(ys);\n      var nx = xs.length, ny = ys.length, P = nx * ny;\n      var blk = new Uint8Array(P), hb = new Uint8Array(P), vb = new Uint8Array(P), hc = new Int16Array(P), vc = new Int16Array(P), hh = new Uint8Array(P), vh = new Uint8Array(P);\n      var obst = S.nodes.map(function (r) { return [r, M]; }).concat(S.titles.map(function (r) { return [r, 4]; }));\n      function hit(x, y) { for (var k = 0; k < obst.length; k++) if (inside(x, y, obst[k][0], obst[k][1])) return 1; return 0; }\n      // Bit 2: a segment within 5px of the narrowest allowed clearance (narrow channel).\n      function tight(x, y) { for (var k = 0; k < S.nodes.length; k++) if (inside(x, y, S.nodes[k], M + 5)) return 2; return 0; }\n      function region(x, y) { for (var k = 0; k < S.clusters.length; k++) if (inside(x, y, S.clusters[k], 0)) return k; return -1; }\n      function hug(x, y, horiz) {\n        for (var k = 0; k < S.clusters.length; k++) {\n          var c = S.clusters[k];\n          if (horiz ? x > c.x0 && x < c.x1 && (Math.abs(y - c.y0) < 9 || Math.abs(y - c.y1) < 9) : y > c.y0 && y < c.y1 && (Math.abs(x - c.x0) < 9 || Math.abs(x - c.x1) < 9)) return 1;\n        }\n        return 0;\n      }\n      for (var i = 0; i < nx; i++) for (var j = 0; j < ny; j++) {\n        var p = i * ny + j;\n        blk[p] = hit(xs[i], ys[j]);\n        if (i + 1 < nx) { var mx = (xs[i] + xs[i + 1]) / 2; hb[p] = hit(mx, ys[j]); hc[p] = region(mx, ys[j]); hh[p] = hug(mx, ys[j], true) | tight(mx, ys[j]); }\n        if (j + 1 < ny) { var my = (ys[j] + ys[j + 1]) / 2; vb[p] = hit(xs[i], my); vc[p] = region(xs[i], my); vh[p] = hug(xs[i], my, false) | tight(xs[i], my); }\n      }\n      return { xs: xs, ys: ys, nx: nx, ny: ny, blk: blk, hb: hb, vb: vb, hc: hc, vc: vc, hh: hh, vh: vh };\n    }\n    function at(G, x, y) {\n      var i = G.xs.findIndex(function (v) { return Math.abs(v - x) < 0.6; }), j = G.ys.findIndex(function (v) { return Math.abs(v - y) < 0.6; });\n      return i < 0 || j < 0 ? -1 : i * G.ny + j;\n    }\n\n    // A* over (grid point, heading); cost = length (x region / hug penalties) + bends. starts / goals: {p, d, c}.\n    function search(G, starts, goals, home) {\n      var n = G.nx * G.ny * 4;\n      if (cache.n < n) { cache.n = n; cache.dist = new Float64Array(n); cache.prev = new Int32Array(n); }\n      var dist = cache.dist, prev = cache.prev;\n      dist.fill(Infinity, 0, n); prev.fill(-1, 0, n);\n      var goalAt = {}, hx = [], heap = [];\n      goals.forEach(function (g) { (goalAt[g.p] = goalAt[g.p] || []).push(g); hx.push([G.xs[Math.floor(g.p / G.ny)], G.ys[g.p % G.ny]]); });\n      function h(p) {\n        var x = G.xs[Math.floor(p / G.ny)], y = G.ys[p % G.ny], m = Infinity;\n        for (var k = 0; k < hx.length; k++) m = Math.min(m, Math.abs(x - hx[k][0]) + Math.abs(y - hx[k][1]));\n        return m;\n      }\n      function push(f, st) {\n        heap.push([f, st]);\n        for (var i = heap.length - 1; i > 0;) { var q = (i - 1) >> 1; if (heap[q][0] <= heap[i][0]) break; var t = heap[q]; heap[q] = heap[i]; heap[i] = t; i = q; }\n      }\n      function pop() {\n        var top = heap[0], last = heap.pop();\n        if (heap.length) {\n          heap[0] = last;\n          for (var i = 0; ;) {\n            var l = 2 * i + 1, r = l + 1, m = i;\n            if (l < heap.length && heap[l][0] < heap[m][0]) m = l;\n            if (r < heap.length && heap[r][0] < heap[m][0]) m = r;\n            if (m === i) break;\n            var t = heap[m]; heap[m] = heap[i]; heap[i] = t; i = m;\n          }\n        }\n        return top;\n      }\n      starts.forEach(function (s) {\n        var st = s.p * 4 + s.d;\n        if (s.c < dist[st]) { dist[st] = s.c; prev[st] = -1; push(s.c + h(s.p), st); }\n      });\n      var best = Infinity, bestSt = -1, bestGoal = null;\n      while (heap.length) {\n        var e = pop(), st = e[1], d0 = dist[st];\n        if (e[0] >= best) break;\n        if (e[0] > d0 + h(Math.floor(st / 4)) + 1e-6) continue;\n        var p = Math.floor(st / 4), d = st % 4;\n        (goalAt[p] || []).forEach(function (g) {\n          var extra = g.d < 0 || g.d === d ? 0 : g.d === (d + 2) % 4 ? Infinity : BEND;\n          if (d0 + extra + g.c < best) { best = d0 + extra + g.c; bestSt = st; bestGoal = g; }\n        });\n        var i = Math.floor(p / G.ny), j = p % G.ny;\n        for (var d2 = 0; d2 < 4; d2++) {\n          if (d2 === (d + 2) % 4) continue;\n          var i2 = i + DX[d2], j2 = j + DY[d2];\n          if (i2 < 0 || j2 < 0 || i2 >= G.nx || j2 >= G.ny) continue;\n          var p2 = i2 * G.ny + j2;\n          if (G.blk[p2]) continue;\n          var horiz = d2 % 2 === 0, si = horiz ? (d2 === 0 ? p : p2) : (d2 === 1 ? p : p2);\n          if ((horiz ? G.hb : G.vb)[si]) continue;\n          var cl = (horiz ? G.hc : G.vc)[si];\n          var len = horiz ? Math.abs(G.xs[i2] - G.xs[i]) : Math.abs(G.ys[j2] - G.ys[j]);\n          var cost = len * (1 + (cl >= 0 && home.indexOf(cl) < 0 ? REGION : 0) + ((horiz ? G.hh : G.vh)[si] & 1 ? HUG : 0) + ((horiz ? G.hh : G.vh)[si] & 2 ? TIGHT : 0)) + (d2 === d ? 0 : BEND);\n          var st2 = p2 * 4 + d2, nd = d0 + cost;\n          if (nd < dist[st2]) { dist[st2] = nd; prev[st2] = st; push(nd + h(p2), st2); }\n        }\n      }\n      if (bestSt < 0) return null;\n      var pts = [];\n      for (var s2 = bestSt; s2 >= 0; s2 = prev[s2]) { var pp = Math.floor(s2 / 4); pts.unshift([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]); }\n      var first = starts.find(function (s) { return s.p * 4 + (s.d) === firstState(bestSt); });\n      return { pts: pts, start: first, goal: bestGoal, cost: best };\n      function firstState(s3) { while (prev[s3] >= 0) s3 = prev[s3]; return s3; }\n    }\n\n    // Port on side sd (0 right, 1 bottom, 2 left, 3 top; = outward heading) at position v along the side.\n    function port(r, sd, v) {\n      if (sd === 0) return { pt: [r.x1, v], stub: [r.x1 + M, v] };\n      if (sd === 2) return { pt: [r.x0, v], stub: [r.x0 - M, v] };\n      if (sd === 1) return { pt: [v, r.y1], stub: [v, r.y1 + M] };\n      return { pt: [v, r.y0], stub: [v, r.y0 - M] };\n    }\n    function centre(r, sd) { return Math.round(sd % 2 === 0 ? (r.y0 + r.y1) / 2 : (r.x0 + r.x1) / 2); }\n    function span(r, sd) { return sd % 2 === 0 ? [r.y0, r.y1] : [r.x0, r.x1]; }\n    function facing(r, sd, o) {\n      var cx = (o.x0 + o.x1) / 2 - (r.x0 + r.x1) / 2, cy = (o.y0 + o.y1) / 2 - (r.y0 + r.y1) / 2;\n      return DX[sd] * cx + DY[sd] * cy > 0;\n    }\n\n    function simplify(pts) {\n      var out = [];\n      pts.forEach(function (p) {\n        var n = out.length;\n        if (n && Math.abs(out[n - 1][0] - p[0]) < 0.01 && Math.abs(out[n - 1][1] - p[1]) < 0.01) return;\n        if (n >= 2) {\n          var a = out[n - 2], b = out[n - 1];\n          if ((Math.abs(a[0] - b[0]) < 0.01 && Math.abs(b[0] - p[0]) < 0.01) || (Math.abs(a[1] - b[1]) < 0.01 && Math.abs(b[1] - p[1]) < 0.01)) { out[n - 1] = p; return; }\n        }\n        out.push(p);\n      });\n      return out;\n    }\n\n    // Rounded orthogonal path: corner radius up to RAD, keeping 6px straight at the start and 12px before the arrowhead.\n    function shape(pts) {\n      var n = pts.length, seg = [], rad = [0];\n      for (var k = 0; k + 1 < n; k++) seg.push(Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1]));\n      for (k = 1; k + 1 < n; k++) {\n        var a = k - 1 === 0 ? seg[k - 1] - 6 : seg[k - 1] / 2, b = k + 1 === n - 1 ? seg[k] - 12 : seg[k] / 2;\n        rad.push(Math.max(0, Math.min(RAD, a, b)));\n      }\n      rad.push(0);\n      var d = \"M\" + r1(pts[0][0]) + \" \" + r1(pts[0][1]), pieces = [], arc = 0;\n      for (k = 0; k + 1 < n; k++) {\n        var ux = (pts[k + 1][0] - pts[k][0]) / (seg[k] || 1), uy = (pts[k + 1][1] - pts[k][1]) / (seg[k] || 1);\n        var s0 = [pts[k][0] + ux * rad[k], pts[k][1] + uy * rad[k]], s1 = [pts[k + 1][0] - ux * rad[k + 1], pts[k + 1][1] - uy * rad[k + 1]];\n        var sl = Math.max(0, seg[k] - rad[k] - rad[k + 1]);\n        pieces.push({ a: s0, u: [ux, uy], len: sl, arc: arc });\n        arc += sl;\n        d += \"L\" + r1(s1[0]) + \" \" + r1(s1[1]);\n        if (k + 2 < n) {\n          var r = rad[k + 1], c = pts[k + 1], vx = (pts[k + 2][0] - c[0]) / (seg[k + 1] || 1), vy = (pts[k + 2][1] - c[1]) / (seg[k + 1] || 1);\n          var e1 = [c[0] + vx * r, c[1] + vy * r];\n          d += \"C\" + r1(s1[0] + ux * r * 0.55) + \" \" + r1(s1[1] + uy * r * 0.55) + \" \" + r1(e1[0] - vx * r * 0.55) + \" \" + r1(e1[1] - vy * r * 0.55) + \" \" + r1(e1[0]) + \" \" + r1(e1[1]);\n          arc += r * 1.571;\n        }\n      }\n      return { d: d, pieces: pieces, len: arc };\n    }\n\n    function overlap(a, b) { return Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)); }\n    function cost(boxes, list) {\n      var s = 0;\n      boxes.forEach(function (b) { list.forEach(function (o) { s += overlap(b, o); }); });\n      return s;\n    }\n    // Candidate points along straight pieces, nearest the path's arc midpoint first.\n    function stations(sh, margin, ends) {\n      var out = [];\n      sh.pieces.forEach(function (pc) {\n        for (var t = margin; t <= pc.len - margin; t += 4) {\n          var a = pc.arc + t;\n          if (a < ends || a > sh.len - ends) continue;\n          out.push({ x: pc.a[0] + pc.u[0] * t, y: pc.a[1] + pc.u[1] * t, h: Math.abs(pc.u[0]) > 0.5, off: Math.abs(a - sh.len / 2) });\n        }\n      });\n      return out.sort(function (a, b) { return a.off - b.off; });\n    }\n\n    function placeFirewall(sh, hard, soft) {\n      var best = null;\n      var st = stations(sh, 6, 26);\n      if (!st.length) st = stations(sh, 2, 6);\n      if (!st.length) st = stations(sh, 0, 0);\n      st.forEach(function (s) {\n        if (best && best.clear) return;\n        var mk = s.h ? { x0: s.x - 6, y0: s.y - 12, x1: s.x + 6, y1: s.y + 12 } : { x0: s.x - 12, y0: s.y - 6, x1: s.x + 12, y1: s.y + 6 };\n        var opts = s.h\n          ? [{ label: [s.x, s.y + 21], anchor: \"middle\", box: { x0: s.x - 26, y0: s.y + 12, x1: s.x + 26, y1: s.y + 24 } }, { label: [s.x, s.y - 15], anchor: \"middle\", box: { x0: s.x - 26, y0: s.y - 25, x1: s.x + 26, y1: s.y - 13 } }]\n          : [{ label: [s.x + 15, s.y + 3], anchor: \"start\", box: { x0: s.x + 14, y0: s.y - 7, x1: s.x + 66, y1: s.y + 5 } }, { label: [s.x - 15, s.y + 3], anchor: \"end\", box: { x0: s.x - 66, y0: s.y - 7, x1: s.x - 14, y1: s.y + 5 } }];\n        opts.forEach(function (o) {\n          var hit = cost([mk, o.box], hard) * 100 + cost([mk, o.box], soft) * 10, sc = hit + s.off * 0.01;\n          if (!best || sc < best.score) best = { score: sc, clear: hit === 0, at: [r1(s.x), r1(s.y)], a: s.h ? 0 : 90, label: [r1(o.label[0]), r1(o.label[1])], anchor: o.anchor, boxes: [mk, o.box] };\n        });\n      });\n      return best;\n    }\n\n    function placeLabel(sh, lw, hard, soft) {\n      var best = null;\n      stations(sh, 4, 22).forEach(function (s) {\n        if (best && best.clear) return;\n        var b = { x0: s.x - lw / 2, y0: s.y - 8.5, x1: s.x + lw / 2, y1: s.y + 8.5 };\n        var hit = cost([b], hard) * 100 + cost([b], soft) * 5 + (s.h ? 0 : 400), sc = hit + s.off * 0.01;\n        if (!best || sc < best.score) best = { score: sc, clear: hit === 0, label: [r1(b.x0 + 7), r1(s.y + 3.5)], box: b };\n      });\n      return best;\n    }\n\n    // Routes every connection. o: { w: measured box widths, lw: measured label pill widths } (both optional).\n    function route(s, meta, o) {\n      o = o || {};\n      var S = shapes(s, meta, o.w), E = meta.edges, ov = s.edges || {};\n      var res = {};\n      function home(e) {\n        var h = [];\n        [e.from, e.to].forEach(function (k) {\n          var r = S.ent[k];\n          if (!r) return;\n          if (k.charAt(0) === \"n\" && r.cl >= 0) h.push(r.cl);\n        });\n        return h;\n      }\n      function cands(r, other, v) {\n        return [0, 1, 2, 3].map(function (sd) {\n          var p = port(r, sd, v === undefined ? centre(r, sd) : v);\n          return { sd: sd, p: p, c: facing(r, sd, other) ? 0 : BEND / 2 };\n        });\n      }\n      // A process endpoint (body line) is a port on its server's left or right side at that line's height; end 0 = from, 1 = to.\n      function lineY(e, end) {\n        var li = end ? e.tl : e.fl, id = (end ? e.to : e.from).slice(2);\n        return li === null || li === undefined || !s.nodes[id] ? null : Math.round(s.nodes[id].body[li][1] - 4);\n      }\n      function endCands(e, end, r, other) {\n        var y = lineY(e, end);\n        return y === null ? cands(r, other) : cands(r, other, y).filter(function (c) { return c.sd % 2 === 0; });\n      }\n      function run(G, A, B, from, to, h) {\n        var st = from.map(function (c) { return { p: at(G, c.p.stub[0], c.p.stub[1]), d: c.sd, c: c.c, cand: c }; }).filter(function (c) { return c.p >= 0 && !G.blk[c.p]; });\n        var gl = to.map(function (c) { return { p: at(G, c.p.stub[0], c.p.stub[1]), d: c.sd < 0 ? -1 : (c.sd + 2) % 4, c: c.c, cand: c }; }).filter(function (c) { return c.p >= 0 && !G.blk[c.p]; });\n        if (!st.length || !gl.length) return null;\n        return search(G, st, gl, h);\n      }\n\n      // Pass 1: free sides, centred ports (process endpoints: left / right at their line).\n      var extra = [];\n      E.forEach(function (e) {\n        [S.ent[e.from], S.ent[e.to]].forEach(function (r, end) {\n          if (!r) return;\n          [0, 1, 2, 3].forEach(function (sd) { var p = port(r, sd, centre(r, sd)); extra.push(p.pt, p.stub); });\n          if (lineY(e, end) !== null) [0, 2].forEach(function (sd) { var p = port(r, sd, lineY(e, end)); extra.push(p.pt, p.stub); });\n        });\n        ((ov[e.k] || {}).via || []).forEach(function (v) { extra.push(v); });\n      });\n      var G = grid(S, extra), first = {};\n      E.forEach(function (e) {\n        var A = S.ent[e.from], B = S.ent[e.to];\n        if (!A || !B) return;\n        var via = (ov[e.k] || {}).via || [], h = home(e);\n        if (!via.length) {\n          var r = run(G, A, B, endCands(e, 0, A, B), endCands(e, 1, B, A), h);\n          if (r) first[e.k] = { sa: r.start.cand.sd, sb: (r.goal.d + 2) % 4, pts: [r.start.cand.p.pt].concat(r.pts, [r.goal.cand.p.pt]) };\n          return;\n        }\n        var pts = [], cur = endCands(e, 0, A, B), ok = true, sa = -1, sb = -1;\n        via.concat([null]).forEach(function (v, i) {\n          if (!ok) return;\n          var tgt = v ? [{ sd: -1, p: { pt: v, stub: v }, c: 0 }] : endCands(e, 1, B, A);\n          var rr = run(G, A, B, cur, tgt, h);\n          if (!rr) { ok = false; return; }\n          if (i === 0) { sa = rr.start.cand.sd; pts.push(rr.start.cand.p.pt); }\n          pts = pts.concat(rr.pts);\n          if (!v) { sb = (rr.goal.d + 2) % 4; pts.push(rr.goal.cand.p.pt); }\n          else cur = [0, 1, 2, 3].map(function (d) { return { sd: d, p: { pt: v, stub: v }, c: 0 }; });\n        });\n        if (ok) first[e.k] = { sa: sa, sb: sb, pts: pts, via: true };\n      });\n\n      // Pass 2: a port wants the other end's position (a facing pair with overlapping sides: the overlap's middle, so it runs straight;\n      // a process endpoint: its line); ports sharing a side keep up to 20px apart; then re-route with the ports fixed.\n      var bySide = {}, ports = {};\n      E.forEach(function (e) {\n        var f = first[e.k];\n        if (!f || f.via) return;\n        var A = S.ent[e.from], B = S.ent[e.to], sa = span(A, f.sa), sb = span(B, f.sb), mid = null, ly = [lineY(e, 0), lineY(e, 1)];\n        if ((f.sa + 2) % 4 === f.sb && facing(A, f.sa, B)) {\n          var lo = Math.max(sa[0], sb[0]) + 8, hi = Math.min(sa[1], sb[1]) - 8;\n          if (hi >= lo) mid = (lo + hi) / 2;\n          if (ly[0] !== null) mid = ly[0];\n          else if (ly[1] !== null) mid = ly[1];\n        }\n        [[e.from, f.sa, B, 0, A], [e.to, f.sb, A, 1, B]].forEach(function (x) {\n          if (ly[x[3]] !== null) { ports[e.k + \"|\" + x[3]] = { v: ly[x[3]], r: x[4], sd: x[1] }; return; }\n          var o2 = x[2], want = mid !== null ? mid : x[1] % 2 === 0 ? (o2.y0 + o2.y1) / 2 : (o2.x0 + o2.x1) / 2;\n          (bySide[x[0] + \"|\" + x[1]] = bySide[x[0] + \"|\" + x[1]] || []).push({ k: e.k, end: x[3], r: S.ent[x[0]], sd: x[1], want: want });\n        });\n      });\n      Object.keys(bySide).forEach(function (key) {\n        var l = bySide[key].sort(function (a, b) { return a.want - b.want; }), sp = span(l[0].r, l[0].sd);\n        var lo = sp[0] + 8, hi = sp[1] - 8, step = Math.min(20, (hi - lo) / Math.max(1, l.length - 1)), v = [], i;\n        for (i = 0; i < l.length; i++) v[i] = Math.max(Math.min(Math.max(l[i].want, lo), hi), i ? v[i - 1] + step : lo);\n        for (i = l.length - 1; i >= 0; i--) v[i] = Math.min(v[i], i < l.length - 1 ? v[i + 1] - step : hi);\n        l.forEach(function (it, j) { ports[it.k + \"|\" + it.end] = { v: Math.round(v[j]), r: it.r, sd: it.sd }; });\n      });\n      var extra2 = extra.slice();\n      Object.keys(ports).forEach(function (k) { var q = ports[k], p = port(q.r, q.sd, q.v); extra2.push(p.pt, p.stub); });\n      var G2 = grid(S, extra2);\n      E.forEach(function (e) {\n        var f = first[e.k], A = S.ent[e.from], B = S.ent[e.to], pts = null;\n        if (!f) {\n          if (A && B) pts = [[(A.x0 + A.x1) / 2, (A.y0 + A.y1) / 2], [(B.x0 + B.x1) / 2, (B.y0 + B.y1) / 2]];\n        } else if (f.via) pts = f.pts;\n        else {\n          var a = ports[e.k + \"|0\"], b = ports[e.k + \"|1\"];\n          var r = run(G2, A, B, [{ sd: a.sd, p: port(A, a.sd, a.v), c: 0 }], [{ sd: b.sd, p: port(B, b.sd, b.v), c: 0 }], home(e));\n          pts = r ? [r.start.cand.p.pt].concat(r.pts, [r.goal.cand.p.pt]) : f.pts;\n        }\n        if (pts) res[e.k] = { pts: simplify(pts) };\n      });\n\n      // Firewall markers, then connection labels, each clear of servers, region titles and borders where possible.\n      var hard = S.nodes.concat(S.titles), placed = [];\n      E.forEach(function (e) {\n        var rt = res[e.k];\n        if (!rt) return;\n        var sh = shape(rt.pts);\n        rt.d = sh.d; rt.sh = sh;\n        rt.fw = null;\n        if (e.fw) {\n          var f = placeFirewall(sh, hard.concat(placed), S.bands);\n          if (f) { placed = placed.concat(f.boxes); rt.fw = { at: f.at, a: f.a, label: f.label, anchor: f.anchor }; }\n        }\n      });\n      E.forEach(function (e) {\n        var rt = res[e.k];\n        if (!rt) return;\n        rt.label = null;\n        if (e.ll) {\n          var fix = (ov[e.k] || {}).label;\n          if (fix) rt.label = fix.slice();\n          else {\n            var lw = (o.lw && o.lw[e.k]) || e.ll * 6 + 14, l = placeLabel(rt.sh, lw, hard.concat(placed), S.bands);\n            if (l) { placed.push(l.box); rt.label = l.label; }\n          }\n        }\n        delete rt.sh;\n      });\n      return res;\n    }\n\n    // Keys (\"n:id\" / \"c:id\") of servers and regions breaking the spacing rules (validate.mjs states them for the build).\n    function problems(s, meta, w) {\n      var S = shapes(s, meta, w), bad = {};\n      function gap(a, b) { return Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b.y1); }\n      var nodes = S.nodes;\n      for (var i = 0; i < nodes.length; i++) for (var j = i + 1; j < nodes.length; j++) if (gap(nodes[i], nodes[j]) < MIN_GAP) bad[nodes[i].k] = bad[nodes[j].k] = 1;\n      nodes.forEach(function (b) {\n        if (b.cl < 0) return;\n        var c = S.clusters[b.cl];\n        if (b.x0 - c.x0 < PAD || c.x1 - b.x1 < PAD || c.y1 - b.y1 < PAD || b.y0 < c.y0 + BAND + BAND_GAP) bad[b.k] = 1;\n      });\n      var cl = S.clusters;\n      for (i = 0; i < cl.length; i++) for (j = i + 1; j < cl.length; j++) if (gap(cl[i], cl[j]) < MIN_GAP) bad[cl[i].k] = bad[cl[j].k] = 1;\n      cl.forEach(function (c) { nodes.forEach(function (b) { if (b.cl !== c.i && gap(c, b) < MIN_GAP) bad[c.k] = bad[b.k] = 1; }); });\n      return bad;\n    }\n\n    return { boxExtent: boxExtent, fitBox: fitBox, fitRegion: fitRegion, route: route, problems: problems };\n  })();\n\n  return { boxExtent: kit.boxExtent, fitBox: kit.fitBox, fitRegion: kit.fitRegion, route: kit.route, problems: kit.problems };\n});\n\nInfraDiagram.define(\"canvas/model\", [\"ui/core\", \"ui/skins\", \"canvas/geometry\"], function (core, skins, geometry) {\n  var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx;\n  var base = D.layout;\n  // Shared canvas state: st is the draft layout, on is edit mode.\n  var state = { st: clone(base), on: false };\n\n  function clone(o) { return JSON.parse(JSON.stringify(o)); }\n  function setXY(el, p) { el.setAttribute(\"x\", p[0]); el.setAttribute(\"y\", p[1]); }\n  function setRect(el, g) { el.setAttribute(\"x\", g.x); el.setAttribute(\"y\", g.y); el.setAttribute(\"width\", g.w); el.setAttribute(\"height\", g.h); }\n  function shift(p, dx, dy) { p[0] += dx; p[1] += dy; }\n\n  function move(s, key, dx, dy) {\n    var t = key.charAt(0), id = key.slice(2), g;\n    if (t === \"c\") {\n      g = s.clusters[id];\n      g.x += dx; g.y += dy; shift(g.title, dx, dy);\n    } else if (t === \"n\") {\n      g = s.nodes[id];\n      if (g.hidden) return;\n      g.x += dx; g.y += dy;\n      [g.title].concat(g.body, g.ip).forEach(function (p) { shift(p, dx, dy); });\n    }\n  }\n\n  // A dragged server grows its region (from the drag-start size) so padding and header band hold.\n  function apply(from, key, dx, dy) {\n    var s = clone(from), id = key.slice(2), m = D.meta.nodes[id];\n    move(s, key, dx, dy);\n    if (key.charAt(0) === \"c\") (D.kids[id] || []).forEach(function (n) { move(s, \"n:\" + n, dx, dy); });\n    else if (m && m.cl) geometry.fitRegion(s, D.meta, m.cl, from.clusters[m.cl], skins.widths());\n    return s;\n  }\n\n  function each(fn) {\n    Object.keys(D.idx.clusters).forEach(function (id) {\n      var e = D.idx.clusters[id];\n      fn(\"c:\" + id, [e[0], e[1], e[2]]);\n    });\n    Object.keys(D.idx.nodes).forEach(function (id) {\n      var e = D.idx.nodes[id];\n      fn(\"n:\" + id, [e.c, e.t, e.r].concat(e.b, e.i, e.o === undefined ? [] : [e.o]));\n    });\n  }\n\n  // Connections re-routed from the current geometry (measured box and label widths); kept in ctx.routes for skins.sync.\n  function routeEdges(s) {\n    var rt = geometry.route(s, D.meta, { w: skins.widths(), lw: skins.labelWidths() });\n    ctx.routes = rt;\n    Object.keys(D.idx.edges).forEach(function (k) {\n      var e = D.idx.edges[k], r = rt[k];\n      if (!r) return;\n      els[e.p].setAttribute(\"d\", r.d);\n      if (e.l >= 0 && r.label) setXY(els[e.l], r.label);\n      if (e.fw !== undefined && r.fw) {\n        var fg = els[e.fw], ft = fg.querySelector(\"text\"), tr = \"translate(\" + r.fw.at.join(\" \") + \") rotate(\" + r.fw.a + \")\";\n        [].forEach.call(fg.querySelectorAll(\"path\"), function (p) { p.setAttribute(\"transform\", tr); });\n        setXY(ft, r.fw.label);\n        ft.setAttribute(\"text-anchor\", r.fw.anchor);\n      }\n    });\n  }\n\n  // Edit mode: red outline on servers and regions that break the spacing rules.\n  function markBad(s) {\n    var bad = state.on ? geometry.problems(s, D.meta, skins.widths()) : {};\n    Object.keys(D.idx.nodes).forEach(function (id) {\n      var e = D.idx.nodes[id], on = !!bad[\"n:\" + id];\n      els[e.r].classList.toggle(\"bad\", on);\n      els[e.c].classList.toggle(\"bad\", on);\n    });\n    Object.keys(D.idx.clusters).forEach(function (id) { els[D.idx.clusters[id][0]].classList.toggle(\"bad\", !!bad[\"c:\" + id]); });\n  }\n\n  function render(s) {\n    Object.keys(D.idx.clusters).forEach(function (id) {\n      var e = D.idx.clusters[id], g = s.clusters[id];\n      setRect(els[e[0]], g); setXY(els[e[1]], g.title);\n    });\n    Object.keys(D.idx.nodes).forEach(function (id) {\n      var e = D.idx.nodes[id], g = s.nodes[id];\n      setXY(els[e.t], g.title); setRect(els[e.r], g);\n      e.b.forEach(function (i, k) { setXY(els[i], g.body[k]); });\n      e.i.forEach(function (i, k) { setXY(els[i], g.ip[k]); });\n    });\n    routeEdges(s);\n    markBad(s);\n    skins.sync(s);\n  }\n\n  core.hooks.route = function () {\n    var s = core.hooks.getState && core.hooks.getState();\n    if (s) { routeEdges(s); markBad(s); }\n  };\n\n  function point(e) {\n    var p = svg.createSVGPoint();\n    p.x = e.clientX; p.y = e.clientY;\n    var m = svg.getScreenCTM();\n    return m ? p.matrixTransform(m.inverse()) : p;\n  }\n\n  return { base: base, state: state, clone: clone, apply: apply, each: each, render: render, point: point };\n});\n\nInfraDiagram.define(\"canvas/zoom-pan\", [\"ui/core\", \"canvas/model\"], function (core, model) {\n  var svg = core.svg;\n\n  var PAD = 20;\n  function fit() {\n    var b;\n    try { b = svg.getBBox(); } catch (e) { return; }\n    if (!(b.width > 0 && b.height > 0)) return;\n    var x = Math.floor(b.x - PAD), y = Math.floor(b.y - PAD);\n    var w = Math.ceil(b.x + b.width + PAD) - x, h = Math.ceil(b.y + b.height + PAD) - y;\n    Z.base = [x, y, w, h];\n    applyZoom();\n  }\n\n  var Z = { base: svg.getAttribute(\"viewBox\").split(/\\s+/).map(Number), z: 1, cx: 0, cy: 0, free: false, pan: null, panned: false };\n  function clampAxis(c, view, lo, hi, k) {\n    var keep = Math.min(100 / k, 0.15 * (hi - lo));\n    return Math.min(hi - keep + view / 2, Math.max(lo + keep - view / 2, c));\n  }\n  function applyZoom() {\n    var b = Z.base;\n    var w = b[2] / Z.z, h = b[3] / Z.z, r = function (v) { return Math.round(v * 100) / 100; };\n    if (!Z.free) { Z.cx = b[0] + b[2] / 2; Z.cy = b[1] + b[3] / 2; }\n    else {\n      var rc = svg.getBoundingClientRect();\n      if (rc.width > 0 && rc.height > 0) {\n        var k = Math.min(rc.width / w, rc.height / h);\n        Z.cx = clampAxis(Z.cx, rc.width / k, b[0] + PAD, b[0] + b[2] - PAD, k);\n        Z.cy = clampAxis(Z.cy, rc.height / k, b[1] + PAD, b[1] + b[3] - PAD, k);\n      }\n    }\n    svg.setAttribute(\"data-fit\", b.join(\" \"));\n    svg.setAttribute(\"viewBox\", [r(Z.cx - w / 2), r(Z.cy - h / 2), r(w), r(h)].join(\" \"));\n    svg.classList.toggle(\"zoomed\", Z.z > 1);\n  }\n  function zoomBy(f, at) {\n    var z = Math.min(8, Math.max(0.25, Z.z * f));\n    if (Math.abs(z - 1) < 1e-6) z = 1;\n    if (at) {\n      Z.free = true;\n      Z.cx = at.x - (at.x - Z.cx) * Z.z / z;\n      Z.cy = at.y - (at.y - Z.cy) * Z.z / z;\n    }\n    Z.z = z;\n    applyZoom();\n  }\n  function zoomFit() { Z.z = 1; Z.free = false; applyZoom(); }\n  svg.addEventListener(\"wheel\", function (e) {\n    if (e.target.closest && e.target.closest(\".cp,#rc,#pn,#ta\")) return;\n    e.preventDefault();\n    var dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1);\n    zoomBy(Math.exp(-Math.max(-300, Math.min(300, dy)) * 0.002), model.point(e));\n  }, { passive: false });\n  svg.addEventListener(\"pointerdown\", function (e) {\n    if (model.state.on || e.button > 0 || (e.target.closest && e.target.closest(\"[data-ent]\"))) return;\n    var m = svg.getScreenCTM();\n    Z.pan = { x: e.clientX, y: e.clientY, cx: Z.cx, cy: Z.cy, k: m ? m.a : 1, id: e.pointerId };\n    Z.panned = false;\n    svg.classList.add(\"panning\");\n    try { svg.setPointerCapture(e.pointerId); } catch (x) {}\n  });\n  svg.addEventListener(\"pointermove\", function (e) {\n    var p = Z.pan;\n    if (!p || e.pointerId !== p.id) return;\n    var dx = e.clientX - p.x, dy = e.clientY - p.y;\n    if (!Z.panned && Math.abs(dx) + Math.abs(dy) <= 3) return;\n    Z.panned = Z.free = true;\n    Z.cx = p.cx - dx / p.k;\n    Z.cy = p.cy - dy / p.k;\n    applyZoom();\n  });\n  function panEnd(e) {\n    if (!Z.pan || e.pointerId !== Z.pan.id) return;\n    Z.pan = null;\n    svg.classList.remove(\"panning\");\n  }\n  svg.addEventListener(\"pointerup\", panEnd);\n  svg.addEventListener(\"pointercancel\", panEnd);\n  addEventListener(\"click\", function (e) {\n    if (Z.panned) { Z.panned = false; e.stopPropagation(); }\n  }, true);\n  document.addEventListener(\"keydown\", function (e) {\n    var t = e.target, tag = t && t.tagName;\n    if (e.ctrlKey || e.metaKey || e.altKey || tag === \"INPUT\" || tag === \"TEXTAREA\" || tag === \"SELECT\" || (t && t.isContentEditable)) return;\n    if (e.key === \"+\" || e.key === \"=\") zoomBy(1.25);\n    else if (e.key === \"-\" || e.key === \"_\") zoomBy(1 / 1.25);\n    else if (e.key === \"0\") zoomFit();\n    else return;\n    e.preventDefault();\n  });\n  core.$(\"zi\").addEventListener(\"click\", function () { zoomBy(1.25); });\n  core.$(\"zo\").addEventListener(\"click\", function () { zoomBy(1 / 1.25); });\n  core.$(\"zf\").addEventListener(\"click\", zoomFit);\n\n  return { fit: fit };\n});\n\nInfraDiagram.define(\"canvas/edit-mode\", [\"ui/core\", \"ui/init\", \"canvas/model\", \"canvas/zoom-pan\"], function (core, init, model, zoomPan) {\n  var svg = core.svg, els = core.els, $ = core.$, state = model.state, base = model.base, fit = zoomPan.fit;\n  var GRID = 5;\n  var drag = null, frame = 0;\n  var KEY = \"layout-draft:\" + hash(JSON.stringify(base) + svg.textContent.replace(/\\s+/g, \" \"));\n\n  function hash(s) {\n    var h = 5381;\n    for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;\n    return h.toString(36);\n  }\n\n  function loadDraft() {\n    if (window.InfraDiagramFileBacked) return null;\n    try {\n      var d = JSON.parse(core.lsGet(KEY));\n      if (d && d.nodes && d.clusters && d.edges) return d;\n    } catch (e) {}\n    return null;\n  }\n  function saveDraft() { if (!window.InfraDiagramFileBacked) core.lsSet(KEY, JSON.stringify(state.st)); }\n\n  function toJson(s) {\n    return JSON.stringify(s, null, 2) + \"\\n\";\n  }\n\n  function currentLayout() { return model.clone(state.on ? state.st : base); }\n  function isDirty() { return state.on && JSON.stringify(state.st) !== JSON.stringify(base); }\n  function commit(saved) {\n    Object.keys(base).forEach(function (k) { delete base[k]; });\n    Object.assign(base, model.clone(saved));\n    core.lsDel(KEY);\n    state.st = model.clone(base);\n    model.render(base);\n    say(\"Saved\");\n  }\n\n  function say(msg) {\n    var m = $(\"tm\");\n    m.textContent = msg;\n    setTimeout(function () { if (m.textContent === msg) m.textContent = \"\"; }, 2500);\n  }\n\n  function copy() {\n    core.clipboard(toJson(state.st), function (ok) { say(ok ? \"Copied\" : \"Copy failed, use Download\"); });\n  }\n  function download() {\n    core.save(new Blob([toJson(state.st)], { type: \"application/json\" }), \"layout.json\");\n  }\n  function reset() {\n    state.st = model.clone(base);\n    core.lsDel(KEY);\n    model.render(state.st);\n    fit();\n    say(\"Reset\");\n  }\n\n  function mark(flag) {\n    model.each(function (key, idxs) {\n      idxs.forEach(function (i) {\n        if (flag) els[i].setAttribute(\"data-e\", key); else els[i].removeAttribute(\"data-e\");\n      });\n    });\n  }\n\n  function setMode(flag) {\n    if (!flag && window.InfraDiagramFileBacked && isDirty()) {\n      say(\"Save or Reset your layout before leaving edit mode\");\n      return;\n    }\n    state.on = flag;\n    $(\"ta\").setAttribute(\"data-on\", flag ? \"1\" : \"0\");\n    $(\"te\").setAttribute(\"aria-pressed\", flag ? \"true\" : \"false\");\n    $(\"tx\").hidden = !flag;\n    svg.classList.toggle(\"edit\", flag);\n    mark(flag);\n    init.editChanged(flag);\n    if (flag) state.st = loadDraft() || model.clone(base);\n    model.render(flag ? state.st : base);\n    fit();\n  }\n\n  function origin(s, key) {\n    var t = key.charAt(0), id = key.slice(2);\n    return (t === \"c\" ? s.clusters : s.nodes)[id];\n  }\n\n  svg.addEventListener(\"pointerdown\", function (e) {\n    if (!state.on || e.button > 0) return;\n    var t = e.target.closest && e.target.closest(\"[data-e]\");\n    if (!t) return;\n    e.preventDefault();\n    var p = model.point(e);\n    drag = { key: t.getAttribute(\"data-e\"), x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };\n    try { svg.setPointerCapture(e.pointerId); } catch (x) {}\n  });\n\n  svg.addEventListener(\"pointermove\", function (e) {\n    if (!drag || e.pointerId !== drag.id) return;\n    var p = model.point(e);\n    var dx = Math.round(p.x - drag.x), dy = Math.round(p.y - drag.y);\n    if ($(\"ts\").checked && !e.shiftKey) {\n      var o = origin(drag.from, drag.key);\n      dx = Math.round((o.x + dx) / GRID) * GRID - o.x;\n      dy = Math.round((o.y + dy) / GRID) * GRID - o.y;\n    }\n    state.st = model.apply(drag.from, drag.key, dx, dy);\n    // Routing runs once per frame, not per pointer event.\n    if (!frame) frame = requestAnimationFrame(function () { frame = 0; model.render(state.st); });\n  });\n\n  function end(e) {\n    if (!drag || e.pointerId !== drag.id) return;\n    drag = null;\n    saveDraft();\n    fit();\n  }\n  svg.addEventListener(\"pointerup\", end);\n  svg.addEventListener(\"pointercancel\", end);\n\n  $(\"te\").addEventListener(\"click\", function () { setMode(!state.on); });\n  $(\"tc\").addEventListener(\"click\", copy);\n  $(\"td\").addEventListener(\"click\", download);\n  $(\"tr\").addEventListener(\"click\", reset);\n\n  if (/[?&]debug(=|&|$)/.test(location.search)) setMode(true);\n  init.init({ getState: function () { return state.on ? state.st : base; }, isEdit: function () { return state.on; }, fit: fit });\n\n  return { currentLayout: currentLayout, isDirty: isDirty, commit: commit };\n});"};
+// Folder handles remain in this tab; model and geometry never leave the browser.
+const openButton = document.querySelector("#open");
+const select = document.querySelector("#diagram");
+const reloadButton = document.querySelector("#reload");
+const saveButton = document.querySelector("#save");
+const status = document.querySelector("#status");
+const frame = document.querySelector("#view");
+let folder = null, active = null, ready = false, busy = false;
+const editor = () => ready && frame.contentWindow.InfraDiagram?.modules["canvas/edit-mode"];
+const dirty = () => editor()?.isDirty() || false;
+function message(text, error = false) { status.textContent = text; status.classList.toggle("error", error); }
+function controls() {
+  frame.inert = busy;
+  openButton.disabled = busy; select.disabled = busy || !folder;
+  reloadButton.disabled = busy || !active; saveButton.disabled = busy || !ready;
+}
+function discard() { return !dirty() || window.confirm("Discard unsaved layout changes?"); }
+async function layoutText(dir, name) {
+  try { return await (await (await dir.getFileHandle(name)).getFile()).text(); }
+  catch (e) { if (e.name === "NotFoundError") return null; throw e; }
+}
+async function load(dir, filename) {
+  const source = await (await (await dir.getFileHandle(filename)).getFile()).text();
+  const layoutName = filename.replace(/\.toml$/i, ".layout.json");
+  const text = await layoutText(dir, layoutName);
+  let saved = null;
+  if (text !== null) { try { saved = JSON.parse(text); } catch (e) { throw new Error(layoutName + ": invalid JSON: " + e.message); } }
+  const result = require("browser/render.mjs").renderDiagram(source, filename, saved, ASSETS);
+  // Replace the view only after both the model and saved geometry are accepted.
+  ready = false;
+  active = { filename, layoutName, text, id: result.id, folder: dir };
+  frame.srcdoc = result.html;
+  document.querySelector("#welcome").hidden = true;
+  frame.hidden = false;
+  message(`${filename} · ${text === null ? "Automatically arranged" : "Saved layout restored"}${result.problems ? " · Open Edit layout to resolve highlighted spacing" : ""}`);
+}
+frame.addEventListener("load", () => {
+  if (!active) return;
+  ready = !!frame.contentWindow.InfraDiagram?.modules["canvas/edit-mode"];
+  if (!ready) message("The diagram could not start. Reload it to retry.", true);
+  controls();
+});
+openButton.addEventListener("click", async () => {
+  if (!discard()) return;
+  busy = true; controls();
+  try {
+    const chosen = await window.showDirectoryPicker({ id: "infra-diagrams", mode: "readwrite" });
+    const files = [];
+    for await (const [name, handle] of chosen.entries()) if (handle.kind === "file" && /\.toml$/i.test(name)) files.push(name);
+    files.sort((a, b) => a.localeCompare(b));
+    if (!files.length) throw new Error("This folder contains no TOML files. Choose the folder containing your diagram.");
+    await load(chosen, files[0]);
+    folder = chosen;
+    select.replaceChildren(...files.map((name) => { const o = document.createElement("option"); o.value = name; o.textContent = name; return o; }));
+    select.value = files[0];
+  } catch (e) { if (e.name !== "AbortError") message(e.message, true); }
+  finally { busy = false; controls(); }
+});
+select.addEventListener("change", async () => {
+  if (!discard()) { select.value = active.filename; return; }
+  busy = true; controls();
+  try { await load(folder, select.value); }
+  catch (e) { select.value = active.filename; message(e.message, true); }
+  finally { busy = false; controls(); }
+});
+reloadButton.addEventListener("click", async () => {
+  if (!discard()) return;
+  busy = true; controls();
+  try { await load(active.folder, active.filename); }
+  catch (e) { message(e.message, true); }
+  finally { busy = false; controls(); }
+});
+saveButton.addEventListener("click", async () => {
+  const api = editor(); if (!api) return;
+  busy = true; controls();
+  try {
+    // Request permission from this top-level click, before any asynchronous file reads.
+    if (await active.folder.requestPermission({ mode: "readwrite" }) !== "granted") throw new Error("Folder write permission was denied. Your edits are still open.");
+    if (await layoutText(active.folder, active.layoutName) !== active.text) throw new Error("The layout file changed on disk. Save was stopped to preserve it. Download your edits or reload the diagram.");
+    const layout = api.currentLayout();
+    const text = JSON.stringify({ version: 1, diagramId: active.id, ...layout }, null, 2) + "\n";
+    const handle = await active.folder.getFileHandle(active.layoutName, { create: true });
+    const writer = await handle.createWritable();
+    try { await writer.write(text); await writer.close(); }
+    catch (e) { try { await writer.abort(); } catch (_) {} throw e; }
+    active.text = text;
+    api.commit(layout);
+    message(`Saved ${active.layoutName} beside ${active.filename}`);
+  } catch (e) { message("Save failed: " + e.message, true); }
+  finally { busy = false; controls(); }
+});
+window.addEventListener("beforeunload", (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
+if (!window.isSecureContext || !window.showDirectoryPicker) {
+  openButton.disabled = true;
+  message("Open this page in desktop Edge or Chrome. If folder access is unavailable, run node engine/serve.mjs and open its localhost address.", true);
+}
+</script></body></html>

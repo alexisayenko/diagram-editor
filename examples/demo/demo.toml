@@ -1,0 +1,97 @@
+# Synthetic demo only: invented names and RFC 5737 addresses.
+id = "demo-toml"
+title = "Demo infrastructure"
+
+[[regions]]
+id = "web"
+title = "Web Servers"
+server_type = "web"
+
+[[regions]]
+id = "app"
+title = "Application Servers"
+server_type = "application"
+
+[[regions]]
+id = "db"
+title = "Database Cluster"
+server_type = "oracle"
+
+[[regions]]
+id = "cache"
+title = "Cache Servers"
+server_type = "cache"
+proposed = true
+
+[[servers]]
+id = "web01"
+name = "web-01.example.test"
+region = "web"
+services = ["nginx reverse proxy", "Customer portal"]
+ips = ["203.0.113.10/24", "192.0.2.10/24"]
+os = "Ubuntu 24.04"
+
+[[servers]]
+id = "app01"
+name = "app-01.example.test"
+region = "app"
+services = ["Tomcat: demo-api", "Job 104 batch import"]
+ips = ["192.0.2.31/24"]
+os = "Ubuntu 20.04"
+details = "Synthetic application server.\n\nRuns the demo API and scheduled import."
+
+[[servers]]
+id = "app02"
+name = "app-02.example.test"
+region = "app"
+services = ["Tomcat: demo-api"]
+ips = ["192.0.2.32/24"]
+
+[[servers]]
+id = "db01"
+name = "db-01.example.test"
+region = "db"
+services = ["Oracle RAC node 1", "SID demo1"]
+ips = ["192.0.2.41/24"]
+
+[[servers]]
+id = "db02"
+name = "db-02.example.test"
+region = "db"
+services = ["Oracle RAC node 2", "SID demo2"]
+ips = ["192.0.2.42/24"]
+
+[[servers]]
+id = "stats01"
+name = "stats-01.example.test"
+server_type = "statistics"
+services = ["Grafana dashboards"]
+ips = ["198.51.100.150/25"]
+
+[[connections]]
+from = "web01"
+to = "app01"
+label = "TCP · HTTPS"
+firewall = true
+
+[[connections]]
+from = "app01"
+to = "db01"
+label = "TCP · SQL*Net · Job 104"
+from_service = "Job 104"
+
+[[connections]]
+from = "app02"
+to = "db"
+label = "TCP · SQL*Net"
+
+[[connections]]
+from = "stats01"
+to = "app"
+label = "TCP · metrics"
+
+[[connections]]
+from = "app02"
+to = "cache"
+label = "TCP · proposed cache"
+proposed = true
