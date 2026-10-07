@@ -37,7 +37,7 @@ const wrap = (s, max) => {
 };
 
 // Excalidraw scene for a diagram: same geometry as the view (fitted boxes, routed connections, label and firewall spots).
-export function renderExcalidraw({ config, model, layout, meta, routes, ent, typeList, typeColors, notes, edgeLabels, viewBox }) {
+export function renderExcalidraw({ config, model, layout, meta, routes, ent, typeList, typeColors, notes, edgeLabels, viewBox, drawings = [] }) {
   const kit = geometryKit();
   const els = [];
   const byId = {};
@@ -278,6 +278,13 @@ export function renderExcalidraw({ config, model, layout, meta, routes, ent, typ
     const original = [n.title, "", n.paras.join("\n\n"), "", n.date].join("\n");
     text("note:" + i + ":text", lines.join("\n"), { container: sticky, x: nx + 5, top: ny + 5, fs, original });
     ny += h + 14;
+  });
+
+  drawings.forEach((s) => {
+    const [x0, y0] = s.points[0], rel = s.points.map(([x, y]) => [r1(x - x0), r1(y - y0)]);
+    const xs = rel.map((p) => p[0]), ys = rel.map((p) => p[1]);
+    const el = base("draw:" + s.id, "freedraw", x0, y0, Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), { stroke: s.color, sw: s.width });
+    Object.assign(el, { points: rel, pressures: [], simulatePressure: true, lastCommittedPoint: null });
   });
 
   return JSON.stringify({ type: "excalidraw", version: 2, source: "diagram-editor", elements: els, appState: { viewBackgroundColor: "#ffffff", gridSize: null }, files: {} }, null, 2) + "\n";

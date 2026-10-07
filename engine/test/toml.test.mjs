@@ -34,7 +34,7 @@ test("fresh demo auto-layout is valid, deterministic and non-overlapping", () =>
   assert.deepEqual(a.layout, b.layout);
   assert.deepEqual(a.kit.problems(a.layout, a.meta), {});
   validateGeometry(a.model, a.layout, a.meta);
-  assert.equal(a.model.nodes.size, 6);
+  assert.equal(a.model.nodes.size, 7);
   assert.equal(a.model.clusters.size, 4);
   assert.equal(a.meta.edges.find((e) => e.k === "app01>db01").fl, 1);
 });
@@ -72,8 +72,8 @@ test("browser bundle uses the real renderer and embeds text safely", () => {
 });
 test("browser app dirty check is safe before a diagram is ready", () => {
   const app = readFileSync(new URL("../browser/app.js", import.meta.url), "utf8");
-  const src = app.split("\n").filter((l) => /^const (editor|notesApi|dirty) = /.test(l)).join("\n");
-  const check = (ready, mods) => runInNewContext(src + "\ndirty()", { ready, frame: { contentWindow: { InfraDiagram: { modules: mods } } } });
+  const src = app.split("\n").filter((l) => /^const (editor|notesApi|serverApi|drawApi|unsaved|dirty) = /.test(l)).join("\n");
+  const check = (ready, mods) => runInNewContext("let active = null;\n" + src + "\ndirty()", { ready, frame: { contentWindow: { InfraDiagram: { modules: mods } } } });
   assert.equal(check(false, {}), false);
   assert.equal(check(true, {}), false);
   assert.equal(check(true, { "canvas/edit-mode": { isDirty: () => true } }), true);

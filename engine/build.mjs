@@ -20,6 +20,7 @@ import { buildDataJson } from "./page/data.mjs";
 import { renderLayoutHtml } from "./page/layout-html.mjs";
 import { renderIndexHtml } from "./page/index-html.mjs";
 import { checkConnections, parseConfig } from "./parse/config.mjs";
+import { drawKit } from "./render/draw-kit.mjs";
 import { renderExcalidraw } from "./export/excalidraw.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -35,6 +36,8 @@ const config = parseConfig(read("diagram.json"), dir);
 const mmd = read("diagram.mmd");
 const details = read("details.md");
 const layout = parseLayout(read("layout.json"));
+const drawings = drawKit().validate(layout.drawings);
+delete layout.drawings;
 const notes = parseNotes(read("notes.md"));
 const docs = parseDocuments(read("documents.md"));
 const model = parseMmd(mmd);
@@ -59,19 +62,20 @@ const html = renderLayoutHtml({
   cssPage: css("page"),
   viewBox,
   svgBody,
+  drawings,
   markers: groupKit.markers,
   edgeKeyHtml: edgeKeys.html,
   notes,
   docs,
   nets,
-  dataJson: buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes, nets, ipNet, edgeKeyRows: edgeKeys.rows }),
+  dataJson: buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes, nets, ipNet, edgeKeyRows: edgeKeys.rows, drawings }),
   js: script(),
 });
 
 const outputs = {
   "layout.html": html,
   "index.html": renderIndexHtml({ title: config.title, mmd, details, notes, edgeKinds: edgeKeys.kinds }),
-  [config.id + ".excalidraw"]: renderExcalidraw({ config, model, layout, meta, routes, ent, typeList, typeColors, notes, edgeLabels: config.edgeLabels, viewBox }),
+  [config.id + ".excalidraw"]: renderExcalidraw({ config, model, layout, meta, routes, ent, typeList, typeColors, notes, edgeLabels: config.edgeLabels, viewBox, drawings }),
 };
 const names = Object.keys(outputs).join(", ");
 if (check) {

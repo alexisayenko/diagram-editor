@@ -19,6 +19,7 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels"], func
   }
 
   function select(key) {
+    if (core.hooks.beforeSelect && core.hooks.beforeSelect(key) === false) return;
     ctx.sel = key;
     var B = key ? related(key) : null;
     core.ents.forEach(function (el) {

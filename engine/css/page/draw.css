@@ -1,0 +1,21 @@
+#dtl{position:relative;display:inline-flex;gap:6px}
+#dtg,#dtc{display:inline-flex}
+#dtg button,#dtc button{border-radius:0;margin-left:-1px}
+#dtg button:first-child,#dtc button:first-child{border-radius:4px 0 0 4px;margin-left:0}
+#dtg button:last-child,#dtc button:last-child{border-radius:0 4px 4px 0}
+#dtg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+#ta #dtc button:disabled{opacity:.4;cursor:default}
+#dpo{position:absolute;top:100%;left:0;margin-top:4px;display:flex;gap:4px;align-items:center;padding:5px 6px;border:1px solid var(--fg);border-radius:4px;background:var(--panel);z-index:6}
+#dpo[hidden]{display:none}
+#ta #dpo button{padding:0;display:inline-flex;align-items:center;justify-content:center}
+#ta .dpc{width:18px;height:18px;border-radius:50%;background:var(--c);border-color:transparent}
+#ta .dpw{width:26px;height:18px;border-color:transparent}
+#ta .dpw i{display:block;width:16px;background:var(--fg);border-radius:2px}
+#ta #dpo button[aria-pressed="true"]{outline:2px solid var(--fg);outline-offset:1px}
+#dpo .dpw+.dpc,#dpo .dpc+.dpw{margin-left:6px}
+#dw{pointer-events:none}
+.dwp{pointer-events:none}
+.dwp.hot{opacity:.35}
+svg.draw-pencil,svg.draw-pencil *{cursor:crosshair!important}
+svg.draw-eraser,svg.draw-eraser *{cursor:cell!important}
+svg.draw-pencil,svg.draw-eraser{touch-action:none;user-select:none}

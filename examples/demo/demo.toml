@@ -6,6 +6,12 @@ notes = [
   "Cache tier proposed\nThe cache region is empty on purpose; app-02 would move lookups there.",
 ]
 
+[[server_types]]
+id = "batch"
+label = "Batch Server"
+color = "#00796B"
+dark = "#4DB6AC"
+
 [[regions]]
 id = "web"
 title = "Web Servers"
@@ -34,6 +40,10 @@ region = "web"
 services = ["nginx reverse proxy", "Customer portal"]
 ips = ["203.0.113.10/24", "192.0.2.10/24"]
 os = "Ubuntu 24.04"
+hardware = "4 vCPU, 8 GB RAM (invented VM)"
+role = "Reverse proxy"
+dns = ["portal.example.test", "www.example.test"]
+systemd_services = ["nginx", "demo-agent"]
 
 [[servers]]
 id = "app01"
@@ -43,6 +53,10 @@ services = ["Tomcat: demo-api", "Job 104 batch import"]
 ips = ["192.0.2.31/24"]
 os = "Ubuntu 20.04"
 details = "Synthetic application server.\n\nRuns the demo API and scheduled import."
+role = "Demo API and batch import"
+jobs = ["Job 104 batch import", "Job 210 nightly report"]
+rmi_services = ["DemoQuoteService", "DemoOrderService"]
+systemd_services = ["tomcat-demo"]
 
 [[servers]]
 id = "app02"
@@ -71,6 +85,18 @@ name = "stats-01.example.test"
 server_type = "statistics"
 services = ["Grafana dashboards"]
 ips = ["198.51.100.150/25"]
+
+[[servers]]
+id = "batch01"
+name = "batch-01.example.test"
+server_type = "batch"
+services = ["Job runner"]
+ips = ["192.0.2.60/24"]
+os = "Debian 12"
+hardware = "2 vCPU, 4 GB RAM (invented VM)"
+role = "Scheduled jobs"
+jobs = ["Job 301 archive sweep"]
+systemd_services = ["demo-scheduler"]
 
 [[connections]]
 from = "web01"

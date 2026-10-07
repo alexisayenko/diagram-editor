@@ -2,20 +2,21 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fail, readText } from "../lib/util.mjs";
 import { geometryKit } from "../render/geometry.mjs";
+import { drawKit } from "../render/draw-kit.mjs";
 
 const ENGINE = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 // CSS order is the cascade order.
 const CSS = {
   svg: ["tokens", "base", "export", "edges", "chrome", "clean", "dark", "swiss", "os", "groups"].map((f) => `css/svg/${f}.css`),
-  page: ["base", "toolbar", "interaction", "legend", "details", "panels"].map((f) => `css/page/${f}.css`),
+  page: ["base", "toolbar", "draw", "interaction", "legend", "details", "panels"].map((f) => `css/page/${f}.css`),
 };
 // Runtime modules in load order; a module may only depend on modules listed before it.
 // "canvas/geometry" is generated from render/geometry.mjs (geometryKit) so build and edit mode route connections identically.
 const RUNTIME = [
   "ui/core", "ui/details", "ui/skins", "ui/panels", "ui/networks", "ui/legend", "ui/selection",
-  "ui/export-columns", "ui/copy", "ui/export-image", "ui/init", "ui/notes-edit",
-  "canvas/geometry", "canvas/model", "canvas/zoom-pan", "canvas/edit-mode",
+  "ui/export-columns", "ui/copy", "ui/export-image", "ui/init", "ui/notes-edit", "ui/server-edit",
+  "canvas/geometry", "canvas/draw-kit", "canvas/model", "canvas/zoom-pan", "canvas/draw", "canvas/edit-mode",
 ];
 
 const load = (f) => readText(join(ENGINE, f));
@@ -24,10 +25,14 @@ export const css = (group) => CSS[group].map(load).join("").trim();
 
 const paramName = (mod) => mod.split("/").pop().replace(/-(\w)/g, (_, c) => c.toUpperCase());
 
-const geometrySource = () =>
-  'InfraDiagram.define("canvas/geometry", [], function () {\n  var kit = (' +
-  geometryKit.toString().split("\n").map((l, i) => (l && i ? "  " + l : l)).join("\n") +
-  ")();\n\n  return { boxExtent: kit.boxExtent, fitBox: kit.fitBox, fitRegion: kit.fitRegion, route: kit.route, problems: kit.problems };\n});";
+const kitSource = (name, fn, names) =>
+  `InfraDiagram.define("${name}", [], function () {\n  var kit = (` +
+  fn.toString().split("\n").map((l, i) => (l && i ? "  " + l : l)).join("\n") +
+  `)();\n\n  return { ${names.map((n) => `${n}: kit.${n}`).join(", ")} };\n});`;
+const GENERATED = {
+  "canvas/geometry": { fn: geometryKit, file: "engine/render/geometry.mjs (geometryKit)", names: ["boxExtent", "fitBox", "fitRegion", "route", "problems"] },
+  "canvas/draw-kit": { fn: drawKit, file: "engine/render/draw-kit.mjs (drawKit)", names: ["decimate", "smoothPath", "distToStroke", "hits", "hitIndex", "history", "validate", "pathMarkup", "markup", "newId"] },
+};
 
 // Each module file is exactly: InfraDiagram.define("<name>", [deps], function (<params>) { ... return { exports }; });
 function parseModule(name, src, file) {
@@ -71,8 +76,8 @@ function checkModules(mods) {
 
 // One <script> body: the define() loader, then every module in RUNTIME order.
 export function script() {
-  const src = (name) => (name === "canvas/geometry" ? geometrySource() : load(`runtime/${name}.js`).trim());
-  const file = (name) => (name === "canvas/geometry" ? "engine/render/geometry.mjs (geometryKit)" : `engine/runtime/${name}.js`);
+  const src = (name) => (GENERATED[name] ? kitSource(name, GENERATED[name].fn, GENERATED[name].names) : load(`runtime/${name}.js`).trim());
+  const file = (name) => (GENERATED[name] ? GENERATED[name].file : `engine/runtime/${name}.js`);
   const mods = RUNTIME.map((name) => parseModule(name, src(name), file(name)));
   checkModules(mods);
   return [load("runtime/define.js").trim(), ...mods.map((m) => m.src)].join("\n\n");

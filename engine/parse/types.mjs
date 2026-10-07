@@ -1,20 +1,34 @@
 import { fail } from "../lib/util.mjs";
 
-const TYPES = {
-  web: { label: "Web Server", dark: "#F28FB0" },
-  application: { label: "Application Server", dark: "#7DB6F2" },
-  interface: { label: "Internal Interface Server", dark: "#4DD0E1" },
-  external: { label: "External Interface Server", dark: "#C39BE8" },
-  cache: { label: "Cache Server", dark: "#E6D36A" },
-  oracle: { label: "Oracle Database Server", dark: "#F2B24C" },
-  mongo: { label: "Mongo Database Server", dark: "#6FD3A0" },
-  nas: { label: "NAS", dark: "#B0BEC5", infra: true },
-  statistics: { label: "Statistics Server", dark: "#D7B8A8", infra: true },
+const BUILT_IN = {
+  web: { label: "Web Server", color: "#C2185B", dark: "#F28FB0" },
+  application: { label: "Application Server", color: "#1565C0", dark: "#7DB6F2" },
+  interface: { label: "Internal Interface Server", color: "#00838F", dark: "#4DD0E1" },
+  external: { label: "External Interface Server", color: "#7E57C2", dark: "#C39BE8" },
+  cache: { label: "Cache Server", color: "#B8860B", dark: "#E6D36A" },
+  oracle: { label: "Oracle Database Server", color: "#E65100", dark: "#F2B24C", db: true },
+  mongo: { label: "Mongo Database Server", color: "#2E7D32", dark: "#6FD3A0", db: true },
+  nas: { label: "NAS", color: "#546E7A", dark: "#B0BEC5", infra: true },
+  statistics: { label: "Statistics Server", color: "#6D4C41", dark: "#D7B8A8", infra: true },
 };
-for (const t of Object.values(TYPES)) t.tag = t.label.toUpperCase();
 const MODS = new Set(["proposed"]);
+export const RESERVED_TYPES = [...MODS];
 
-export function resolveTypes({ clusters, nodes, classDefs, classes }, layout, proposedLabel) {
+// Built-in types plus the file's [[server_types]]: an entry adds a type or overrides fields of a built-in with the same id.
+export function mergeTypes(custom = []) {
+  const out = {};
+  for (const [k, t] of Object.entries(BUILT_IN)) out[k] = { ...t };
+  for (const c of custom) {
+    const { id, ...fields } = c, prev = out[id] || {};
+    out[id] = { ...prev, ...fields };
+    if (!out[id].dark) out[id].dark = out[id].color;
+  }
+  for (const t of Object.values(out)) t.tag = (t.label || "").toUpperCase();
+  return out;
+}
+
+export function resolveTypes({ clusters, nodes, classDefs, classes, types }, layout, proposedLabel) {
+  const TYPES = mergeTypes(types);
   const typeColors = {};
   for (const [name, def] of classDefs) {
     if (MODS.has(name)) continue;
@@ -24,6 +38,7 @@ export function resolveTypes({ clusters, nodes, classDefs, classes }, layout, pr
     typeColors[name] = m[1];
   }
 
+  if (types) for (const k of Object.keys(TYPES)) typeColors[k] ||= TYPES[k].color;
   const ent = {};
   const typeProblems = [];
   const addEnt = (key, id, base) => {

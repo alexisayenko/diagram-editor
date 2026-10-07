@@ -1,9 +1,18 @@
 // The diagram authoring subset of TOML: scalar keys and top-level arrays of tables.
 // Kept dependency-free and shared by Node tests and the standalone browser page.
 import { parseNotes } from "./notes.mjs";
+import { mergeTypes, RESERVED_TYPES } from "./types.mjs";
+export function ipProblem(ip) {
+  const m = typeof ip === "string" && ip.match(/^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/);
+  return !m || m[1].split(".").some((n) => +n > 255) || +m[2] > 32 ? `invalid IPv4 CIDR '${ip}'` : null;
+}
+export function dnsProblem(name) {
+  const ok = typeof name === "string" && name.length <= 253 && /^[A-Za-z0-9_]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?(\.[A-Za-z0-9_]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?)*\.?$/.test(name);
+  return ok ? null : `invalid host name '${name}'`;
+}
 export function parseToml(src, spans = null) {
   src = src.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
-  let p = 0, table;
+  let p = 0, table, current = null;
   const root = Object.create(null);
   table = root;
   const error = (message) => { throw new Error(`TOML:${src.slice(0, p).split("\n").length}: ${message}`); };
@@ -78,6 +87,7 @@ export function parseToml(src, spans = null) {
       p += m[0].length;
       if (Object.hasOwn(root, m[1]) && !Array.isArray(root[m[1]])) error("table name already used as a key");
       table = Object.create(null); (root[m[1]] ||= []).push(table);
+      if (spans) (spans.tables ||= []).push(current = { name: m[1], start: p - m[0].length, keys: {}, table });
     } else {
       const m = src.slice(p).match(/^([a-z][a-z0-9_]*)[ \t]*=/), start = p;
       if (!m) error("expected key = value");
@@ -87,6 +97,7 @@ export function parseToml(src, spans = null) {
       const valueStart = p;
       table[m[1]] = value();
       if (spans && table === root) { spans.keys[m[1]] = { start, valueStart, valueEnd: p }; keyLine = true; }
+      else if (spans) current.keys[m[1]] = { start, valueStart, valueEnd: p };
     }
     space(false);
     if (p < src.length && src[p] !== "\n") error("unexpected text after value");
@@ -109,8 +120,7 @@ export function parseNoteText(text, at = "note", strict = false) {
   return { ...parseNotes(`## ${head}\n${dated ? "" : "Date: Note\n\n"}${rest.join("\n")}`)[0], text: text.trim() };
 }
 
-const COLORS = { web: "#C2185B", application: "#1565C0", interface: "#00838F", external: "#7E57C2", cache: "#B8860B", oracle: "#E65100", mongo: "#2E7D32", nas: "#546E7A", statistics: "#6D4C41" };
-export function tomlModel(src, filename = "diagram.toml") {
+export function tomlModel(src, filename = "diagram.toml", nets = null) {
   const t = parseToml(src), fail = (m) => { throw new Error("TOML: " + m); };
   function keys(o, allowed, at) {
     const unknown = Object.keys(o).filter((k) => !allowed.includes(k));
@@ -119,9 +129,8 @@ export function tomlModel(src, filename = "diagram.toml") {
   function str(v, at) { if (typeof v !== "string" || !v.trim()) fail(`${at} must be a non-empty string`); return v; }
   function list(v, at) { if (v === undefined) return []; if (!Array.isArray(v) || v.some((s) => typeof s !== "string" || !s.trim())) fail(`${at} must be an array of non-empty strings`); return v; }
   function bool(v, at) { if (v !== undefined && typeof v !== "boolean") fail(`${at} must be true or false`); return v || false; }
-  function type(v, at) { if (!Object.hasOwn(COLORS, v)) fail(`${at}: server_type must be one of ${Object.keys(COLORS).join(", ")}`); return v; }
-  keys(t, ["id", "title", "notes", "regions", "servers", "connections", "documents"], "diagram");
-  for (const key of ["regions", "servers", "connections", "documents"]) {
+  keys(t, ["id", "title", "notes", "server_types", "regions", "servers", "connections", "documents"], "diagram");
+  for (const key of ["server_types", "regions", "servers", "connections", "documents"]) {
     if (t[key] !== undefined && (!Array.isArray(t[key]) || t[key].some((v) => !v || typeof v !== "object" || Array.isArray(v)))) fail(`${key} must use [[${key}]] tables`);
   }
   const id = t.id ?? filename.replace(/\.toml$/i, "");
@@ -138,7 +147,27 @@ export function tomlModel(src, filename = "diagram.toml") {
     if (d.description !== undefined && typeof d.description !== "string") fail(at + ".description must be a string");
     return { title: str(d.title, at + ".title").trim(), url, desc: (d.description || "").trim() };
   });
-  const model = { clusters: new Map(), nodes: new Map(), edges: [], linkStyles: new Map(), classDefs: new Map(), classes: new Map() };
+  const custom = [], customIds = new Set();
+  (t.server_types || []).forEach((d, i) => {
+    const at = "server_types[" + (i + 1) + "]";
+    keys(d, ["id", "label", "color", "dark", "infra", "db"], at);
+    const tid = str(d.id, at + ".id");
+    if (!/^[a-z][a-z0-9-]*$/.test(tid) || RESERVED_TYPES.includes(tid)) fail(`${at}: invalid id '${tid}' (lowercase letters, digits and hyphens; not 'proposed')`);
+    if (customIds.has(tid)) fail(`${at}: duplicate server type '${tid}'`);
+    customIds.add(tid);
+    const entry = { id: tid };
+    if (d.label !== undefined) entry.label = str(d.label, at + ".label").trim();
+    for (const k of ["color", "dark"]) if (d[k] !== undefined) {
+      if (typeof d[k] !== "string" || !/^#[0-9A-Fa-f]{6}$/.test(d[k])) fail(`${at}.${k} must be a #rrggbb colour`);
+      entry[k] = d[k];
+    }
+    for (const k of ["infra", "db"]) if (d[k] !== undefined) entry[k] = bool(d[k], at + "." + k);
+    custom.push(entry);
+  });
+  const TYPES = mergeTypes(custom);
+  for (const c of custom) if (!TYPES[c.id].label || !TYPES[c.id].color) fail(`server_types '${c.id}': a new type needs label and color`);
+  function type(v, at) { if (typeof v !== "string" || !Object.hasOwn(TYPES, v)) fail(`${at}: server_type must be one of ${Object.keys(TYPES).join(", ")}`); return v; }
+  const model = { types: custom, clusters: new Map(), nodes: new Map(), edges: [], linkStyles: new Map(), classDefs: new Map(), classes: new Map() };
   const sections = Object.create(null), used = new Set();
   function entity(o, at) {
     const eid = str(o.id, at + ".id");
@@ -147,7 +176,7 @@ export function tomlModel(src, filename = "diagram.toml") {
   }
   function classes(eid, ty, proposed) {
     model.classes.set(eid, proposed ? [ty, "proposed"] : [ty]);
-    model.classDefs.set(ty, "stroke:" + COLORS[ty]);
+    model.classDefs.set(ty, "stroke:" + TYPES[ty].color);
   }
   for (const r of t.regions || []) {
     keys(r, ["id", "title", "server_type", "proposed"], "region");
@@ -157,23 +186,27 @@ export function tomlModel(src, filename = "diagram.toml") {
   }
   const names = new Set();
   for (const s of t.servers || []) {
-    keys(s, ["id", "name", "server_type", "region", "services", "ips", "os", "details", "proposed"], "server");
+    keys(s, ["id", "name", "server_type", "region", "services", "ips", "os", "details", "proposed", "hardware", "role", "dns", "jobs", "rmi_services", "systemd_services"], "server");
     const eid = entity(s, "server"), cluster = s.region ?? null;
     if (cluster !== null && !model.clusters.has(cluster)) fail(`${eid}: unknown region '${cluster}'`);
     const ty = type(s.server_type ?? (cluster && (t.regions || []).find((r) => r.id === cluster).server_type), eid);
     const ips = list(s.ips, eid + ".ips");
     for (const ip of ips) {
-      const m = ip.match(/^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/);
-      if (!m || m[1].split(".").some((n) => +n > 255) || +m[2] > 32) fail(`${eid}: invalid IPv4 CIDR '${ip}'`);
+      const problem = ipProblem(ip);
+      if (problem) fail(`${eid}: ${problem}`);
     }
     const title = str(s.name ?? eid, eid + ".name");
     if (names.has(title)) fail(`${eid}: duplicate server name '${title}'`);
     names.add(title);
-    model.nodes.set(eid, { id: eid, title, cluster, db: ty === "oracle" || ty === "mongo", body: list(s.services, eid + ".services"), ip: ips });
+    model.nodes.set(eid, { id: eid, title, cluster, db: !!TYPES[ty].db, body: list(s.services, eid + ".services"), ip: ips });
     classes(eid, ty, bool(s.proposed, eid + ".proposed"));
-    if (s.os !== undefined) str(s.os, eid + ".os");
+    for (const k of ["os", "hardware", "role"]) if (s[k] !== undefined) str(s[k], eid + "." + k);
     if (s.details !== undefined && typeof s.details !== "string") fail(`${eid}.details must be a string`);
-    sections[title] = (s.os ? `| Key | Value |\n|---|---|\n| OS | ${s.os} |\n\n` : "") + (s.details || "");
+    const dns = list(s.dns, eid + ".dns"), jobs = list(s.jobs, eid + ".jobs"), rmi = list(s.rmi_services, eid + ".rmi_services"), units = list(s.systemd_services, eid + ".systemd_services");
+    for (const name of dns) { const problem = dnsProblem(name); if (problem) fail(`${eid}: ${problem}`); }
+    const rows = [["OS", s.os], ["Hardware", s.hardware], ["Role", s.role]].filter(([, v]) => v).map(([k, v]) => `| ${k} | ${v.replace(/\|/g, "/")} |`);
+    const block = (head, items) => items.length ? `## ${head}\n\n${items.map((i) => "- " + i).join("\n")}\n\n` : "";
+    sections[title] = (rows.length ? `| Key | Value |\n|---|---|\n${rows.join("\n")}\n\n` : "") + block("IPs", nets ? ips.map((ip) => `${ip} — ${nets.of(ip)?.name ?? "unassigned network"}`) : ips) + block("DNS", dns) + block("Jobs", jobs) + block("RMI services", rmi) + block("systemd services", units) + (s.details || "");
   }
   if (!model.nodes.size && !model.clusters.size && !docs.length && !notes.length) fail("define at least one server, region, document or note");
   const edgeIds = new Set();

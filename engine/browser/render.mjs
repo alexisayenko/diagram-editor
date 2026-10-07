@@ -1,10 +1,12 @@
 import { tomlModel } from "../parse/toml.mjs";
+import { assignNetwork, buildNetworks } from "../parse/shared-networks.mjs";
 import { parseConfig, checkConnections } from "../parse/config.mjs";
 import { resolveTypes } from "../parse/types.mjs";
 import { osOf } from "../parse/details.mjs";
 import { osInfo } from "../parse/os-eol.mjs";
 import { edgeKey } from "../parse/mmd.mjs";
 import { geometryKit, geometryMeta } from "../render/geometry.mjs";
+import { drawKit } from "../render/draw-kit.mjs";
 import { autoLayoutKit } from "../render/auto-layout.mjs";
 import { renderSvgBody } from "../render/svg.mjs";
 import { computeViewBox } from "../render/viewbox.mjs";
@@ -13,8 +15,9 @@ import { buildDataJson } from "../page/data.mjs";
 import { renderLayoutHtml } from "../page/layout-html.mjs";
 
 // Restore positions by stable object id; prune removed objects and refresh text geometry.
-export function prepareDiagram(source, filename, saved = null) {
-  const { config: raw, model, sections, notes, docs } = tomlModel(source, filename);
+export function prepareDiagram(source, filename, saved = null, refit = [], networks = null) {
+  const nets = networks && { of: (ip) => networks[assignNetwork(networks, ip)] ?? null };
+  const { config: raw, model, sections, notes, docs } = tomlModel(source, filename, nets);
   const config = parseConfig(JSON.stringify(raw), raw.id);
   checkConnections(config, model.edges.map(edgeKey), model.nodes);
   const meta = geometryMeta(model, config.groups, config.processes), kit = geometryKit();
@@ -37,7 +40,7 @@ export function prepareDiagram(source, filename, saved = null) {
     if (!g) continue;
     if (![g.x, g.y, g.w, g.h].every(Number.isFinite) || g.w <= 0 || g.h <= 0 || !point(g.title)) throw new Error(`Invalid saved server geometry: ${id}`);
     // Text positions depend on the current services, preserving the server's position.
-    layout.nodes[id] = { x: g.x, y: g.y, w: g.w, h: Math.max(g.h, 20 + 16 * n.body.length + 18 * n.ip.length), title: g.title.slice(),
+    layout.nodes[id] = { x: g.x, y: g.y, w: refit.includes(id) ? 0 : g.w, h: refit.includes(id) ? 20 + 16 * n.body.length + 18 * n.ip.length : Math.max(g.h, 20 + 16 * n.body.length + 18 * n.ip.length), title: g.title.slice(),
       body: n.body.map((_, i) => [g.x + 10, g.y + 18 + 16 * i]), ip: n.ip.map((_, i) => [g.x + 10, g.y + 22 + 16 * n.body.length + 18 * i]) };
   }
   for (const e of model.edges) {
@@ -55,19 +58,21 @@ export function prepareDiagram(source, filename, saved = null) {
   autoLayoutKit(kit).fill(layout, meta);
   for (const id of model.nodes.keys()) kit.fitBox(layout.nodes[id], meta.nodes[id]);
   for (const id of model.clusters.keys()) kit.fitRegion(layout, meta, id);
-  return { config, model, sections, notes, docs, meta, layout, kit };
+  const drawings = drawKit().validate(saved?.drawings);
+  return { config, model, sections, notes, docs, meta, layout, kit, drawings };
 }
 
-export function renderDiagram(source, filename, saved, assets) {
-  const { config, model, sections, notes, docs, meta, layout, kit } = prepareDiagram(source, filename, saved);
+export function renderDiagram(source, filename, saved, assets, refit = [], networks = null) {
+  const { config, model, sections, notes, docs, meta, layout, kit, drawings } = prepareDiagram(source, filename, saved, refit, networks);
+  const { nets, ipNet } = networks ? buildNetworks(networks, model, layout) : { nets: null, ipNet: {} };
   const routes = kit.route(layout, meta);
   const { ent, typeList, typeCss } = resolveTypes(model, layout, config.proposedLabel);
   for (const n of model.nodes.values()) ent["n:" + n.id].os = osInfo(osOf(sections[n.title]));
-  const { body: svgBody, idx } = renderSvgBody(model, layout, ent, null, {}, routes, config.groups, meta);
+  const { body: svgBody, idx } = renderSvgBody(model, layout, ent, nets, ipNet, routes, config.groups, meta);
   const edgeKeys = buildEdgeKey(model, config.edgeLabels, config.groups), groupKit = groupAssets(config.groups);
   const viewBox = computeViewBox(model, layout, routes);
-  const dataJson = buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes, nets: null, ipNet: {}, edgeKeyRows: edgeKeys.rows });
+  const dataJson = buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes, nets, ipNet, edgeKeyRows: edgeKeys.rows, drawings });
   const html = renderLayoutHtml({ title: config.title, cssSvg: assets.cssSvg + "\n" + typeCss + groupKit.css, cssPage: assets.cssPage,
-    viewBox, svgBody, markers: groupKit.markers, edgeKeyHtml: edgeKeys.html, notes, docs, nets: null, dataJson, js: assets.js });
+    viewBox, svgBody, drawings, markers: groupKit.markers, edgeKeyHtml: edgeKeys.html, notes, docs, nets, dataJson, js: assets.js });
   return { html, layout, id: config.id, notes: notes.map((n) => n.text), problems: Object.keys(kit.problems(layout, meta)).length };
 }

@@ -19,8 +19,8 @@ test("file names: strict allowlist", () => {
 test("export names carry a timestamp and keep the original name", () => {
   const d = new Date(2026, 9, 7, 14, 30, 12);
   assert.equal(stamp(d), "20261007-143012");
-  assert.deepEqual(exportNames("evd.toml", d), { toml: "evd-20261007-143012.toml", layout: "evd-20261007-143012.layout.json" });
-  assert.equal(layoutNameFor("evd.toml"), "evd.layout.json");
+  assert.deepEqual(exportNames("demo.toml", d), { toml: "demo-20261007-143012.toml", layout: "demo-20261007-143012.layout.json" });
+  assert.equal(layoutNameFor("demo.toml"), "demo.layout.json");
 });
 
 test("write, list and read; the folder is created on first write; no temp files remain", () => {

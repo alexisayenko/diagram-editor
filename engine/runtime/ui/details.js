@@ -110,6 +110,7 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
     if (key.charAt(0) === "n") osRow(pn, e.os);
     netButtons(pn);
     pn.setAttribute("data-ty", e.ty);
+    if (core.hooks.panel) core.hooks.panel(key, pn);
   }
 
   return { md: md, renderPanel: renderPanel };

@@ -1,0 +1,23 @@
+# Synthetic shared networks: RFC 5737 and RFC 3849 documentation ranges only.
+# Copy to local/networks.toml (beside your diagrams) to use it with every diagram.
+
+[[networks]]
+cidr = "192.0.2.0/24"
+name = "Demo LAN"
+description = "Application and database servers"
+
+[[networks]]
+cidr = "192.0.2.40/29"
+name = "Demo database segment"
+
+[[networks]]
+cidr = "203.0.113.0/24"
+name = "Demo DMZ"
+
+[[networks]]
+cidr = "198.51.100.128/25"
+name = "Demo monitoring"
+
+[[networks]]
+cidr = "2001:db8::/32"
+name = "Demo IPv6 lab"
