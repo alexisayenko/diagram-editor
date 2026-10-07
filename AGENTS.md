@@ -5,6 +5,14 @@ Mirror of CLAUDE.md — keep identical.
 Fast-path context for Claude Code. Full human-oriented docs:
 [docs/](docs/). `AGENTS.md` mirrors this file; both are kept in step.
 
+## Never commit infrastructure data (hard rule)
+
+> This repo is a generic, agnostic diagram editor. Never commit data about specific infrastructure: real hostnames, domains, IPs/CIDRs, VLAN/subnet IDs, cluster/account/tenant names, org- or product-specific service names, internal paths, emails, tokens, or real topology.
+
+- User diagram data lives outside the repo (or in git-ignored `/local/`, `*.private.*`).
+- `examples/` and docs use fictional data only: `example.test` hosts, RFC 5737 IPs (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`), "Service A", "Region 1".
+- Bug repros are built from a description in the demo diagram, never from real files.
+
 ## Key principle
 
 > [TODO: one-line principle that governs every product decision]
@@ -15,12 +23,11 @@ reinforce the principle.]
 
 ## Product
 
-[TODO: one paragraph — what it is, who uses it, mechanic,
-monetization.]
+Diagram editor for infrastructure diagrams: a shared engine renders a TOML (or Mermaid + JSON) description of servers, regions and connections into a self-contained interactive HTML page, SVG/PNG exports and an Excalidraw scene. Authors open `diagram.html` in desktop Edge or Chrome, pick a folder, and arrange the layout in edit mode. Diagram folders hold content only; no diagram needs engine edits. [TODO: users, monetization.]
 
 ## Tech stack
 
-[TODO: one paragraph — stack, deploy targets, current status.]
+Plain Node.js ESM (`engine/`, no package manifest or dependencies) for parsing, layout and rendering; browser runtime in `engine/runtime/` (vanilla JS modules inlined into one script) and CSS in `engine/css/`. Run Node through WSL: `node engine/build.mjs <dir> [--check]` builds a diagram folder, `node engine/browser.mjs [--check]` regenerates the standalone `diagram.html`, `node engine/serve.mjs` serves it on localhost, `node --test engine/test/*.test.mjs` runs tests. No deploy target yet. Status: ported from infra-diagram-engine; `layout.html` of `examples/demo` is out of date and one browser-bundle test fails (both also in the source).
 
 ## Working in a shared checkout
 
@@ -50,4 +57,8 @@ Auth notes if any (HTTPS, fine-grained PAT, etc.).]
 - [README.md](README.md) — repo entry point + structure
 - [docs/README.md](docs/README.md) — docs subtree map
 - [docs/tech/ci-cd.md](docs/tech/ci-cd.md) — CI/CD playbook
-- [TODO: add project-specific docs as they land]
+- [docs/tech/architecture.md](docs/tech/architecture.md) — engine module map, build, page behaviour
+- [docs/tech/authoring.md](docs/tech/authoring.md) — TOML authoring format and workflow
+- [docs/product/concepts/terminology.md](docs/product/concepts/terminology.md) — agreed vocabulary
+- [docs/product/features/self-service.md](docs/product/features/self-service.md) — self-service spec
+- [examples/demo/](examples/demo/) — sample diagram in every format

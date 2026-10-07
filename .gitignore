@@ -27,3 +27,7 @@ out/
 
 # Claude Code local overrides
 .claude/settings.local.json
+
+# Local, private diagram data (never commit)
+/local/
+*.private.*

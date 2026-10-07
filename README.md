@@ -1,4 +1,17 @@
-# project-template
+# diagram-editor
+
+Infrastructure diagram editor: an engine (`engine/`) that renders TOML / Mermaid diagram folders into interactive HTML, SVG/PNG and Excalidraw. Open `diagram.html` in Edge or Chrome to start; see [docs/tech/authoring.md](docs/tech/authoring.md) and [docs/tech/architecture.md](docs/tech/architecture.md). Code lives in `engine/`, sample content in `examples/`.
+
+## Never commit infrastructure data (hard rule)
+
+> This repo is a generic, agnostic diagram editor. It must never contain data about specific network infrastructure or anything sensitive: real hostnames, domains, IPs/CIDRs, VLAN/subnet IDs, cluster/account/tenant names, org- or product-specific service names, internal paths, emails, tokens, or real topology.
+
+- Examples and docs use fictional data only: `example.test` hosts, RFC 5737 IPs, "Service A", "Region 1".
+- Real diagram data lives outside the repo, or in the git-ignored `/local/` directory (also `*.private.*`).
+
+---
+
+# project-template (scaffold notes)
 
 Seed repo for new projects. Defines a standard folder layout,
 naming rules, and docs subtree. Copy on init; not used as a
