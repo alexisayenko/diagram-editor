@@ -14,7 +14,7 @@ import { renderLayoutHtml } from "../page/layout-html.mjs";
 
 // Restore positions by stable object id; prune removed objects and refresh text geometry.
 export function prepareDiagram(source, filename, saved = null) {
-  const { config: raw, model, sections } = tomlModel(source, filename);
+  const { config: raw, model, sections, notes } = tomlModel(source, filename);
   const config = parseConfig(JSON.stringify(raw), raw.id);
   checkConnections(config, model.edges.map(edgeKey), model.nodes);
   const meta = geometryMeta(model, config.groups, config.processes), kit = geometryKit();
@@ -55,19 +55,19 @@ export function prepareDiagram(source, filename, saved = null) {
   autoLayoutKit(kit).fill(layout, meta);
   for (const id of model.nodes.keys()) kit.fitBox(layout.nodes[id], meta.nodes[id]);
   for (const id of model.clusters.keys()) kit.fitRegion(layout, meta, id);
-  return { config, model, sections, meta, layout, kit };
+  return { config, model, sections, notes, meta, layout, kit };
 }
 
 export function renderDiagram(source, filename, saved, assets) {
-  const { config, model, sections, meta, layout, kit } = prepareDiagram(source, filename, saved);
+  const { config, model, sections, notes, meta, layout, kit } = prepareDiagram(source, filename, saved);
   const routes = kit.route(layout, meta);
   const { ent, typeList, typeCss } = resolveTypes(model, layout, config.proposedLabel);
   for (const n of model.nodes.values()) ent["n:" + n.id].os = osInfo(osOf(sections[n.title]));
   const { body: svgBody, idx } = renderSvgBody(model, layout, ent, null, {}, routes, config.groups, meta);
   const edgeKeys = buildEdgeKey(model, config.edgeLabels, config.groups), groupKit = groupAssets(config.groups);
   const viewBox = computeViewBox(model, layout, routes);
-  const dataJson = buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes: [], nets: null, ipNet: {}, edgeKeyRows: edgeKeys.rows });
+  const dataJson = buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes, nets: null, ipNet: {}, edgeKeyRows: edgeKeys.rows });
   const html = renderLayoutHtml({ title: config.title, cssSvg: assets.cssSvg + "\n" + typeCss + groupKit.css, cssPage: assets.cssPage,
-    viewBox, svgBody, markers: groupKit.markers, edgeKeyHtml: edgeKeys.html, notes: [], docs: [], nets: null, dataJson, js: assets.js });
+    viewBox, svgBody, markers: groupKit.markers, edgeKeyHtml: edgeKeys.html, notes, docs: [], nets: null, dataJson, js: assets.js });
   return { html, layout, id: config.id, problems: Object.keys(kit.problems(layout, meta)).length };
 }

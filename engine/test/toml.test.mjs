@@ -85,3 +85,28 @@ test("browser app script and built diagram.html scripts are syntactically valid"
   for (const s of scripts) assert.doesNotThrow(() => new Function(s));
   assert.doesNotThrow(() => new Function(readFileSync(new URL("../browser/app.js", import.meta.url), "utf8")));
 });
+test("TOML server OS appears as exactly one row in the details panel", () => {
+  const src = readFileSync(new URL("../runtime/ui/details.js", import.meta.url), "utf8");
+  let mod;
+  runInNewContext(src, { InfraDiagram: { define: (n, d, f) => { mod = f({ D: {}, esc: (x) => String(x), $: () => null }); } } });
+  const { sections } = tomlModel('title="t"\n[[servers]]\nid="a"\nserver_type="web"\nname="a.test"\nos="Ubuntu 24.04"\ndetails="Note."\n[[servers]]\nid="b"\nserver_type="web"\nname="b.test"\nos="Debian 12"\n[[servers]]\nid="c"\nserver_type="web"\nname="c.test"\ndetails="Only note."\n', "t.toml");
+  const count = (html) => (html.match(/<t[dh]>OS<\/t[dh]>/g) || []).length;
+  assert.equal(count(mod.md(sections["a.test"])), 1);
+  assert.match(mod.md(sections["a.test"]), /<td>OS<\/td><td>Ubuntu 24\.04<\/td>/);
+  assert.match(mod.md(sections["a.test"]), /<p>Note\.<\/p>/);
+  assert.equal(count(mod.md(sections["b.test"])), 1);
+  assert.equal(count(mod.md(sections["c.test"])), 0);
+});
+test("TOML notes: string, array, invalid types and rendered cards", () => {
+  const base = 'title="t"\n[[servers]]\nid="a"\nserver_type="web"\n';
+  const one = tomlModel('notes = "First note\\nBody text."\n' + base, "t.toml").notes;
+  assert.deepEqual(one.map((n) => [n.title, n.paras]), [["First note", ["Body text."]]]);
+  const many = tomlModel('notes = ["One\\nAlpha.", "Two\\nDate: 2026-01-02\\n\\nBeta."]\n' + base, "t.toml").notes;
+  assert.equal(many.length, 2);
+  assert.equal(many[1].date, "2026-01-02");
+  assert.deepEqual(tomlModel(base, "t.toml").notes, []);
+  for (const bad of ['notes = true', 'notes = [""]', 'notes = ["Title only"]']) assert.throws(() => tomlModel(bad + "\n" + base, "t.toml"), /TOML: notes/);
+  const html = renderDiagram('notes = ["Visible note\\nShown without clicking."]\n' + base, "t.toml", null, { cssSvg: css("svg"), cssPage: css("page"), js: script() }).html;
+  assert.match(html, /<article class="note"><h3>Visible note<\/h3><p>Shown without clicking\.<\/p>/);
+  assert.match(html, /Notes \(1\)/);
+});

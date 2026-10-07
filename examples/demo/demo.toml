@@ -1,6 +1,10 @@
 # Synthetic demo only: invented names and RFC 5737 addresses.
 id = "demo-toml"
 title = "Demo infrastructure"
+notes = [
+  "Demo data only\nDate: 2026-10-07\n\nEvery host and IP here is invented (RFC 5737 ranges, example.test).",
+  "Cache tier proposed\nThe cache region is empty on purpose; app-02 would move lookups there.",
+]
 
 [[regions]]
 id = "web"

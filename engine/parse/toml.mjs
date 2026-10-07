@@ -1,5 +1,6 @@
 // The diagram authoring subset of TOML: scalar keys and top-level arrays of tables.
 // Kept dependency-free and shared by Node tests and the standalone browser page.
+import { parseNotes } from "./notes.mjs";
 export function parseToml(src) {
   src = src.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
   let p = 0, table;
@@ -83,13 +84,23 @@ export function tomlModel(src, filename = "diagram.toml") {
   function list(v, at) { if (v === undefined) return []; if (!Array.isArray(v) || v.some((s) => typeof s !== "string" || !s.trim())) fail(`${at} must be an array of non-empty strings`); return v; }
   function bool(v, at) { if (v !== undefined && typeof v !== "boolean") fail(`${at} must be true or false`); return v || false; }
   function type(v, at) { if (!Object.hasOwn(COLORS, v)) fail(`${at}: server_type must be one of ${Object.keys(COLORS).join(", ")}`); return v; }
-  keys(t, ["id", "title", "regions", "servers", "connections"], "diagram");
+  keys(t, ["id", "title", "notes", "regions", "servers", "connections"], "diagram");
   for (const key of ["regions", "servers", "connections"]) {
     if (t[key] !== undefined && (!Array.isArray(t[key]) || t[key].some((v) => !v || typeof v !== "object" || Array.isArray(v)))) fail(`${key} must use [[${key}]] tables`);
   }
   const id = t.id ?? filename.replace(/\.toml$/i, "");
   if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) fail("id must contain lowercase letters, digits and hyphens");
   const config = { id, title: str(t.title, "title"), groups: {}, processes: {} };
+  const noteList = t.notes === undefined ? [] : typeof t.notes === "string" ? [t.notes] : t.notes;
+  if (!Array.isArray(noteList) || noteList.some((n) => typeof n !== "string" || !n.trim())) fail("notes must be a non-empty string or an array of non-empty strings");
+  const notes = noteList.map((n, i) => {
+    const [head, ...rest] = n.trim().split("\n"), dated = /^\s*Date:/.test(rest[0] || "");
+    if (dated && !/^\s*Date:\s*\S/.test(rest[0])) fail(`notes[${i + 1}]: empty Date`);
+    const body = rest.slice(dated ? 1 : 0).join("\n");
+    if (!body.trim()) fail(`notes[${i + 1}]: needs a title line and body text`);
+    if (/^\s*#/m.test(body)) fail(`notes[${i + 1}]: body lines cannot start with #`);
+    return parseNotes(`## ${head}\n${dated ? "" : "Date: Note\n\n"}${rest.join("\n")}`)[0];
+  });
   const model = { clusters: new Map(), nodes: new Map(), edges: [], linkStyles: new Map(), classDefs: new Map(), classes: new Map() };
   const sections = Object.create(null), used = new Set();
   function entity(o, at) {
@@ -125,7 +136,7 @@ export function tomlModel(src, filename = "diagram.toml") {
     classes(eid, ty, bool(s.proposed, eid + ".proposed"));
     if (s.os !== undefined) str(s.os, eid + ".os");
     if (s.details !== undefined && typeof s.details !== "string") fail(`${eid}.details must be a string`);
-    sections[title] = (s.os ? `| OS | ${s.os} |\n\n` : "") + (s.details || "");
+    sections[title] = (s.os ? `| Key | Value |\n|---|---|\n| OS | ${s.os} |\n\n` : "") + (s.details || "");
   }
   if (!model.nodes.size && !model.clusters.size) fail("define at least one server or region");
   const edgeIds = new Set();
@@ -150,5 +161,5 @@ export function tomlModel(src, filename = "diagram.toml") {
       config.processes[k] = Object.fromEntries(Object.entries(process).filter(([, v]) => v !== null));
     }
   }
-  return { config, model, sections };
+  return { config, model, sections, notes };
 }

@@ -40,6 +40,7 @@ from_service = "Job 104"
 firewall = true
 ```
 
+- Notes: optional top-level `notes`, a string or an array of strings, one note card each in the page's Notes panel (visible without selecting a server). The first line is the card title; an optional `Date: <stamp>` line may follow (default `Note`); the rest is the body. A note needs a title and body text.
 - Diagram: `title` required; `id` defaults to the TOML filename without its extension. Diagram ids use lowercase letters, digits and hyphens. Keep the id stable.
 - Regions: `id`, `title`, `server_type`; optional `proposed = true`. Empty regions are allowed.
 - Servers: `id`; optional `name` (defaults to id), `region`, `server_type` (inherits the region's type), `services` and `ips` (string arrays), `os`, `details` (Markdown string), `proposed` (boolean). A standalone server requires `server_type`.
