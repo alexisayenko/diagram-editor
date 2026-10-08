@@ -1,11 +1,11 @@
-// Local diagram files: a single flat folder, strict file names, atomic writes, compare-before-write.
+// Local diagram files: one sub-folder per diagram, strict relative file names, atomic writes, compare-before-write.
 import { mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { validName } from "./names.mjs";
 
 export const MAX_BYTES = 2 * 1024 * 1024;
-export const MAX_FILES = 8;
+export const MAX_FILES = 256;
 
 export class HttpError extends Error {
   constructor(status, message, extra = {}) { super(message); this.status = status; this.extra = extra; }
@@ -13,20 +13,26 @@ export class HttpError extends Error {
 
 export function createStore(dir) {
   const pathOf = (name) => {
-    if (!validName(name)) throw new HttpError(400, "Invalid file name. Use letters, digits, dot, dash or underscore, ending in .toml or .json.");
-    return join(dir, name);
+    if (!validName(name)) throw new HttpError(400, "Invalid file name. Use letters, digits, dot, dash or underscore, ending in .toml or .json, at most two folder levels.");
+    return join(dir, ...name.split("/"));
   };
   const read = (name) => {
     try { return readFileSync(pathOf(name), "utf8"); }
     catch (e) { if (e.code === "ENOENT") return null; throw e; }
   };
   function list() {
-    let names;
-    try { names = readdirSync(dir); } catch (e) { if (e.code === "ENOENT") return []; throw e; }
-    return names.filter(validName).sort((a, b) => a.localeCompare(b)).flatMap((name) => {
-      const s = statSync(join(dir, name));
-      return s.isFile() ? [{ name, size: s.size, mtime: s.mtimeMs }] : [];
-    });
+    const out = [];
+    const walk = (rel, depth) => {
+      let names;
+      try { names = readdirSync(join(dir, ...rel)); } catch (e) { if (e.code === "ENOENT") return; throw e; }
+      for (const n of names.sort((x, y) => x.localeCompare(y))) {
+        const path = [...rel, n], s = statSync(join(dir, ...path));
+        if (s.isDirectory()) { if (depth < 2 && /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(n)) walk(path, depth + 1); }
+        else if (s.isFile() && validName(path.join("/"))) out.push({ name: path.join("/"), size: s.size, mtime: s.mtimeMs });
+      }
+    };
+    walk([], 0);
+    return out;
   }
   function get(name) {
     const text = read(name);
@@ -48,13 +54,13 @@ export function createStore(dir) {
       if (read(e.name) !== e.base) conflicts.push(e.name);
     }
     if (conflicts.length) throw new HttpError(409, `${conflicts.join(", ")} changed on disk since it was loaded. Nothing was written.`, { conflicts });
-    mkdirSync(dir, { recursive: true });
     const saved = [];
     for (const e of entries) {
-      const tmp = join(dir, "." + randomBytes(6).toString("hex") + ".tmp");
+      const target = pathOf(e.name), tmp = join(dirname(target), "." + randomBytes(6).toString("hex") + ".tmp");
       try {
+        mkdirSync(dirname(target), { recursive: true });
         writeFileSync(tmp, e.text, "utf8");
-        renameSync(tmp, pathOf(e.name));
+        renameSync(tmp, target);
         saved.push(e.name);
       } catch (err) {
         try { unlinkSync(tmp); } catch (_) {}

@@ -3,14 +3,15 @@ import assert from "node:assert/strict";
 import { readFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseIp, parseCidr, parseNetworksFile, isNetworksFile, assignNetwork, buildNetworks } from "../parse/shared-networks.mjs";
+import { parseIp, parseCidr, parseNetworksFile, assignNetwork, buildNetworks } from "../parse/shared-networks.mjs";
 import { tomlModel } from "../parse/toml.mjs";
 import { renderDiagram } from "../browser/render.mjs";
 import { createStore, handleApi, MAX_BYTES } from "../lib/store.mjs";
 import { validName } from "../lib/names.mjs";
+import { demo as loadDemo, withFile, without, mini } from "./helpers.mjs";
 
-const demo = readFileSync(new URL("../../examples/demo/demo.toml", import.meta.url), "utf8");
-const example = readFileSync(new URL("../../examples/networks.toml", import.meta.url), "utf8");
+const demo = loadDemo();
+const example = demo.get("networks.toml");
 const items = parseNetworksFile(example);
 const stub = { cssSvg: "", cssPage: "", js: "" };
 
@@ -59,17 +60,14 @@ test("file validation names the entry", () => {
   assert.equal(items[0].description, "Application and database servers");
 });
 
-test("import detection: by file name or by [[networks]] without servers or regions", () => {
-  assert.equal(isNetworksFile("networks.toml", ""), true);
-  assert.equal(isNetworksFile("lan.toml", example), true);
-  assert.equal(isNetworksFile("demo.toml", demo), false);
-  assert.equal(isNetworksFile("mixed.toml", example + '\n[[servers]]\nid = "a"\n'), false);
-  assert.equal(isNetworksFile("mixed.toml", example + '\n[[regions]]\nid = "a"\n'), false);
-  assert.throws(() => tomlModel(example, "x.toml"), /unknown key networks/);
+test("networks belong in the folder's networks.toml, not in diagram.toml; a broken file fails the render", () => {
+  assert.throws(() => tomlModel(withFile(demo, "diagram.toml", example + demo.get("diagram.toml")), "x"), /diagram\.toml: unknown key networks/);
+  assert.doesNotThrow(() => tomlModel(demo, "x"));
+  assert.throws(() => renderDiagram(withFile(demo, "networks.toml", "# empty\n"), "demo", null, stub), /no \[\[networks\]\] entries/);
 });
 
 test("demo servers: multi-homed server in each network, most specific segment, rows ordered with depth", () => {
-  const { model } = tomlModel(demo, "demo.toml");
+  const { model } = tomlModel(demo, "demo");
   const layout = { nodes: {} };
   const { nets, ipNet } = buildNetworks(items, model, layout);
   assert.deepEqual(nets.map((n) => [n.cidr, n.depth, n.hosts]), [["192.0.2.0/24", 0, 4], ["192.0.2.40/29", 1, 2], ["198.51.100.128/25", 0, 1], ["203.0.113.0/24", 0, 1], ["2001:db8::/32", 0, 0]]);
@@ -81,9 +79,8 @@ test("demo servers: multi-homed server in each network, most specific segment, r
 });
 
 test("unassigned IPs get an Unassigned network row and a labelled line in the details", () => {
-  const src = 'title = "t"\n[[servers]]\nid = "a"\nserver_type = "web"\nname = "a.test"\nips = ["192.0.2.5/24", "10.1.1.1/8"]\n';
-  const one = parseNetworksFile('[[networks]]\ncidr = "192.0.2.0/24"\nname = "Lab"\n');
-  const out = renderDiagram(src, "t.toml", null, stub, [], one);
+  const src = mini('title = "t"\n', { "networks.toml": '[[networks]]\ncidr = "192.0.2.0/24"\nname = "Lab"\n' }, 'id = "a"\nserver_type = "web"\nname = "a.test"\nips = ["192.0.2.5/24", "10.1.1.1/8"]\n');
+  const out = renderDiagram(src, "t", null, stub);
   assert.match(out.html, /<aside id="wp"/);
   assert.match(out.html, /Unassigned network/);
   assert.ok(out.html.includes("192.0.2.5/24 — Lab"));
@@ -92,21 +89,21 @@ test("unassigned IPs get an Unassigned network row and a labelled line in the de
 });
 
 test("without a networks file nothing changes: no panel, plain IP lines", () => {
-  const out = renderDiagram(demo, "demo.toml", null, stub);
+  const out = renderDiagram(without(demo, "networks.toml"), "demo", null, stub);
   assert.ok(!out.html.includes('id="wp"'));
   assert.ok(!out.html.includes("unassigned network"));
 });
 
-test("store and API: networks.toml is stored, read back, validated by name and size", () => {
+test("store and API: networks.toml is stored in the diagram folder, read back, validated by name and size", () => {
   const dir = mkdtempSync(join(tmpdir(), "nets-"));
   const store = createStore(dir), headers = { host: "127.0.0.1:8080", "content-type": "application/json" };
-  assert.equal(handleApi(store, { method: "GET", url: "/api/file?name=networks.toml", headers }).status, 404);
-  const put = handleApi(store, { method: "PUT", url: "/api/files", headers }, JSON.stringify({ files: [{ name: "networks.toml", text: example, overwrite: true }] }));
+  assert.equal(handleApi(store, { method: "GET", url: "/api/file?name=demo%2Fnetworks.toml", headers }).status, 404);
+  const put = handleApi(store, { method: "PUT", url: "/api/files", headers }, JSON.stringify({ files: [{ name: "demo/networks.toml", text: example, overwrite: true }] }));
   assert.equal(put.status, 200);
-  assert.equal(handleApi(store, { method: "GET", url: "/api/file?name=networks.toml", headers }).body.text, example);
-  assert.ok(handleApi(store, { method: "GET", url: "/api/files", headers }).body.files.some((f) => f.name === "networks.toml"));
-  assert.equal(validName("networks.toml"), true);
-  const big = handleApi(store, { method: "PUT", url: "/api/files", headers }, JSON.stringify({ files: [{ name: "networks.toml", text: "#".repeat(MAX_BYTES + 1), overwrite: true }] }));
+  assert.equal(handleApi(store, { method: "GET", url: "/api/file?name=demo%2Fnetworks.toml", headers }).body.text, example);
+  assert.ok(handleApi(store, { method: "GET", url: "/api/files", headers }).body.files.some((f) => f.name === "demo/networks.toml"));
+  assert.equal(validName("demo/networks.toml"), true);
+  const big = handleApi(store, { method: "PUT", url: "/api/files", headers }, JSON.stringify({ files: [{ name: "demo/networks.toml", text: "#".repeat(MAX_BYTES + 1), overwrite: true }] }));
   assert.equal(big.status, 413);
-  assert.equal(handleApi(store, { method: "GET", url: "/api/file?name=..%2Fnetworks.toml", headers }).status, 400);
+  assert.equal(handleApi(store, { method: "GET", url: "/api/file?name=demo%2F..%2Fnetworks.toml", headers }).status, 400);
 });

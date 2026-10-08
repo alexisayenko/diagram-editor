@@ -1,5 +1,5 @@
-// Surgical write-back of the top-level `notes` key: every other byte of the file is kept.
-import { parseToml, tomlModel, ipProblem, dnsProblem } from "./toml.mjs";
+// Surgical write-back of notes.toml (the `notes` key) and servers/<id>.toml: every other byte of the file is kept.
+import { parseToml, ipProblem, dnsProblem } from "./toml.mjs";
 import { mergeTypes } from "./types.mjs";
 
 function eolOf(src) {
@@ -131,15 +131,15 @@ function canonical(v) {
   return v;
 }
 
-export function setServer(src, id, fields) {
+// `src` is the text of servers/<id>.toml; `ctx` is the merged diagram (server_types, regions, servers) for type and name checks.
+export function setServer(src, id, fields, ctx = {}) {
   checkServerFields(fields);
-  const eol = eolOf(src), { flat, spans, at, root } = prepare(src);
-  const idx = (root.servers || []).findIndex((s) => s.id === id);
-  if (idx < 0) throw new Error(`Server '${id}' is not in the file`);
-  const old = root.servers[idx], rec = spans.tables.filter((t) => t.name === "servers")[idx];
-  const types = mergeTypes(root.server_types);
+  const eol = eolOf(src), { flat, spans, at, root: old } = prepare(src), rec = spans;
+  if (old.id !== undefined && old.id !== id) throw new Error(`Server '${id}' is not in the file`);
+  const types = mergeTypes(ctx.server_types);
   if (fields.server_type !== undefined && !Object.hasOwn(types, fields.server_type)) throw new Error(`Unknown server type '${fields.server_type}'. Known: ${Object.keys(types).join(", ")}.`);
-  const inherited = old.server_type ?? (root.regions || []).find((r) => r.id === old.region)?.server_type;
+  const inherited = old.server_type ?? (ctx.regions || []).find((r) => r.id === old.region)?.server_type;
+  if ((ctx.servers || []).some((o) => o.id !== id && (o.name ?? o.id) === fields.name.trim())) throw new Error(`duplicate server name '${fields.name.trim()}'`);
   const want = { name: fields.name.trim(), server_type: fields.server_type ?? inherited, details: fields.details.trim() ? fields.details.replace(/\s+$/, "") : "" };
   for (const k of SERVER_STRINGS) want[k] = fields[k].trim();
   for (const k of SERVER_LISTS) want[k] = fields[k].map((s) => s.trim());
@@ -170,10 +170,8 @@ export function setServer(src, id, fields) {
   let out = src;
   for (const e of edits.sort((a, b) => b.from - a.from || b.to - a.to)) out = out.slice(0, e.from) + e.text + out.slice(e.to);
   const after = parseToml(out);
-  const rest = (r) => canonical({ ...r, servers: (r.servers || []).filter((_, i) => i !== idx) });
-  if (JSON.stringify(rest(after)) !== JSON.stringify(rest(root)) || JSON.stringify(canonical(after.servers[idx])) !== JSON.stringify(canonical(expect))) {
+  if (JSON.stringify(canonical(after)) !== JSON.stringify(canonical(expect))) {
     throw new Error("Internal error: the rewritten TOML does not match the edit; nothing was written");
   }
-  if (out !== src) tomlModel(out);
   return out;
 }

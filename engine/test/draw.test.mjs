@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, mkdtempSync, cpSync, writeFileSync } from "node:fs";
+import { demo as loadDemo, mod, withFile, without } from "./helpers.mjs";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,7 +11,7 @@ import { renderDiagram } from "../browser/render.mjs";
 import { css, script } from "../page/assets.mjs";
 
 const kit = drawKit();
-const demo = readFileSync(new URL("../../examples/demo/demo.toml", import.meta.url), "utf8");
+const demo = loadDemo();
 const assets = { cssSvg: css("svg"), cssPage: css("page"), js: script() };
 const stroke = (id, points, width = 2) => ({ id, color: "#3b82f6", width, points });
 const dataOf = (html) => JSON.parse(html.match(/id="layout-data">([\s\S]*?)<\/script>/)[1]);
@@ -69,19 +70,19 @@ test("validate: a missing key means no drawings, bad entries are rejected", () =
 });
 
 test("layout round-trip: old layouts load, drawings survive page and TOML re-renders", () => {
-  const first = renderDiagram(demo, "demo.toml", null, assets);
+  const first = renderDiagram(demo, "demo", null, assets);
   assert.match(first.html, /<g id="dw"><\/g>/);
   const saved = { version: 1, diagramId: first.id, ...first.layout, extra: { keep: 1 } };
-  assert.doesNotThrow(() => renderDiagram(demo, "demo.toml", saved, assets));
+  assert.doesNotThrow(() => renderDiagram(demo, "demo", saved, assets));
   const drawings = [stroke("d1", [[10.5, 20], [30, 40.2], [50, 45]]), { ...stroke("d2", [[5, 5]], 4), color: "#ef4444" }];
-  const withDraw = renderDiagram(demo, "demo.toml", { ...saved, drawings }, assets);
+  const withDraw = renderDiagram(demo, "demo", { ...saved, drawings }, assets);
   assert.equal((withDraw.html.match(/<path class="dwp" data-id="d/g) || []).length, 2);
   assert.match(withDraw.html, /data-id="d1" d="M10\.5 20L/);
   assert.deepEqual(dataOf(withDraw.html).drawings, drawings);
-  const edited = demo.replace('id = "db01"', 'id = "db99"').replace(/from = "app01"\nto = "db01"/, 'from = "app01"\nto = "db99"');
-  const after = renderDiagram(edited, "demo.toml", { ...saved, ...withDraw.layout, drawings }, assets);
+  const edited = withFile(without(mod(demo, "diagram.toml", 'from = "app01"\nto = "db01"', 'from = "app01"\nto = "db99"'), "servers/db01.toml"), "servers/db99.toml", demo.get("servers/db01.toml").replace('id = "db01"', 'id = "db99"'));
+  const after = renderDiagram(edited, "demo", { ...saved, ...withDraw.layout, drawings }, assets);
   assert.deepEqual(dataOf(after.html).drawings, drawings);
-  assert.throws(() => renderDiagram(demo, "demo.toml", { ...saved, drawings: [{ id: "x" }] }, assets), /Invalid saved drawing/);
+  assert.throws(() => renderDiagram(demo, "demo", { ...saved, drawings: [{ id: "x" }] }, assets), /Invalid saved drawing/);
 });
 
 test("Save and Export write drawings and keep unknown layout keys", () => {

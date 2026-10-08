@@ -1,4 +1,4 @@
-// Shared networks.toml: [[networks]] tables (cidr, name, optional description) reused by every diagram.
+// A diagram folder's networks.toml: [[networks]] tables (cidr, name, optional description).
 // The server-to-network relation is derived from IPs, never declared.
 import { parseToml } from "./toml.mjs";
 
@@ -53,11 +53,6 @@ export function parseNetworksFile(src) {
     items.push({ cidr, name: d.name.trim(), description: (d.description || "").trim(), ...parsed });
   });
   return items;
-}
-
-export function isNetworksFile(name, text) {
-  if (name === "networks.toml") return true;
-  return /^\s*\[\[networks\]\]/m.test(text) && !/^\s*\[\[(servers|regions)\]\]/m.test(text);
 }
 
 // Index of the most specific (longest prefix) network containing the address part of `text`, or -1.

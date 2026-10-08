@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createStore, handleApi, MAX_BYTES } from "../lib/store.mjs";
+import { createStore, handleApi, MAX_BYTES, MAX_FILES } from "../lib/store.mjs";
 import { validName, exportNames, stamp, layoutNameFor } from "../lib/names.mjs";
 import { createApp } from "../serve.mjs";
 
@@ -12,15 +12,26 @@ const H = { host: "127.0.0.1:8080", "content-type": "application/json" };
 const call = (store, method, url, body, headers = H) => handleApi(store, { method, url, headers }, body === undefined ? "" : JSON.stringify(body));
 
 test("file names: strict allowlist", () => {
-  for (const ok of ["a.toml", "My-diagram_1.layout.json", "x.y.toml"]) assert.ok(validName(ok), ok);
-  for (const bad of ["", ".hidden.toml", "../a.toml", "a/b.toml", "a\b.toml", "a.txt", "a.toml.exe", "a..b.toml", "a b.toml", "a.toml\n", "x".repeat(101) + ".toml", null, 5]) assert.ok(!validName(bad), String(bad));
+  for (const ok of ["a.toml", "My-diagram_1.layout.json", "x.y.toml", "demo/diagram.toml", "demo/servers/web01.toml", "demo/diagram.layout.json"]) assert.ok(validName(ok), ok);
+  for (const bad of ["", ".hidden.toml", "../a.toml", "/a.toml", "a//b.toml", "a/../b.toml", "a/.hidden.toml", "a/b/c/d.toml", "a\b.toml", "a.txt", "a.toml.exe", "a..b.toml", "a b.toml", "a.toml\n", "x".repeat(151) + ".toml", null, 5]) assert.ok(!validName(bad), String(bad));
 });
 
 test("export names carry a timestamp and keep the original name", () => {
   const d = new Date(2026, 9, 7, 14, 30, 12);
   assert.equal(stamp(d), "20261007-143012");
-  assert.deepEqual(exportNames("demo.toml", d), { toml: "demo-20261007-143012.toml", layout: "demo-20261007-143012.layout.json" });
-  assert.equal(layoutNameFor("demo.toml"), "demo.layout.json");
+  const names = exportNames("demo", d);
+  assert.equal(names.layout, "demo-20261007-143012-diagram.layout.json");
+  assert.equal(names.file("servers/web01.toml"), "demo-20261007-143012-servers-web01.toml");
+  assert.equal(layoutNameFor("demo"), "demo/diagram.layout.json");
+});
+
+test("diagram folders: nested files are written, listed recursively and read back by relative path", () => {
+  const { dir, store } = fresh();
+  store.write([{ name: "demo/diagram.toml", text: "a", base: null }, { name: "demo/servers/web01.toml", text: "b", base: null }, { name: "demo/diagram.layout.json", text: "{}", base: null }]);
+  assert.deepEqual(store.list().map((f) => f.name), ["demo/diagram.layout.json", "demo/diagram.toml", "demo/servers/web01.toml"]);
+  assert.equal(store.get("demo/servers/web01.toml").text, "b");
+  assert.deepEqual(readdirSync(join(dir, "demo", "servers")), ["web01.toml"]);
+  assert.throws(() => store.write([{ name: "demo/a/b/c.toml", text: "", overwrite: true }]), /Invalid file name/);
 });
 
 test("write, list and read; the folder is created on first write; no temp files remain", () => {
@@ -53,7 +64,7 @@ test("bad requests: names, sizes, counts, duplicates, content type, malformed JS
   assert.equal(put([{ name: "../x.toml", text: "", overwrite: true }]).status, 400);
   assert.equal(put([{ name: "a.toml", text: "x".repeat(MAX_BYTES + 1), overwrite: true }]).status, 413);
   assert.equal(put([]).status, 400);
-  assert.equal(put(Array.from({ length: 9 }, (_, i) => ({ name: `f${i}.toml`, text: "", overwrite: true }))).status, 400);
+  assert.equal(put(Array.from({ length: MAX_FILES + 1 }, (_, i) => ({ name: `f${i}.toml`, text: "", overwrite: true }))).status, 400);
   assert.equal(put([{ name: "a.toml", text: "", overwrite: true }, { name: "a.toml", text: "", overwrite: true }]).status, 400);
   assert.equal(put([{ name: "a.toml", text: "", overwrite: true }], { host: "127.0.0.1:1", "content-type": "text/plain" }).status, 415);
   assert.equal(handleApi(store, { method: "PUT", url: "/api/files", headers: H }, "{").status, 400);

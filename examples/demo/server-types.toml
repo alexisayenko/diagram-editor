@@ -1,0 +1,5 @@
+[[server_types]]
+id = "batch"
+label = "Batch Server"
+color = "#00796B"
+dark = "#4DB6AC"

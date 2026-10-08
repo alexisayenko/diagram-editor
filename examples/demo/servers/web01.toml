@@ -1,0 +1,10 @@
+id = "web01"
+name = "web-01.example.test"
+region = "web"
+services = ["nginx reverse proxy", "Customer portal"]
+ips = ["203.0.113.10/24", "192.0.2.10/24"]
+os = "Ubuntu 24.04"
+hardware = "4 vCPU, 8 GB RAM (invented VM)"
+role = "Reverse proxy"
+dns = ["portal.example.test", "www.example.test"]
+systemd_services = ["nginx", "demo-agent"]

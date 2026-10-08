@@ -1,0 +1,5 @@
+id = "app02"
+name = "app-02.example.test"
+region = "app"
+services = ["Tomcat: demo-api"]
+ips = ["192.0.2.32/24"]

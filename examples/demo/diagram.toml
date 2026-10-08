@@ -1,0 +1,52 @@
+# Synthetic demo only: invented names and RFC 5737 addresses.
+id = "demo"
+title = "Demo infrastructure"
+
+[[regions]]
+id = "web"
+title = "Web Servers"
+server_type = "web"
+
+[[regions]]
+id = "app"
+title = "Application Servers"
+server_type = "application"
+
+[[regions]]
+id = "db"
+title = "Database Cluster"
+server_type = "oracle"
+
+[[regions]]
+id = "cache"
+title = "Cache Servers"
+server_type = "cache"
+proposed = true
+
+[[connections]]
+from = "web01"
+to = "app01"
+label = "TCP · HTTPS"
+firewall = true
+
+[[connections]]
+from = "app01"
+to = "db01"
+label = "TCP · SQL*Net · Job 104"
+from_service = "Job 104"
+
+[[connections]]
+from = "app02"
+to = "db"
+label = "TCP · SQL*Net"
+
+[[connections]]
+from = "stats01"
+to = "app"
+label = "TCP · metrics"
+
+[[connections]]
+from = "app02"
+to = "cache"
+label = "TCP · proposed cache"
+proposed = true

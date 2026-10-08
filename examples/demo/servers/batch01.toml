@@ -1,0 +1,10 @@
+id = "batch01"
+name = "batch-01.example.test"
+server_type = "batch"
+services = ["Job runner"]
+ips = ["192.0.2.60/24"]
+os = "Debian 12"
+hardware = "2 vCPU, 4 GB RAM (invented VM)"
+role = "Scheduled jobs"
+jobs = ["Job 301 archive sweep"]
+systemd_services = ["demo-scheduler"]

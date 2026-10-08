@@ -4,8 +4,11 @@ import { readFileSync } from "node:fs";
 import { parseToml, tomlModel, parseNoteText } from "../parse/toml.mjs";
 import { setNotes, formatNotes } from "../parse/toml-write.mjs";
 import { prepareDiagram } from "../browser/render.mjs";
+import { mergeFolder } from "../parse/toml.mjs";
+import { demo as loadDemo, withFile, mini } from "./helpers.mjs";
 
-const demo = readFileSync(new URL("../../examples/demo/demo.toml", import.meta.url), "utf8");
+const demoFiles = loadDemo(), demo = demoFiles.get("notes.toml");
+const model = (notesText) => tomlModel(mini('title = "t"\n', { "notes.toml": notesText }), "t");
 const body = '[[servers]]\nid = "a"\nserver_type = "web"\n';
 const notesOf = (src) => parseToml(src).notes ?? [];
 
@@ -26,9 +29,9 @@ test("round trip: quotes, backslashes, unicode, tabs, control characters, empty 
     "Tabs\nDate: 2026-01-02\n\nbody\twith tab\n\n\nafter blank lines",
     "Ctrl\nbell \u0007 and nul-ish \u0001 and del \u007f",
   ];
-  const out = setNotes('title = "t"\n' + body, texts);
+  const out = setNotes("", texts);
   assert.deepEqual(notesOf(out), texts);
-  assert.equal(tomlModel(out, "t.toml").notes.length, texts.length);
+  assert.equal(model(out).notes.length, texts.length);
 });
 
 test("surgical: replacing notes leaves every other byte identical", () => {
@@ -46,7 +49,7 @@ test("surgical: demo file keeps its comments, order and whitespace", () => {
   assert.deepEqual(notesOf(out), ["Fresh note\nWith body.", "Second\nDate: 2026-05-05\n\nMore."]);
   const noNotes = setNotes(out, []);
   assert.equal(noNotes, setNotes(setNotes(demo, []), []));
-  assert.deepEqual(parseToml(setNotes(demo, [])).servers, parseToml(demo).servers);
+  assert.equal(setNotes(demo, []), "");
 });
 
 test("add: key is appended after the last top-level key, before the first table", () => {
@@ -110,22 +113,23 @@ test("note text validation reports an empty title, empty body and bad dates", ()
   assert.equal(n.text, "Title\nDate: 2026-01-01\n\nOne\nTwo\n\nThree");
 });
 
-test("documents: parsed, validated, rendered; a documents-only file opens", () => {
-  const src = 'title = "t"\n[[documents]]\ntitle = "Doc one"\nurl = "https://wiki.example.test/a"\ndescription = "About"\n[[documents]]\ntitle = "Doc two"\nurl = "http://wiki.example.test/b"\n';
-  const { docs } = tomlModel(src, "t.toml");
+test("documents: parsed, validated, rendered; a documents-only folder opens", () => {
+  const doc = (text) => mini('title = "t"\n', { "documents.toml": text });
+  const src = '[[documents]]\ntitle = "Doc one"\nurl = "https://wiki.example.test/a"\ndescription = "About"\n[[documents]]\ntitle = "Doc two"\nurl = "http://wiki.example.test/b"\n';
+  const { docs } = tomlModel(doc(src), "t");
   assert.deepEqual(docs, [{ title: "Doc one", url: "https://wiki.example.test/a", desc: "About" }, { title: "Doc two", url: "http://wiki.example.test/b", desc: "" }]);
-  assert.doesNotThrow(() => prepareDiagram(src, "t.toml"));
+  assert.doesNotThrow(() => prepareDiagram(doc(src), "t"));
   for (const bad of ['url = "javascript:alert(1)"', 'url = "https://x y"', 'url = "ftp://e.test/x"', 'url = "https://e.test/"\nextra = "x"']) {
-    assert.throws(() => tomlModel('title = "t"\n[[documents]]\ntitle = "D"\n' + bad + "\n", "t.toml"), /documents\[1\]|must be/);
+    assert.throws(() => tomlModel(doc('[[documents]]\ntitle = "D"\n' + bad + "\n"), "t"), /documents\[1\]|must be/);
   }
-  assert.throws(() => tomlModel('title = "t"\n', "t.toml"), /define at least one/);
+  assert.throws(() => tomlModel(new Map([["diagram.toml", 'title = "t"\n']]), "t"), /define at least one/);
 });
 
-test("saving notes preserves documents and servers byte for byte", () => {
-  assert.match(demo, /\[\[documents\]\]/);
-  const out = setNotes(demo, ["Another\nnote body."]);
-  assert.equal(setNotes(out, []), setNotes(demo, []));
-  assert.deepEqual(parseToml(out).documents, parseToml(demo).documents);
+test("saving notes rewrites notes.toml only; documents and servers stay untouched", () => {
+  const out = withFile(demoFiles, "notes.toml", setNotes(demo, ["Another\nnote body."]));
+  assert.deepEqual(mergeFolder(out).documents, mergeFolder(demoFiles).documents);
+  assert.deepEqual(mergeFolder(out).servers, mergeFolder(demoFiles).servers);
+  assert.deepEqual(mergeFolder(out).notes, ["Another\nnote body."]);
 });
 
 const notesEdit = (() => {
@@ -157,9 +161,9 @@ test("note stamp is set on create and real change only, and survives save and re
   assert.equal(notesEdit.stamped("T\nDate: 2021-01-01\n\nb", "T\nDate: 2020-01-01\n\nb", false, now), "T\nDate: 2021-01-01\n\nb");
   const older = "Legacy\nbody";
   assert.equal(notesEdit.stamped(older, older, false, now), older);
-  const out = setNotes('title = "t"\n' + body, [created]);
-  assert.equal(tomlModel(out, "t.toml").notes[0].date, "2026-03-09 08:05");
-  assert.equal(notesEdit.show(tomlModel(out, "t.toml").notes[0].date, now), "08:05");
-  assert.equal(notesEdit.show(tomlModel(out, "t.toml").notes[0].date, at(2026, 3, 10, 1, 0)), "2026-03-09");
-  assert.equal(tomlModel('title = "t"\nnotes = ["Old\\nbody"]\n' + body, "t.toml").notes[0].date, "Note");
+  const out = setNotes("", [created]);
+  assert.equal(model(out).notes[0].date, "2026-03-09 08:05");
+  assert.equal(notesEdit.show(model(out).notes[0].date, now), "08:05");
+  assert.equal(notesEdit.show(model(out).notes[0].date, at(2026, 3, 10, 1, 0)), "2026-03-09");
+  assert.equal(model('notes = ["Old\\nbody"]\n').notes[0].date, "Note");
 });

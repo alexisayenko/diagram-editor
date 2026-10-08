@@ -1,0 +1,5 @@
+id = "db01"
+name = "db-01.example.test"
+region = "db"
+services = ["Oracle RAC node 1", "SID demo1"]
+ips = ["192.0.2.41/24"]

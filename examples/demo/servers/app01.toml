@@ -1,0 +1,11 @@
+id = "app01"
+name = "app-01.example.test"
+region = "app"
+services = ["Tomcat: demo-api", "Job 104 batch import"]
+ips = ["192.0.2.31/24"]
+os = "Ubuntu 20.04"
+details = "Synthetic application server.\n\nRuns the demo API and scheduled import."
+role = "Demo API and batch import"
+jobs = ["Job 104 batch import", "Job 210 nightly report"]
+rmi_services = ["DemoQuoteService", "DemoOrderService"]
+systemd_services = ["tomcat-demo"]

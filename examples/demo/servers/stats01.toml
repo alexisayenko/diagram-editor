@@ -1,0 +1,5 @@
+id = "stats01"
+name = "stats-01.example.test"
+server_type = "statistics"
+services = ["Grafana dashboards"]
+ips = ["198.51.100.150/25"]

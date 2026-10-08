@@ -1,5 +1,4 @@
-# Synthetic shared networks: RFC 5737 and RFC 3849 documentation ranges only.
-# Copy to local/networks.toml (beside your diagrams) to use it with every diagram.
+# Synthetic networks: RFC 5737 and RFC 3849 documentation ranges only.
 
 [[networks]]
 cidr = "192.0.2.0/24"

@@ -1,4 +1,4 @@
-// The diagram authoring subset of TOML: scalar keys and top-level arrays of tables.
+// The diagram authoring subset of TOML: scalar keys and top-level arrays of tables, plus the diagram folder merge.
 // Kept dependency-free and shared by Node tests and the standalone browser page.
 import { parseNotes } from "./notes.mjs";
 import { mergeTypes, RESERVED_TYPES } from "./types.mjs";
@@ -82,7 +82,7 @@ export function parseToml(src, spans = null) {
     let keyLine = false;
     if (src[p] === "[") {
       const m = src.slice(p).match(/^\[\[([a-z][a-z0-9_]*)\]\]/);
-      if (!m) error("expected [[regions]], [[servers]], [[connections]], or [[documents]]");
+      if (!m) error("expected a [[name]] table header");
       if (spans && spans.firstTable === undefined) spans.firstTable = p;
       p += m[0].length;
       if (Object.hasOwn(root, m[1]) && !Array.isArray(root[m[1]])) error("table name already used as a key");
@@ -120,8 +120,45 @@ export function parseNoteText(text, at = "note", strict = false) {
   return { ...parseNotes(`## ${head}\n${dated ? "" : "Date: Note\n\n"}${rest.join("\n")}`)[0], text: text.trim() };
 }
 
-export function tomlModel(src, filename = "diagram.toml", nets = null) {
-  const t = parseToml(src), fail = (m) => { throw new Error("TOML: " + m); };
+// A diagram folder: file name (relative to the folder) -> the keys that file may hold.
+export const FOLDER_FILES = {
+  "diagram.toml": ["id", "title", "regions", "connections"],
+  "server-types.toml": ["server_types"],
+  "notes.toml": ["notes"],
+  "documents.toml": ["documents"],
+};
+export const NETWORKS_FILE = "networks.toml";
+export const SERVER_DIR = "servers/";
+
+function parseFile(name, text) {
+  try { return parseToml(text); }
+  catch (e) { throw new Error(e.message.replace(/^TOML:/, `TOML: ${name}:`)); }
+}
+
+// Merge the folder's files into one root object shaped like the former single-file document.
+export function mergeFolder(files) {
+  const fail = (m) => { throw new Error("TOML: " + m); };
+  if (!files.has("diagram.toml")) fail("diagram.toml is missing");
+  const root = Object.create(null), servers = [];
+  for (const name of [...files.keys()].sort()) {
+    const text = files.get(name), server = name.startsWith(SERVER_DIR) && name.slice(SERVER_DIR.length).match(/^([^/]+)\.toml$/);
+    if (name === NETWORKS_FILE) continue;
+    if (server) {
+      const part = parseFile(name, text), stem = server[1];
+      if (part.id !== undefined && part.id !== stem) fail(`${name}: id '${part.id}' must equal the file name '${stem}'`);
+      servers.push({ ...part, id: stem });
+    } else if (Object.hasOwn(FOLDER_FILES, name)) {
+      const part = parseFile(name, text), unknown = Object.keys(part).filter((k) => !FOLDER_FILES[name].includes(k));
+      if (unknown.length) fail(`${name}: unknown key ${unknown.join(", ")}; it may hold only ${FOLDER_FILES[name].join(", ")}`);
+      Object.assign(root, part);
+    } else if (name.endsWith(".toml")) fail(`unexpected file ${name}; use diagram.toml, server-types.toml, notes.toml, documents.toml, networks.toml and servers/<id>.toml`);
+  }
+  if (servers.length) root.servers = servers;
+  return root;
+}
+
+export function tomlModel(files, folder = "diagram", nets = null) {
+  const t = mergeFolder(files), fail = (m) => { throw new Error("TOML: " + m); };
   function keys(o, allowed, at) {
     const unknown = Object.keys(o).filter((k) => !allowed.includes(k));
     if (unknown.length) fail(`${at}: unknown key ${unknown.join(", ")}`);
@@ -133,7 +170,7 @@ export function tomlModel(src, filename = "diagram.toml", nets = null) {
   for (const key of ["server_types", "regions", "servers", "connections", "documents"]) {
     if (t[key] !== undefined && (!Array.isArray(t[key]) || t[key].some((v) => !v || typeof v !== "object" || Array.isArray(v)))) fail(`${key} must use [[${key}]] tables`);
   }
-  const id = t.id ?? filename.replace(/\.toml$/i, "");
+  const id = t.id ?? folder;
   if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) fail("id must contain lowercase letters, digits and hyphens");
   const config = { id, title: str(t.title, "title"), groups: {}, processes: {} };
   const noteList = t.notes === undefined ? [] : typeof t.notes === "string" ? [t.notes] : t.notes;
