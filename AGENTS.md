@@ -23,7 +23,7 @@ reinforce the principle.]
 
 ## Product
 
-Diagram editor for infrastructure diagrams: a shared engine renders a TOML (or Mermaid + JSON) description of servers, regions and connections into a self-contained interactive HTML page, SVG/PNG exports and an Excalidraw scene. Authors open `diagram.html` in desktop Edge or Chrome, pick a folder, and arrange the layout in edit mode. Diagram folders hold content only; no diagram needs engine edits. [TODO: users, monetization.]
+Diagram editor for infrastructure diagrams: a shared engine renders a folder of TOML files (or Mermaid + JSON) describing servers, regions and connections into a self-contained interactive HTML page, SVG/PNG exports and an Excalidraw scene. Authors open `diagram.html` in desktop Edge or Chrome, pick a folder, and arrange the layout in edit mode. Diagram folders hold content only; no diagram needs engine edits. [TODO: users, monetization.]
 
 ## Tech stack
 
