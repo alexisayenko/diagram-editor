@@ -1,9 +1,7 @@
-// Files live in local/ behind engine/serve.mjs; the model and geometry stay in this tab.
+// A diagram is a folder in local/ behind engine/serve.mjs; the model and geometry stay in this tab.
 const { setNotes, setServer } = require("parse/toml-write.mjs");
-const { parseNoteText, parseToml } = require("parse/toml.mjs");
+const { parseNoteText, mergeFolder } = require("parse/toml.mjs");
 const { mergeTypes } = require("parse/types.mjs");
-const { parseNetworksFile, isNetworksFile } = require("parse/shared-networks.mjs");
-const NETWORKS = "networks.toml";
 const { validName, layoutNameFor, exportNames } = require("lib/names.mjs");
 const openButton = document.querySelector("#open");
 const picker = document.querySelector("#picker");
@@ -11,12 +9,14 @@ const saveButton = document.querySelector("#save");
 const exportButton = document.querySelector("#export");
 const status = document.querySelector("#status");
 const frame = document.querySelector("#view");
-let serverOk = false, active = null, ready = false, busy = false, netText = null, netItems = null, netError = null;
+let serverOk = false, active = null, ready = false, busy = false;
+const NOTES = "notes.toml", LAYOUT = "diagram.layout.json";
+const isTomlPath = (p) => /\.toml$/i.test(p);
 const editor = () => ready ? frame.contentWindow.InfraDiagram?.modules["canvas/edit-mode"] : null;
 const notesApi = () => ready ? frame.contentWindow.InfraDiagram?.modules["ui/notes-edit"] : null;
 const serverApi = () => ready ? frame.contentWindow.InfraDiagram?.modules["ui/server-edit"] : null;
 const drawApi = () => ready ? frame.contentWindow.InfraDiagram?.modules["canvas/draw"] : null;
-const unsaved = () => !!active && (active.work !== active.source || active.carryLayout || (notesApi() ? JSON.stringify(notesApi().texts()) !== JSON.stringify(active.notes) : false));
+const unsaved = () => !!active && (JSON.stringify([...active.work]) !== JSON.stringify([...active.source]) || active.carryLayout || (notesApi() ? JSON.stringify(notesApi().texts()) !== JSON.stringify(active.notes) : false));
 const dirty = () => editor()?.isDirty() || notesApi()?.isDirty() || serverApi()?.isDirty() || drawApi()?.isDirty() || unsaved() || false;
 function message(text, error = false) { status.textContent = text; status.classList.toggle("error", error); }
 function controls() {
@@ -40,35 +40,36 @@ async function stored(name) {
 }
 const putFiles = (files) => call("/api/files", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ files }) });
 async function latestStored() {
-  const { files } = await call("/api/files");
-  const tomls = files.filter((f) => /\.toml$/i.test(f.name) && f.name !== NETWORKS).sort((x, y) => y.mtime - x.mtime);
-  return tomls.length ? tomls[0].name : null;
+  const { files } = await call("/api/files"), newest = new Map();
+  for (const f of files) {
+    const folder = f.name.split("/")[0];
+    newest.set(folder, Math.max(newest.get(folder) ?? 0, f.mtime));
+  }
+  const folders = files.filter((f) => /^[^/]+\/diagram\.toml$/.test(f.name)).map((f) => f.name.split("/")[0]).sort((x, y) => newest.get(y) - newest.get(x));
+  return folders.length ? folders[0] : null;
 }
-function load(filename, source, layoutText) {
-  const layoutName = layoutNameFor(filename);
+function load(folder, files, layoutText) {
+  const layoutName = layoutNameFor(folder);
   let saved = null;
   if (layoutText !== null) { try { saved = JSON.parse(layoutText); } catch (e) { throw new Error(layoutName + ": invalid JSON: " + e.message); } }
-  const result = require("browser/render.mjs").renderDiagram(source, filename, saved, ASSETS, [], netItems);
+  const result = require("browser/render.mjs").renderDiagram(files, folder, saved, ASSETS, []);
   ready = false;
   const LAYOUT_KEYS = ["version", "diagramId", "nodes", "clusters", "edges", "drawings"];
   const extra = saved ? Object.fromEntries(Object.entries(saved).filter(([k]) => !LAYOUT_KEYS.includes(k))) : {};
-  active = { filename, layoutName, source, work: source, text: layoutText, extra, hadDrawings: !!saved && "drawings" in saved, id: result.id, notes: result.notes, carryLayout: false, reload: null, after: null };
+  active = { folder, layoutName, source: new Map(files), work: new Map(files), text: layoutText, extra, hadDrawings: !!saved && "drawings" in saved, id: result.id, notes: result.notes, carryLayout: false, reload: null, after: null };
   frame.srcdoc = result.html;
   document.querySelector("#welcome").hidden = true;
   frame.hidden = false;
-  message(`${filename} · ${layoutText === null ? "Automatically arranged" : "Saved layout restored"}${result.problems ? " · Open Edit layout to resolve highlighted spacing" : ""}`);
+  message(`${folder} · ${layoutText === null ? "Automatically arranged" : "Saved layout restored"}${result.problems ? " · Open Edit layout to resolve highlighted spacing" : ""}`);
 }
-function useNetworks(text) {
-  netText = text; netItems = null; netError = null;
-  if (text === null) return;
-  try { netItems = parseNetworksFile(text); } catch (e) { netError = e.message; }
-}
-async function loadStored(name) {
-  const source = await stored(name);
-  if (source === null) throw new Error(name + " is no longer stored.");
-  useNetworks(await stored(NETWORKS));
-  load(name, source, await stored(layoutNameFor(name)));
-  if (netError) message(netError, true);
+async function loadStored(folder) {
+  const { files: listed } = await call("/api/files"), prefix = folder + "/";
+  const paths = listed.map((f) => f.name).filter((n) => n.startsWith(prefix) && isTomlPath(n)).map((n) => n.slice(prefix.length));
+  const texts = await Promise.all(paths.map((p) => stored(prefix + p)));
+  const files = new Map();
+  paths.forEach((p, i) => { if (texts[i] !== null) files.set(p, texts[i]); });
+  if (!files.has("diagram.toml")) throw new Error(folder + " is no longer stored.");
+  load(folder, files, await stored(layoutNameFor(folder)));
 }
 frame.addEventListener("load", () => {
   if (!active) return;
@@ -92,33 +93,32 @@ picker.addEventListener("change", async () => {
   if (!chosen.length) return;
   busy = true; controls();
   try {
-    const bad = chosen.filter((f) => !validName(f.name)).map((f) => f.name);
-    if (bad.length) throw new Error(`Unsupported file name: ${bad.join(", ")}. Use letters, digits, dot, dash or underscore, ending in .toml or .json.`);
-    const texts = new Map(await Promise.all(chosen.map(async (f) => [f.name, await decode(f)])));
-    const net = [...texts].find(([n, t]) => /\.toml$/i.test(n) && isNetworksFile(n, t));
-    if (net) { parseNetworksFile(net[1]); texts.delete(net[0]); texts.set(NETWORKS, net[1]); }
-    const tomls = [...texts.keys()].filter((n) => /\.toml$/i.test(n) && n !== NETWORKS).sort((a, b) => a.localeCompare(b));
-    if (!tomls.length && !net) throw new Error("Choose a .toml file (and optionally its .layout.json).");
-    const name = tomls[0], layoutName = name && layoutNameFor(name);
-    if (!serverOk) {
-      if (net) useNetworks(net[1]);
-      if (name) load(name, texts.get(name), texts.get(layoutName) ?? null);
-      else if (active) load(active.filename, active.source, active.text);
-      return;
+    const parts = chosen.map((f) => ({ f, path: (f.webkitRelativePath || f.name).split("/") })).filter((x) => x.path.length > 1);
+    if (!parts.length) throw new Error("Choose a diagram folder (it holds diagram.toml).");
+    const folder = parts[0].path[0], texts = new Map();
+    for (const { f, path } of parts) {
+      const rel = path.slice(1).join("/");
+      if (rel !== LAYOUT && !(isTomlPath(rel) && path.length <= 3)) continue;
+      if (!validName(folder + "/" + rel)) throw new Error(`Unsupported file name: ${folder}/${rel}. Use letters, digits, dot, dash or underscore, ending in .toml or .json.`);
+      texts.set(rel, await decode(f));
     }
+    const layoutText = texts.get(LAYOUT) ?? null;
+    texts.delete(LAYOUT);
+    if (!texts.has("diagram.toml")) throw new Error(`${folder} has no diagram.toml.`);
+    if (!serverOk) { load(folder, texts, layoutText); return; }
+    const all = new Map([...texts].map(([p, t]) => [folder + "/" + p, t]));
+    if (layoutText !== null) all.set(layoutNameFor(folder), layoutText);
     const differing = [];
-    for (const [n, text] of texts) { const old = await stored(n); if (old !== null && old !== text) differing.push(n); }
-    if (differing.length && !window.confirm(`Replace the stored ${differing.join(", ")} with the file you chose?`)) return;
-    await putFiles([...texts].map(([n, text]) => ({ name: n, text, overwrite: true })));
-    if (name) await loadStored(name);
-    else if (active) await loadStored(active.filename);
-    else { useNetworks(net[1]); message("Stored networks.toml in local/; open a diagram to see it."); }
-    if (netError) message(netError, true);
+    for (const [n, text] of all) { const old = await stored(n); if (old !== null && old !== text) differing.push(n); }
+    if (differing.length && !window.confirm(`Replace ${differing.length} stored file(s) (${differing.slice(0, 3).join(", ")}${differing.length > 3 ? ", ..." : ""}) with the folder you chose?`)) return;
+    await putFiles([...all].map(([n, text]) => ({ name: n, text, overwrite: true })));
+    await loadStored(folder);
   } catch (e) { message(e.message, true); }
   finally { busy = false; controls(); }
 });
+const serverPath = (id) => `servers/${id}.toml`;
 function serverSource(id) {
-  const root = parseToml(active.work), s = (root.servers || []).find((x) => x.id === id);
+  const root = mergeFolder(active.work), s = (root.servers || []).find((x) => x.id === id);
   if (!s) return null;
   const types = mergeTypes(root.server_types), region = (root.regions || []).find((r) => r.id === s.region);
   return { ...s, name: s.name ?? s.id, server_type: s.server_type ?? region?.server_type, types: Object.entries(types).map(([tid, t]) => ({ id: tid, label: t.label })) };
@@ -127,19 +127,27 @@ function applyServer(id, fields) {
   const open = notesApi().finish();
   if (open) return "Fix the note first: " + open;
   try {
-    const next = setServer(active.work, id, fields);
-    if (next !== active.work) rerender(next, id);
+    const path = serverPath(id), text = active.work.get(path);
+    if (text === undefined) return `Server '${id}' has no file ${path}.`;
+    const next = setServer(text, id, fields, mergeFolder(active.work));
+    if (next !== text) rerender(path, next, id);
     return null;
   } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
 }
-function rerender(next, id) {
+function withNotes(files, texts) {
+  const out = new Map(files), prev = out.get(NOTES), next = setNotes(prev ?? "", texts);
+  if (prev !== undefined || next !== "") out.set(NOTES, next);
+  return out;
+}
+function rerender(path, next, id) {
   const api = editor(), notes = notesApi(), texts = notes.texts();
   const edited = JSON.stringify(texts) !== JSON.stringify(active.notes);
+  const work = new Map(active.work).set(path, next);
   const layout = { ...api.currentLayout(), drawings: drawApi().list() };
-  const result = require("browser/render.mjs").renderDiagram(edited ? setNotes(next, texts) : next, active.filename, layout, ASSETS, [id], netItems);
+  const result = require("browser/render.mjs").renderDiagram(edited ? withNotes(work, texts) : work, active.folder, layout, ASSETS, [id]);
   const wasEdit = !!frame.contentWindow.InfraDiagram.modules["canvas/model"].state.on;
   active.carryLayout = active.carryLayout || api.isDirty() || drawApi().isDirty();
-  active.work = next;
+  active.work = work;
   active.after = { key: "n:" + id, edit: wasEdit };
   ready = false;
   active.reload = new Promise((resolve) => frame.addEventListener("load", () => { active.reload = null; resolve(); }, { once: true }));
@@ -156,11 +164,11 @@ function pending() {
   if (open) throw new Error("Fix the note first: " + open);
   const texts = notes.texts(), notesChanged = JSON.stringify(texts) !== JSON.stringify(active.notes);
   const layout = api.currentLayout(), drawings = drawApi().list();
-  const tomlText = notesChanged ? setNotes(active.work, texts) : active.work;
+  const files = notesChanged ? withNotes(active.work, texts) : active.work;
+  const changed = [...files].filter(([p, t]) => active.source.get(p) !== t).map(([p]) => p);
   return {
-    api, notes, texts, drawings, changed: tomlText !== active.source, layout,
+    api, notes, texts, drawings, files, changed, layout,
     layoutText: JSON.stringify({ version: 1, diagramId: active.id, ...active.extra, ...layout, ...(drawings.length || active.hadDrawings ? { drawings } : {}) }, null, 2) + "\n",
-    tomlText,
   };
 }
 saveButton.addEventListener("click", async () => {
@@ -170,24 +178,27 @@ saveButton.addEventListener("click", async () => {
   try {
     await settle();
     p = pending();
-    const files = [{ name: active.layoutName, text: p.layoutText, base: active.text }];
-    if (p.changed) files.push({ name: active.filename, text: p.tomlText, base: active.source });
+    const prefix = active.folder + "/", files = [{ name: active.layoutName, text: p.layoutText, base: active.text }];
+    for (const path of p.changed) files.push({ name: prefix + path, text: p.files.get(path), base: active.source.get(path) ?? null });
     await putFiles(files);
     afterSave(p, files.map((f) => f.name));
-    message(p.changed ? `Saved ${active.layoutName} and ${active.filename} in local/` : `Saved ${active.layoutName} in local/`);
+    message(p.changed.length ? `Saved ${active.layoutName} and ${p.changed.length} file(s) in local/${active.folder}/` : `Saved ${active.layoutName} in local/`);
   } catch (e) {
     if (p && e.saved?.length) {
       afterSave(p, e.saved);
-      const left = [active.layoutName, ...(p.changed ? [active.filename] : [])].filter((n) => !e.saved.includes(n));
+      const left = [active.layoutName, ...p.changed.map((c) => active.folder + "/" + c)].filter((n) => !e.saved.includes(n));
       message(`Saved ${e.saved.join(", ")}. ${e.message} Not saved: ${left.join(", ")}.`, true);
     } else message("Save failed: " + e.message, true);
   }
   finally { busy = false; controls(); }
 });
 function afterSave(p, names) {
-  if (names.includes(active.layoutName)) { active.text = p.layoutText; p.api.commit(p.layout); drawApi().markSaved(); active.hadDrawings = active.hadDrawings || p.drawings.length > 0; }
-  if (p.changed && names.includes(active.filename)) { active.source = p.tomlText; active.work = p.tomlText; active.notes = p.texts; p.notes.markSaved(p.texts); }
-  if (names.includes(active.layoutName)) active.carryLayout = false;
+  if (names.includes(active.layoutName)) { active.text = p.layoutText; p.api.commit(p.layout); drawApi().markSaved(); active.hadDrawings = active.hadDrawings || p.drawings.length > 0; active.carryLayout = false; }
+  for (const path of p.changed) {
+    if (!names.includes(active.folder + "/" + path)) continue;
+    active.source.set(path, p.files.get(path)); active.work.set(path, p.files.get(path));
+    if (path === NOTES) { active.notes = p.texts; p.notes.markSaved(p.texts); }
+  }
 }
 function download(name, text) {
   const a = document.createElement("a");
@@ -200,10 +211,10 @@ exportButton.addEventListener("click", async () => {
   if (!editor()) return;
   try {
     await settle();
-    const p = pending(), names = exportNames(active.filename);
-    download(names.toml, p.tomlText);
-    setTimeout(() => download(names.layout, p.layoutText), 400);
-    message(`Exported ${names.toml} and ${names.layout} to your downloads`);
+    const p = pending(), names = exportNames(active.folder);
+    download(names.layout, p.layoutText);
+    p.changed.forEach((path, i) => setTimeout(() => download(names.file(path), p.files.get(path)), 400 * (i + 1)));
+    message(`Exported ${names.layout}${p.changed.length ? ` and ${p.changed.length} changed file(s)` : ""} to your downloads`);
   } catch (e) { message("Export failed: " + e.message, true); }
 });
 window.addEventListener("beforeunload", (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
@@ -217,7 +228,7 @@ setInterval(() => { if (!busy) controls(); }, 250);
     if (serverOk && active) message(e.message, true);
     else {
       serverOk = !/not reachable/.test(e.message);
-      message(serverOk ? e.message : "No local server: files open in memory only and cannot be saved here. Run node engine/serve.mjs and open its address to store and save files; Export still works.", true);
+      message(serverOk ? e.message : "No local server: folders open in memory only and cannot be saved here. Run node engine/serve.mjs and open its address to store and save folders; Export still works.", true);
     }
   }
   controls();

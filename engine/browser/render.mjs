@@ -1,5 +1,5 @@
-import { tomlModel } from "../parse/toml.mjs";
-import { assignNetwork, buildNetworks } from "../parse/shared-networks.mjs";
+import { NETWORKS_FILE, tomlModel } from "../parse/toml.mjs";
+import { assignNetwork, buildNetworks, parseNetworksFile } from "../parse/shared-networks.mjs";
 import { parseConfig, checkConnections } from "../parse/config.mjs";
 import { resolveTypes } from "../parse/types.mjs";
 import { osOf } from "../parse/details.mjs";
@@ -15,9 +15,11 @@ import { buildDataJson } from "../page/data.mjs";
 import { renderLayoutHtml } from "../page/layout-html.mjs";
 
 // Restore positions by stable object id; prune removed objects and refresh text geometry.
-export function prepareDiagram(source, filename, saved = null, refit = [], networks = null) {
+// `files` maps folder-relative paths (diagram.toml, servers/<id>.toml, ...) to their text.
+export function prepareDiagram(files, folder, saved = null, refit = []) {
+  const networks = files.has(NETWORKS_FILE) ? parseNetworksFile(files.get(NETWORKS_FILE)) : null;
   const nets = networks && { of: (ip) => networks[assignNetwork(networks, ip)] ?? null };
-  const { config: raw, model, sections, notes, docs } = tomlModel(source, filename, nets);
+  const { config: raw, model, sections, notes, docs } = tomlModel(files, folder, nets);
   const config = parseConfig(JSON.stringify(raw), raw.id);
   checkConnections(config, model.edges.map(edgeKey), model.nodes);
   const meta = geometryMeta(model, config.groups, config.processes), kit = geometryKit();
@@ -59,11 +61,11 @@ export function prepareDiagram(source, filename, saved = null, refit = [], netwo
   for (const id of model.nodes.keys()) kit.fitBox(layout.nodes[id], meta.nodes[id]);
   for (const id of model.clusters.keys()) kit.fitRegion(layout, meta, id);
   const drawings = drawKit().validate(saved?.drawings);
-  return { config, model, sections, notes, docs, meta, layout, kit, drawings };
+  return { config, model, sections, notes, docs, meta, layout, kit, drawings, networks };
 }
 
-export function renderDiagram(source, filename, saved, assets, refit = [], networks = null) {
-  const { config, model, sections, notes, docs, meta, layout, kit, drawings } = prepareDiagram(source, filename, saved, refit, networks);
+export function renderDiagram(files, folder, saved, assets, refit = []) {
+  const { config, model, sections, notes, docs, meta, layout, kit, drawings, networks } = prepareDiagram(files, folder, saved, refit);
   const { nets, ipNet } = networks ? buildNetworks(networks, model, layout) : { nets: null, ipNet: {} };
   const routes = kit.route(layout, meta);
   const { ent, typeList, typeCss } = resolveTypes(model, layout, config.proposedLabel);
