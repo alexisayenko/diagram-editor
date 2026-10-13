@@ -27,6 +27,6 @@ export const withFile = (files, path, text) => new Map(files).set(path, text);
 
 export const without = (files, path) => { const m = new Map(files); m.delete(path); return m; };
 
-// A small folder: diagram.toml with `head`, one server a, and any extra files.
+// A small folder: topology.toml with `head`, one server a, and any extra files.
 export const mini = (head = 'title = "t"\n', extra = {}, server = 'id = "a"\nserver_type = "web"\n') =>
-  new Map(Object.entries({ "diagram.toml": head, "servers/a.toml": server, ...extra }));
+  new Map(Object.entries({ "topology.toml": head, "servers/a.toml": server, ...extra }));

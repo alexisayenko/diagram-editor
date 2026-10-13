@@ -37,3 +37,6 @@ svg.edit .nwb{display:none}
 svg.edit .ch.bad .cd{stroke:var(--red);stroke-width:2}
 svg.edit.s-sketch .b.bad{stroke:var(--red);stroke-width:2.5}
 svg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}
+#cm{position:fixed;min-width:140px;padding:4px;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.2);font:13px system-ui,sans-serif;z-index:9}
+#cm button{display:block;width:100%;text-align:left;font:inherit;color:inherit;background:none;border:0;border-radius:4px;padding:5px 10px;cursor:pointer}
+#cm button:hover,#cm button:focus-visible{background:var(--line);outline:none}

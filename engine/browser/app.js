@@ -1,8 +1,10 @@
 // A diagram is a folder in local/ behind engine/serve.mjs; the model and geometry stay in this tab.
-const { setNotes, setServer } = require("parse/toml-write.mjs");
-const { parseNoteText, mergeFolder } = require("parse/toml.mjs");
+const { setNotes, setServer, addServer, duplicateServer } = require("parse/toml-write.mjs");
+const { parseNoteText, mergeFolder, withRoot } = require("parse/toml.mjs");
 const { mergeTypes } = require("parse/types.mjs");
+const { newDiagram, DIAGRAM_ID } = require("parse/new-diagram.mjs");
 const { validName, layoutNameFor, exportNames } = require("lib/names.mjs");
+const newButton = document.querySelector("#new");
 const openButton = document.querySelector("#open");
 const picker = document.querySelector("#picker");
 const saveButton = document.querySelector("#save");
@@ -21,6 +23,7 @@ const dirty = () => editor()?.isDirty() || notesApi()?.isDirty() || serverApi()?
 function message(text, error = false) { status.textContent = text; status.classList.toggle("error", error); }
 function controls() {
   frame.inert = busy;
+  newButton.disabled = busy;
   openButton.disabled = busy;
   saveButton.disabled = busy || !ready || !serverOk || !dirty(); exportButton.disabled = busy || !ready;
 }
@@ -45,7 +48,7 @@ async function latestStored() {
     const folder = f.name.split("/")[0];
     newest.set(folder, Math.max(newest.get(folder) ?? 0, f.mtime));
   }
-  const folders = files.filter((f) => /^[^/]+\/diagram\.toml$/.test(f.name)).map((f) => f.name.split("/")[0]).sort((x, y) => newest.get(y) - newest.get(x));
+  const folders = files.filter((f) => /^[^/]+\/(topology|diagram)\.toml$/.test(f.name)).map((f) => f.name.split("/")[0]).sort((x, y) => newest.get(y) - newest.get(x));
   return folders.length ? folders[0] : null;
 }
 function load(folder, files, layoutText) {
@@ -68,8 +71,8 @@ async function loadStored(folder) {
   const texts = await Promise.all(paths.map((p) => stored(prefix + p)));
   const files = new Map();
   paths.forEach((p, i) => { if (texts[i] !== null) files.set(p, texts[i]); });
-  if (!files.has("diagram.toml")) throw new Error(folder + " is no longer stored.");
-  load(folder, files, await stored(layoutNameFor(folder)));
+  if (!files.has("topology.toml") && !files.has("diagram.toml")) throw new Error(folder + " is no longer stored.");
+  load(folder, withRoot(files), await stored(layoutNameFor(folder)));
 }
 frame.addEventListener("load", () => {
   if (!active) return;
@@ -78,13 +81,28 @@ frame.addEventListener("load", () => {
   if (!ready) message("The diagram could not start. Reload it to retry.", true);
   else {
     diagram.noteParser = (text) => { const n = parseNoteText(text, "Note", true); return { title: n.title, date: n.date, paras: n.paras }; };
-    diagram.serverEditor = { source: serverSource, apply: applyServer };
+    diagram.serverEditor = { source: serverSource, apply: applyServer, add: addNewServer, duplicate: duplicateExisting };
     const after = active.after;
     active.after = null;
     if (after?.edit) frame.contentDocument.getElementById("te").click();
     if (after?.key) diagram.select(after.key);
   }
   controls();
+});
+newButton.addEventListener("click", async () => {
+  if (!discard()) return;
+  const asked = window.prompt("Name the new diagram (lowercase letters, digits and hyphens). It is saved as a folder of this name:", "new-diagram");
+  if (asked === null) return;
+  const folder = asked.trim();
+  busy = true; controls();
+  try {
+    if (!DIAGRAM_ID.test(folder)) throw new Error("A diagram name uses lowercase letters, digits and hyphens.");
+    if (serverOk && await stored(folder + "/topology.toml") !== null) throw new Error(`${folder} already exists in local/. Open it, or choose another name.`);
+    load(folder, newDiagram(folder), null);
+    active.source = new Map();
+    message(`${folder} · New diagram, not saved yet${serverOk ? "" : " · No local server: Export downloads it"}`);
+  } catch (e) { message(e.message, true); }
+  finally { busy = false; controls(); }
 });
 const decode = async (file) => new TextDecoder("utf-8", { ignoreBOM: true }).decode(await file.arrayBuffer());
 openButton.addEventListener("click", () => { if (discard()) picker.click(); });
@@ -94,7 +112,7 @@ picker.addEventListener("change", async () => {
   busy = true; controls();
   try {
     const parts = chosen.map((f) => ({ f, path: (f.webkitRelativePath || f.name).split("/") })).filter((x) => x.path.length > 1);
-    if (!parts.length) throw new Error("Choose a diagram folder (it holds diagram.toml).");
+    if (!parts.length) throw new Error("Choose a diagram folder (it holds topology.toml).");
     const folder = parts[0].path[0], texts = new Map();
     for (const { f, path } of parts) {
       const rel = path.slice(1).join("/");
@@ -104,9 +122,10 @@ picker.addEventListener("change", async () => {
     }
     const layoutText = texts.get(LAYOUT) ?? null;
     texts.delete(LAYOUT);
-    if (!texts.has("diagram.toml")) throw new Error(`${folder} has no diagram.toml.`);
-    if (!serverOk) { load(folder, texts, layoutText); return; }
-    const all = new Map([...texts].map(([p, t]) => [folder + "/" + p, t]));
+    const rooted = withRoot(texts);
+    if (!rooted.has("topology.toml")) throw new Error(`${folder} has no topology.toml.`);
+    if (!serverOk) { load(folder, rooted, layoutText); return; }
+    const all = new Map([...rooted].map(([p, t]) => [folder + "/" + p, t]));
     if (layoutText !== null) all.set(layoutNameFor(folder), layoutText);
     const differing = [];
     for (const [n, text] of all) { const old = await stored(n); if (old !== null && old !== text) differing.push(n); }
@@ -134,16 +153,38 @@ function applyServer(id, fields) {
     return null;
   } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
 }
+function addNewServer(region, x, y) {
+  const open = notesApi().finish() || serverApi().finish();
+  if (open) return "Fix the open edit first: " + open;
+  if (!ready) return "Try again once the diagram has reloaded.";
+  try {
+    const generic = mergeTypes(mergeFolder(active.work).server_types).server ? "server" : undefined;
+    const { path, text, id } = addServer(active.work, region ? { region } : { server_type: generic });
+    rerender(path, text, id, [x, y]);
+    return null;
+  } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
+}
+function duplicateExisting(id) {
+  const open = notesApi().finish() || serverApi().finish();
+  if (open) return "Fix the open edit first: " + open;
+  if (!ready) return "Try again once the diagram has reloaded.";
+  try {
+    const { path, text, id: copy } = duplicateServer(active.work, id), from = editor().currentLayout().nodes[id];
+    rerender(path, text, copy, from ? [Math.round(from.x) + 30, Math.round(from.y) + 30] : undefined);
+    return null;
+  } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
+}
 function withNotes(files, texts) {
   const out = new Map(files), prev = out.get(NOTES), next = setNotes(prev ?? "", texts);
   if (prev !== undefined || next !== "") out.set(NOTES, next);
   return out;
 }
-function rerender(path, next, id) {
+function rerender(path, next, id, at) {
   const api = editor(), notes = notesApi(), texts = notes.texts();
   const edited = JSON.stringify(texts) !== JSON.stringify(active.notes);
   const work = new Map(active.work).set(path, next);
   const layout = { ...api.currentLayout(), drawings: drawApi().list() };
+  if (at) layout.nodes[id] = { x: at[0], y: at[1], w: 1, h: 1, title: at.slice() };
   const result = require("browser/render.mjs").renderDiagram(edited ? withNotes(work, texts) : work, active.folder, layout, ASSETS, [id]);
   const wasEdit = !!frame.contentWindow.InfraDiagram.modules["canvas/model"].state.on;
   active.carryLayout = active.carryLayout || api.isDirty() || drawApi().isDirty();

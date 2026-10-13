@@ -122,7 +122,7 @@ test("documents: parsed, validated, rendered; a documents-only folder opens", ()
   for (const bad of ['url = "javascript:alert(1)"', 'url = "https://x y"', 'url = "ftp://e.test/x"', 'url = "https://e.test/"\nextra = "x"']) {
     assert.throws(() => tomlModel(doc('[[documents]]\ntitle = "D"\n' + bad + "\n"), "t"), /documents\[1\]|must be/);
   }
-  assert.throws(() => tomlModel(new Map([["diagram.toml", 'title = "t"\n']]), "t"), /define at least one/);
+  assert.doesNotThrow(() => tomlModel(new Map([["topology.toml", 'title = "t"\n']]), "t"));
 });
 
 test("saving notes rewrites notes.toml only; documents and servers stay untouched", () => {

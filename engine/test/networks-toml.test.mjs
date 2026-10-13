@@ -55,15 +55,15 @@ test("file validation names the entry", () => {
   assert.throws(one('[[networks]]\ncidr = "192.0.2.0/24"\n'), /name must be a non-empty string/);
   assert.throws(one('[[networks]]\ncidr = "192.0.2.0/24"\nname = "a"\nzone = "x"\n'), /unknown key zone/);
   assert.throws(one('title = "x"\n[[networks]]\ncidr = "192.0.2.0/24"\nname = "a"\n'), /unknown key title/);
-  assert.throws(one("# nothing\n"), /no \[\[networks\]\] entries/);
+  assert.deepEqual(one("# nothing\n")(), []);
   assert.equal(items.length, 5);
   assert.equal(items[0].description, "Application and database servers");
 });
 
-test("networks belong in the folder's networks.toml, not in diagram.toml; a broken file fails the render", () => {
-  assert.throws(() => tomlModel(withFile(demo, "diagram.toml", example + demo.get("diagram.toml")), "x"), /diagram\.toml: unknown key networks/);
+test("networks belong in the folder's networks.toml, not in topology.toml; an empty file is allowed", () => {
+  assert.throws(() => tomlModel(withFile(demo, "topology.toml", example + demo.get("topology.toml")), "x"), /topology.toml: unknown key networks/);
   assert.doesNotThrow(() => tomlModel(demo, "x"));
-  assert.throws(() => renderDiagram(withFile(demo, "networks.toml", "# empty\n"), "demo", null, stub), /no \[\[networks\]\] entries/);
+  assert.doesNotThrow(() => renderDiagram(withFile(demo, "networks.toml", "# empty\n"), "demo", null, stub));
 });
 
 test("demo servers: multi-homed server in each network, most specific segment, rows ordered with depth", () => {

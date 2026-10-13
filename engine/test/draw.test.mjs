@@ -79,7 +79,7 @@ test("layout round-trip: old layouts load, drawings survive page and TOML re-ren
   assert.equal((withDraw.html.match(/<path class="dwp" data-id="d/g) || []).length, 2);
   assert.match(withDraw.html, /data-id="d1" d="M10\.5 20L/);
   assert.deepEqual(dataOf(withDraw.html).drawings, drawings);
-  const edited = withFile(without(mod(demo, "diagram.toml", 'from = "app01"\nto = "db01"', 'from = "app01"\nto = "db99"'), "servers/db01.toml"), "servers/db99.toml", demo.get("servers/db01.toml").replace('id = "db01"', 'id = "db99"'));
+  const edited = withFile(without(mod(demo, "topology.toml", 'from = "app01"\nto = "db01"', 'from = "app01"\nto = "db99"'), "servers/db01.toml"), "servers/db99.toml", demo.get("servers/db01.toml").replace('id = "db01"', 'id = "db99"'));
   const after = renderDiagram(edited, "demo", { ...saved, ...withDraw.layout, drawings }, assets);
   assert.deepEqual(dataOf(after.html).drawings, drawings);
   assert.throws(() => renderDiagram(demo, "demo", { ...saved, drawings: [{ id: "x" }] }, assets), /Invalid saved drawing/);

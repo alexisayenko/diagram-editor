@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseToml, tomlModel, mergeFolder } from "../parse/toml.mjs";
+import { parseToml, tomlModel, mergeFolder, withRoot } from "../parse/toml.mjs";
 import { prepareDiagram, renderDiagram } from "../browser/render.mjs";
 import { validateGeometry } from "../parse/validate.mjs";
 import { css, script } from "../page/assets.mjs";
@@ -19,19 +19,19 @@ test("TOML comments, quoted hashes, literal strings, escapes and multiline array
 test("bad TOML and schema errors are actionable", () => {
   for (const source of ['title = "one"\ntitle = "two"', 'title = "bad\\q"', 'title = 4', '[servers]', 'title = "unterminated']) assert.throws(() => parseToml(source), /TOML:\d+:/);
   for (const [files, error] of [
-    [withFile(demo, "diagram.toml", 'wrong = "key"\n' + demo.get("diagram.toml")), /diagram\.toml: unknown key wrong/],
-    [withFile(demo, "diagram.toml", 'notes = ["x"]\n' + demo.get("diagram.toml")), /diagram\.toml: unknown key notes/],
+    [withFile(demo, "topology.toml", 'wrong = "key"\n' + demo.get("topology.toml")), /topology.toml: unknown key wrong/],
+    [withFile(demo, "topology.toml", 'notes = ["x"]\n' + demo.get("topology.toml")), /topology.toml: unknown key notes/],
     [withFile(demo, "servers/app01.toml", 'id = "web01"\nserver_type = "web"'), /must equal the file name/],
     [withFile(demo, "servers/web.toml", 'server_type = "web"'), /invalid or duplicate/],
     [withFile(demo, "extra.toml", 'x = "y"'), /unexpected file extra\.toml/],
-    [without(demo, "diagram.toml"), /diagram\.toml is missing/],
+    [without(demo, "topology.toml"), /topology.toml is missing/],
     [withFile(demo, "servers/web01.toml", 'id = "web01"\nid = "web01"'), /servers\/web01\.toml:2: duplicate key/],
     [mod(demo, "servers/web01.toml", 'region = "web"', 'region = "missing"'), /unknown region/],
-    [mod(demo, "diagram.toml", 'server_type = "web"', 'server_type = "unknown"'), /server_type/],
+    [mod(demo, "topology.toml", 'server_type = "web"', 'server_type = "unknown"'), /server_type/],
     [mod(demo, "servers/web01.toml", '203.0.113.10/24', '300.0.0.1/24'), /invalid IPv4/],
-    [mod(demo, "diagram.toml", 'from_service = "Job 104"', 'from_service = "missing"'), /exactly one service/],
-    [mod(demo, "diagram.toml", 'firewall = true', 'firewall = "true"'), /true or false/],
-    [withFile(demo, "diagram.toml", 'title="test"\nregions=["bad"]'), /tables/],
+    [mod(demo, "topology.toml", 'from_service = "Job 104"', 'from_service = "missing"'), /exactly one service/],
+    [mod(demo, "topology.toml", 'firewall = true', 'firewall = "true"'), /true or false/],
+    [withFile(demo, "topology.toml", 'title="test"\nregions=["bad"]'), /tables/],
     [withFile(without(demo, "servers/web01.toml"), "servers/constructor.toml", 'server_type = "web"'), /invalid or duplicate/],
   ]) assert.throws(() => tomlModel(files, "test"), error);
 });
@@ -96,7 +96,7 @@ test("TOML server OS appears as exactly one row in the details panel", () => {
   let mod;
   runInNewContext(src, { InfraDiagram: { define: (n, d, f) => { mod = f({ D: {}, esc: (x) => String(x), $: () => null }); } } });
   const server = (id, body) => ["servers/" + id + ".toml", `id="${id}"\nserver_type="web"\nname="${id}.test"\n${body}`];
-  const { sections } = tomlModel(new Map([["diagram.toml", 'title="t"'], server("a", 'os="Ubuntu 24.04"\ndetails="Note."\n'), server("b", 'os="Debian 12"\n'), server("c", 'details="Only note."\n')]), "t");
+  const { sections } = tomlModel(new Map([["topology.toml", 'title="t"'], server("a", 'os="Ubuntu 24.04"\ndetails="Note."\n'), server("b", 'os="Debian 12"\n'), server("c", 'details="Only note."\n')]), "t");
   const count = (html) => (html.match(/<t[dh]>OS<\/t[dh]>/g) || []).length;
   assert.equal(count(mod.md(sections["a.test"])), 1);
   assert.match(mod.md(sections["a.test"]), /<td>OS<\/td><td>Ubuntu 24\.04<\/td>/);
@@ -126,4 +126,15 @@ test("folder merge: each file holds its own keys and servers are ordered by file
   assert.equal(root.documents.length, 2);
   assert.equal(root.title, "Demo infrastructure");
   assert.equal(mergeFolder(withFile(demo, "networks.toml", "# parsed elsewhere")).servers.length, 7);
+});
+
+test("a legacy folder with only diagram.toml loads as topology.toml; topology.toml wins when both exist", () => {
+  const legacy = new Map(demo);
+  legacy.set("diagram.toml", legacy.get("topology.toml"));
+  legacy.delete("topology.toml");
+  assert.deepEqual(mergeFolder(legacy), mergeFolder(demo));
+  assert.deepEqual([...withRoot(legacy).keys()].filter((k) => k.endsWith("topology.toml") || k === "diagram.toml"), ["topology.toml"]);
+  const both = new Map(demo);
+  both.set("diagram.toml", 'wrong = "key"');
+  assert.deepEqual(mergeFolder(both), mergeFolder(demo));
 });

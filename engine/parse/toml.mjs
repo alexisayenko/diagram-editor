@@ -122,11 +122,19 @@ export function parseNoteText(text, at = "note", strict = false) {
 
 // A diagram folder: file name (relative to the folder) -> the keys that file may hold.
 export const FOLDER_FILES = {
-  "diagram.toml": ["id", "title", "regions", "connections"],
+  "topology.toml": ["id", "title", "regions", "connections"],
   "server-types.toml": ["server_types"],
   "notes.toml": ["notes"],
   "documents.toml": ["documents"],
 };
+export const ROOT_FILE = "topology.toml", LEGACY_ROOT_FILE = "diagram.toml";
+export function withRoot(files) {
+  if (!files.has(LEGACY_ROOT_FILE)) return files;
+  const out = new Map(files), legacy = out.get(LEGACY_ROOT_FILE);
+  out.delete(LEGACY_ROOT_FILE);
+  if (!out.has(ROOT_FILE)) out.set(ROOT_FILE, legacy);
+  return out;
+}
 export const NETWORKS_FILE = "networks.toml";
 export const SERVER_DIR = "servers/";
 
@@ -136,9 +144,10 @@ function parseFile(name, text) {
 }
 
 // Merge the folder's files into one root object shaped like the former single-file document.
-export function mergeFolder(files) {
+export function mergeFolder(input) {
+  const files = withRoot(input);
   const fail = (m) => { throw new Error("TOML: " + m); };
-  if (!files.has("diagram.toml")) fail("diagram.toml is missing");
+  if (!files.has("topology.toml")) fail("topology.toml is missing");
   const root = Object.create(null), servers = [];
   for (const name of [...files.keys()].sort()) {
     const text = files.get(name), server = name.startsWith(SERVER_DIR) && name.slice(SERVER_DIR.length).match(/^([^/]+)\.toml$/);
@@ -151,7 +160,7 @@ export function mergeFolder(files) {
       const part = parseFile(name, text), unknown = Object.keys(part).filter((k) => !FOLDER_FILES[name].includes(k));
       if (unknown.length) fail(`${name}: unknown key ${unknown.join(", ")}; it may hold only ${FOLDER_FILES[name].join(", ")}`);
       Object.assign(root, part);
-    } else if (name.endsWith(".toml")) fail(`unexpected file ${name}; use diagram.toml, server-types.toml, notes.toml, documents.toml, networks.toml and servers/<id>.toml`);
+    } else if (name.endsWith(".toml")) fail(`unexpected file ${name}; use topology.toml, server-types.toml, notes.toml, documents.toml, networks.toml and servers/<id>.toml`);
   }
   if (servers.length) root.servers = servers;
   return root;
@@ -245,7 +254,6 @@ export function tomlModel(files, folder = "diagram", nets = null) {
     const block = (head, items) => items.length ? `## ${head}\n\n${items.map((i) => "- " + i).join("\n")}\n\n` : "";
     sections[title] = (rows.length ? `| Key | Value |\n|---|---|\n${rows.join("\n")}\n\n` : "") + block("IPs", nets ? ips.map((ip) => `${ip} — ${nets.of(ip)?.name ?? "unassigned network"}`) : ips) + block("DNS", dns) + block("Jobs", jobs) + block("RMI services", rmi) + block("systemd services", units) + (s.details || "");
   }
-  if (!model.nodes.size && !model.clusters.size && !docs.length && !notes.length) fail("define at least one server, region, document or note");
   const edgeIds = new Set();
   for (const e of t.connections || []) {
     keys(e, ["from", "to", "label", "firewall", "proposed", "from_service", "to_service"], "connection");

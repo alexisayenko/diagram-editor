@@ -38,7 +38,6 @@ export function parseNetworksFile(src) {
   const extra = Object.keys(root).filter((k) => k !== "networks");
   if (extra.length) fail(`unknown key ${extra.join(", ")}; only [[networks]] tables are allowed`);
   const list = root.networks || [];
-  if (!list.length) fail("no [[networks]] entries");
   const items = [];
   list.forEach((d, i) => {
     const at = `networks[${i + 1}]`, unknown = Object.keys(d).filter((k) => !["cidr", "name", "description"].includes(k));

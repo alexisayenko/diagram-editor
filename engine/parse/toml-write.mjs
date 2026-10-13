@@ -1,5 +1,5 @@
 // Surgical write-back of notes.toml (the `notes` key) and servers/<id>.toml: every other byte of the file is kept.
-import { parseToml, ipProblem, dnsProblem } from "./toml.mjs";
+import { parseToml, mergeFolder, tomlModel, ipProblem, dnsProblem } from "./toml.mjs";
 import { mergeTypes } from "./types.mjs";
 
 function eolOf(src) {
@@ -174,4 +174,53 @@ export function setServer(src, id, fields, ctx = {}) {
     throw new Error("Internal error: the rewritten TOML does not match the edit; nothing was written");
   }
   return out;
+}
+
+// `files` is the folder (path -> text); returns the new file's path, text and id. Unlisted `server_type` falls back to the region's type or the first known one.
+export function addServer(files, { region, server_type } = {}) {
+  const root = mergeFolder(files), types = Object.keys(mergeTypes(root.server_types));
+  const taken = new Set([...(root.regions || []), ...(root.servers || [])].map((e) => e.id));
+  const names = new Set((root.servers || []).map((s) => s.name ?? s.id));
+  let n = (root.servers || []).length + 1;
+  while (taken.has("server" + n) || names.has("server-" + n) || files.has(`servers/server${n}.toml`)) n++;
+  const id = "server" + n, lines = [`id = ${basic(id)}`, `name = ${basic("server-" + n)}`];
+  if (region) lines.push(`region = ${basic(region)}`);
+  else lines.push(`server_type = ${basic(server_type ?? types[0])}`);
+  const text = lines.join("\n") + "\n", path = `servers/${id}.toml`;
+  tomlModel(new Map(files).set(path, text));
+  return { path, text, id };
+}
+
+export function duplicateServer(files, id) {
+  const srcPath = `servers/${id}.toml`, src = files.get(srcPath);
+  if (src === undefined) throw new Error(`Server '${id}' has no file ${srcPath}.`);
+  const root = mergeFolder(files), old = (root.servers || []).find((s) => s.id === id);
+  if (!old) throw new Error(`Server '${id}' not found.`);
+  const taken = new Set([...(root.regions || []), ...(root.servers || [])].map((e) => e.id));
+  const names = new Set((root.servers || []).map((s) => s.name ?? s.id));
+  const baseName = old.name ?? id;
+  let n = 1, suffix = "-copy";
+  while (taken.has(id + suffix) || names.has(baseName + suffix) || files.has(`servers/${id}${suffix}.toml`)) suffix = `-copy-${++n}`;
+  const newId = id + suffix, name = baseName + suffix, eol = eolOf(src);
+  const { flat, spans, at } = prepare(src), edits = [], lines = [];
+  for (const [k, v] of [["id", newId], ["name", name]]) {
+    const cur = spans.keys[k];
+    if (cur) edits.push({ from: at(cur.valueStart), to: at(cur.valueEnd), text: basic(v) });
+    else lines.push(`${k} = ${basic(v)}`);
+  }
+  if (lines.length) {
+    const last = Object.keys(spans.keys).sort((a, b) => spans.keys[b].start - spans.keys[a].start)[0];
+    const end = last ? flat.indexOf("\n", spans.keys[last].valueEnd) : -1, pos = end < 0 ? src.length : at(end + 1);
+    const lead = end < 0 && src.length && !flat.endsWith("\n") ? eol : "";
+    edits.push({ from: pos, to: pos, text: lead + lines.join(eol) + eol });
+  }
+  let text = src;
+  for (const e of edits.sort((a, b) => b.from - a.from || b.to - a.to)) text = text.slice(0, e.from) + e.text + text.slice(e.to);
+  const after = parseToml(text);
+  if (JSON.stringify(canonical({ ...after, id: 0, name: 0 })) !== JSON.stringify(canonical({ ...parseToml(prepare(src).flat), id: 0, name: 0 })) || after.id !== newId || after.name !== name) {
+    throw new Error("Internal error: the duplicated TOML does not match the original; nothing was written");
+  }
+  const path = `servers/${newId}.toml`;
+  tomlModel(new Map(files).set(path, text));
+  return { path, text, id: newId };
 }

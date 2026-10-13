@@ -4,7 +4,7 @@ Agreed vocabulary for the diagrams and the engine. Left column is the term to us
 
 ## Sources
 
-The TOML authoring workflow uses a **TOML model** (a diagram folder: `diagram.toml` with regions and connections, `servers/<id>.toml` per server, plus optional `server-types.toml`, `notes.toml`, `documents.toml`, `networks.toml`) and a **saved layout** (`diagram.layout.json`: geometry in the same folder). **Auto-layout** places objects with no saved geometry. **Save layout** writes the current arrangement to that file. The Mermaid model and per-folder `layout.json` below describe the existing CLI workflow.
+The TOML authoring workflow uses a **TOML model** (a diagram folder: `topology.toml` with regions and connections, `servers/<id>.toml` per server, plus optional `server-types.toml`, `notes.toml`, `documents.toml`, `networks.toml`) and a **saved layout** (`diagram.layout.json`: geometry in the same folder). **Auto-layout** places objects with no saved geometry. **Save layout** writes the current arrangement to that file. The Mermaid model and per-folder `layout.json` below describe the existing CLI workflow.
 
 | Term | Meaning | Instead of |
 |---|---|---|

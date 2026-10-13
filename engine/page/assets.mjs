@@ -16,7 +16,7 @@ const CSS = {
 const RUNTIME = [
   "ui/core", "ui/details", "ui/skins", "ui/panels", "ui/networks", "ui/legend", "ui/selection",
   "ui/export-columns", "ui/copy", "ui/export-image", "ui/init", "ui/notes-edit", "ui/server-edit",
-  "canvas/geometry", "canvas/draw-kit", "canvas/model", "canvas/zoom-pan", "canvas/draw", "canvas/edit-mode",
+  "canvas/geometry", "canvas/draw-kit", "canvas/model", "canvas/zoom-pan", "canvas/draw", "canvas/edit-mode", "canvas/context-menu",
 ];
 
 const load = (f) => readText(join(ENGINE, f));

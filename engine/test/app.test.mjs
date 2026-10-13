@@ -11,7 +11,7 @@ test("Save follows the dirty state: notes and layout enable it, clean or no serv
   assert.match(app, /setInterval\(\(\) => \{ if \(!busy\) controls\(\); \}/);
   const run = (state, mods) => {
     const el = () => ({ disabled: null });
-    const ctx = { openButton: el(), select: { ...el(), options: [1, 2] }, reloadButton: el(), saveButton: el(), exportButton: el(), frame: { contentWindow: { InfraDiagram: { modules: mods } } } };
+    const ctx = { newButton: el(), openButton: el(), select: { ...el(), options: [1, 2] }, reloadButton: el(), saveButton: el(), exportButton: el(), frame: { contentWindow: { InfraDiagram: { modules: mods } } } };
     runInNewContext(`let busy = false, serverOk = true, ready = true, active = { work: new Map(), source: new Map(), notes: [], carryLayout: false };\n${state}\n${lines}\n${fn}\ncontrols()`, ctx);
     return ctx.saveButton.disabled;
   };

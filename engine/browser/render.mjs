@@ -15,7 +15,7 @@ import { buildDataJson } from "../page/data.mjs";
 import { renderLayoutHtml } from "../page/layout-html.mjs";
 
 // Restore positions by stable object id; prune removed objects and refresh text geometry.
-// `files` maps folder-relative paths (diagram.toml, servers/<id>.toml, ...) to their text.
+// `files` maps folder-relative paths (topology.toml, servers/<id>.toml, ...) to their text.
 export function prepareDiagram(files, folder, saved = null, refit = []) {
   const networks = files.has(NETWORKS_FILE) ? parseNetworksFile(files.get(NETWORKS_FILE)) : null;
   const nets = networks && { of: (ip) => networks[assignNetwork(networks, ip)] ?? null };

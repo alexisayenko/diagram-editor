@@ -1,6 +1,6 @@
 # Authoring a diagram
 
-Run `node engine/serve.mjs` and open the printed address (any modern browser, including Firefox). The toolbar has three buttons: **Open diagram folder**, **Export** and **Save**. A diagram is a folder (see [Diagram folder](#diagram-folder)); the button picks one with the browser's folder dialog and takes its `.toml` files plus `diagram.layout.json` when present, ignoring everything else in it. On page load the most recently modified stored diagram folder opens automatically; with none stored, the welcome panel shows. Opened folders are stored in the git-ignored `local/` folder next to the server as `local/<folder>/...` under their original names (letters, digits, dot, dash and underscore only; `.toml` or `.json`; `servers/` is the only sub-folder). If a stored file with the same name differs, you are asked before it is replaced; stored files that the opened folder lacks are left alone. Opening `diagram.html` straight from disk works in memory only: files import, but Save is unavailable; **Export** still works. No infrastructure data leaves your machine. Web fonts use the existing Google Fonts URL.
+Run `node engine/serve.mjs` and open the printed address (any modern browser, including Firefox). The toolbar has four buttons: **New diagram**, **Open diagram folder**, **Export** and **Save**. **New diagram** asks for a name (lowercase letters, digits and hyphens, which becomes the folder name and diagram id), refuses a name already stored in `local/`, and opens an empty diagram in memory with the generic `server`, `database` and `gateway` types; add servers with the right-click **Add Server** menu in edit mode, then **Save** writes the whole folder to `local/<name>/` (without the local server, **Export** downloads the files). Regions are added by editing `topology.toml`. If the current diagram has unsaved edits, you are asked before it is replaced. A diagram is a folder (see [Diagram folder](#diagram-folder)); the button picks one with the browser's folder dialog and takes its `.toml` files plus `diagram.layout.json` when present, ignoring everything else in it. On page load the most recently modified stored diagram folder opens automatically; with none stored, the welcome panel shows. Opened folders are stored in the git-ignored `local/` folder next to the server as `local/<folder>/...` under their original names (letters, digits, dot, dash and underscore only; `.toml` or `.json`; `servers/` is the only sub-folder). If a stored file with the same name differs, you are asked before it is replaced; stored files that the opened folder lacks are left alone. Opening `diagram.html` straight from disk works in memory only: files import, but Save is unavailable; **Export** still works. No infrastructure data leaves your machine. Web fonts use the existing Google Fonts URL.
 
 The engine arranges the diagram automatically. Press **Edit layout**, drag servers or regions, then **Save** in the page toolbar. Save is enabled only while there are unsaved changes (layout or notes); there is no autosave. The folder `my-diagram/` saves its geometry to `my-diagram/diagram.layout.json` in `local/`. Reopening restores that file. Browser storage is not used for layout drafts.
 
@@ -21,6 +21,8 @@ Edit the TOML files in your text editor (in `local/<folder>/`), then reload the 
 - **Done** or Enter commits (Ctrl+Enter in Notes); **Esc** or **Cancel** discards. The name must be non-empty and unique, IPs must be IPv4 with a prefix (the parser's rule), DNS entries must be host names, entries are single-line; problems show inline and the form stays open. While the form has changes, other selections are refused with a message.
 - Committing re-renders the diagram: the server keeps its saved position and its box is resized to its text (name width, IP line count); the edit is held in memory as an unsaved change (Save enables; leaving the page asks).
 - **Save** rewrites only the changed keys of that server's own file `servers/<id>.toml`: a changed value is replaced in place (comments, key order and untouched keys stay); a key whose value became empty is removed with its line; a new key is appended after the file's last key. No other file is touched. Multi-line `details` is written as a `"""` string, lists keep their single-line or multi-line style, and CRLF and BOM are preserved. The result is re-parsed and checked against the edit before anything is written; the 409 base check applies as for notes.
+- **Add a server**: in edit mode right-click the canvas, a region, or anywhere else on the page except text fields; the native menu is replaced by a one-item menu **Add Server** (closes on outside click, Esc, scroll, wheel, blur or after choosing). It creates `servers/server<N>.toml` (`id`, `name = "server-<N>"`, and `region` of the smallest region under the cursor, or else `server_type`: `server` when the diagram defines that type, otherwise the first known type), places the server at the click, selects it and enables Save; Save writes the new file (no base check, it must not exist). If a note or server edit is open and invalid, nothing is added and the error shows in the toolbar message area.
+- **Duplicate a server**: in edit mode right-click a server; the menu offers **Duplicate server**. It copies the whole file `servers/<id>.toml` (every key, comments and formatting) to `servers/<id>-copy.toml` (then `-copy-2`, ...) with `id` and `name` set to `<id>-copy` and `<name>-copy` (next free suffix), keeps the region, places the copy 30 units right and below the original, selects it and enables Save. Open-edit errors are handled as for **Add Server**.
 
 ## Drawing on the diagram
 
@@ -36,7 +38,7 @@ A diagram is a folder; its name is the diagram's default id. Each file holds one
 
 ```text
 my-diagram/
-  diagram.toml        id, title, [[regions]], [[connections]]   (required)
+  topology.toml       id, title, [[regions]], [[connections]]   (required)
   server-types.toml   [[server_types]]
   notes.toml          notes = [ ... ]
   documents.toml      [[documents]]
@@ -45,9 +47,11 @@ my-diagram/
   diagram.layout.json saved geometry (written by Save)
 ```
 
-Only `diagram.toml` is required; any other file may be absent. Other `.toml` files are rejected (`unexpected file ...`). The loader merges the files into the same model the single-file format used to produce. Servers are ordered by file name.
+Only `topology.toml` is required; any other file may be absent. Other `.toml` files are rejected (`unexpected file ...`). The loader merges the files into the same model the single-file format used to produce. Servers are ordered by file name.
 
-`diagram.toml`:
+Legacy: a folder that has only the old `diagram.toml` still loads (it is read as `topology.toml`); opening it in the page and saving writes `topology.toml` and no `diagram.toml` copy. If both exist, `topology.toml` wins and `diagram.toml` is ignored.
+
+`topology.toml`:
 
 ```toml
 id = "my-diagram"
@@ -100,7 +104,7 @@ This dependency-free parser supports an explicit **TOML subset**: top-level keys
 
 ## Networks
 
-Optional `networks.toml` in the diagram folder (a synthetic sample is `examples/demo/networks.toml`) lists network segments as `[[networks]]` tables: `cidr` (IPv4 or IPv6 CIDR with the network address, e.g. `192.0.2.0/24`, `2001:db8::/32`), `name`, optional `description`. It is read-only in the page and edited by hand. The page loads it with the diagram; a missing file is fine (no Networks panel). An invalid or duplicate `cidr` makes the diagram fail to open with a message naming the entry (`networks.toml: networks[2] (192.0.2.0/24): ...`).
+Optional `networks.toml` in the diagram folder (a synthetic sample is `examples/demo/networks.toml`) lists network segments as `[[networks]]` tables: `cidr` (IPv4 or IPv6 CIDR with the network address, e.g. `192.0.2.0/24`, `2001:db8::/32`), `name`, optional `description`. It is read-only in the page and edited by hand. The page loads it with the diagram; a missing or empty file is fine (no Networks panel). An invalid or duplicate `cidr` makes the diagram fail to open with a message naming the entry (`networks.toml: networks[2] (192.0.2.0/24): ...`).
 
 The relation is derived: each server IP (a host prefix such as `/24` is ignored) belongs to the most specific (longest-prefix) network containing it, and a server is listed under every network one of its IPs falls in (multi-homed servers appear in each). IPs in no network are "unassigned network". The Networks panel lists the networks (nested by containment) with their server counts plus an "Unassigned network" row when needed; clicking a row filters the diagram; a server's details panel shows its network name after each IP. **Export** includes `networks.toml` only if it changed (it never does in the page).
 
