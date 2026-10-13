@@ -1,10 +1,14 @@
 #ta{position:fixed;top:8px;left:8px;right:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;justify-content:space-between;font:12px system-ui,sans-serif;z-index:5;pointer-events:none}
 #ta>*{pointer-events:auto}
-#tar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end;margin-left:auto}
-#ta button{font:inherit;padding:3px 8px;border:1px solid var(--fg);border-radius:4px;background:var(--panel);color:var(--fg);cursor:pointer}
+#tar{flex:1 1 360px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end;margin-left:auto}
+#ta button{font:inherit;box-sizing:border-box;height:26px;padding:0 8px;line-height:1;white-space:nowrap;border:1px solid var(--fg);border-radius:4px;background:var(--panel);color:var(--fg);cursor:pointer}
 #ta button:focus-visible,.sw:focus-visible,.reset:focus-visible,#pc:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
 #ta[data-on="1"] #te{background:var(--red);border-color:var(--red);color:#fff}
-#ta label,#tm:not(:empty){display:flex;gap:3px;align-items:center;padding:3px 6px;border-radius:4px;background:var(--panel);color:var(--fg)}
+#tx{display:contents}
+#ta[data-on="1"] #tar::after{content:"";order:2;flex:0 0 100%;height:0}
+#ta label,#tm:not(:empty){order:3;display:flex;gap:4px;align-items:center;box-sizing:border-box;min-height:26px;padding:0 8px;border:1px solid transparent;border-radius:4px;background:var(--panel);color:var(--fg)}
+#ta label{white-space:nowrap}
+#ta label input{margin:0}
 #tal{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 #ss,#zm{display:inline-flex}
 #ss button,#zm button{border-radius:0;margin-left:-1px}

@@ -113,7 +113,7 @@ This dependency-free parser supports an explicit **TOML subset**: top-level keys
 for ip in $hosts; do echo "##### $ip"; ssh -o StrictHostKeyChecking=accept-new $ip 'hostname && bash -s' < tools/remote-script-ip.sh; echo; done
 ```
 
-It prints one `servers/<id>.toml` snippet: `id` and `name` from the hostname, `ips` (global IPv4 CIDRs, loopback/docker/veth skipped), `os` (`PRETTY_NAME`), `jobs` (`cron: <schedule> <command name>` and `timer: <unit>`), `systemd_services` (running units minus stock OS ones) and `details` (kernel, CPU, memory, uptime, containers, and a `Listening` list of `proto/port process`). Add `region`, `role`, `server_type` and the `services` you want shown, then save it as `servers/<id>.toml`. Review the output before committing anything: real hostnames and IPs stay out of this repo.
+It prints one `servers/<id>.toml` snippet: `id` and `name` from the hostname, `ips` (global IPv4 CIDRs, loopback/docker/veth skipped), `os` (`PRETTY_NAME`), `jobs` (`cron: <schedule> <command name>` and `timer: <unit>`), `systemd_services` (running units minus stock OS ones) and `details` (kernel, CPU, memory, uptime, containers, and a `Listening` list of `proto/port process`). Add `region`, `role`, `server_type` and the `services` you want shown, then save it as `servers/<id>.toml`. The page header's **Host script** button opens the same script (embedded at build time, so it matches the file) in a read-only panel with the ssh loop and a **Copy** button; Esc, Close or a click outside closes it. It works in view and edit mode and without the local server. Review the output before committing anything: real hostnames and IPs stay out of this repo.
 
 ```toml
 id = "app-01"

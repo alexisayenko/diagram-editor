@@ -280,6 +280,26 @@ exportButton.addEventListener("click", async () => {
     message(`Exported ${names.layout}${p.changed.length ? ` and ${p.changed.length} changed file(s)` : ""} to your downloads`);
   } catch (e) { message("Export failed: " + e.message, true); }
 });
+const hostPanel = document.querySelector("#hs"), hostText = document.querySelector("#hstext"), hostNote = document.querySelector("#hsnote");
+function hostClose() { hostPanel.hidden = true; document.querySelector("#hostscript").focus(); }
+async function hostCopy() {
+  let ok = false;
+  try { await navigator.clipboard.writeText(HOST_SCRIPT); ok = true; } catch (_) {}
+  if (!ok) {
+    const t = document.createElement("textarea");
+    t.value = HOST_SCRIPT; t.setAttribute("readonly", ""); t.style.cssText = "position:fixed;left:-9999px;top:0";
+    document.body.appendChild(t); t.select();
+    try { ok = document.execCommand("copy"); } catch (_) {}
+    t.remove();
+  }
+  hostNote.textContent = ok ? "Copied" : "Copy failed: select the text and copy it manually";
+  hostNote.style.color = ok ? "" : "#a31c1c";
+}
+document.querySelector("#hostscript").addEventListener("click", () => { hostText.textContent = HOST_SCRIPT; hostNote.textContent = ""; hostPanel.hidden = false; document.querySelector("#hscopy").focus(); });
+document.querySelector("#hscopy").addEventListener("click", hostCopy);
+document.querySelector("#hsclose").addEventListener("click", hostClose);
+hostPanel.addEventListener("mousedown", (e) => { if (e.target === hostPanel) hostClose(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !hostPanel.hidden) { e.preventDefault(); hostClose(); } });
 window.addEventListener("beforeunload", (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
 setInterval(() => { if (!busy) controls(); }, 250);
 (async () => {

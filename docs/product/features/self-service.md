@@ -16,7 +16,7 @@ The owner writes a diagram's model (`diagram.mmd` + content files) himself, runs
 
 - `README.md` – engine overview, module map, `define()` runtime-module rules, build/check commands.
 - `TERMINOLOGY.md` – vocabulary (model, view, server, region, connection, process connection, connection group, panel, details panel, network filter, OS pill …). Use these terms in code, UI and docs.
-- Build: `wsl.exe -e bash -ic 'cd /mnt/c/Alex/diagram-editor && node engine/build.mjs <dir> [--check]'`. `<dir>` may be any absolute path; outputs are written into `<dir>`.
+- Build: `wsl.exe -e bash -ic 'cd <repo> && node engine/build.mjs <dir> [--check]'`. `<dir>` may be any absolute path; outputs are written into `<dir>`.
 - Today the build **fails** when a server or region in `diagram.mmd` has no geometry in `layout.json`. Connections, box sizes and region growth are already automatic.
 - Repo history: The owner rewrites it to a single engine-only commit (old history archived outside the repo). Check `git log --oneline` shows one commit and that no file outside `engine/` and the root docs exists; if not, stop and ask.
 

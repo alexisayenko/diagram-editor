@@ -40,3 +40,17 @@ test("drawing changes enable Save and the discard guards", () => {
   assert.equal(run({ isDirty: () => false }), false);
   assert.equal(run({ isDirty: () => true }), true);
 });
+
+test("Host script panel embeds tools/remote-script-ip.sh byte-for-byte", () => {
+  const html = readFileSync(new URL("../../diagram.html", import.meta.url), "utf8");
+  const file = readFileSync(new URL("../../tools/remote-script-ip.sh", import.meta.url), "utf8");
+  const m = html.match(/^const HOST_SCRIPT = (.*);$/m);
+  assert.ok(m, "HOST_SCRIPT line");
+  assert.equal(runInNewContext(m[1]), file);
+  assert.ok(!m[1].includes("<"));
+  assert.match(html, /id="hostscript"/);
+  assert.match(html, /id="hs" hidden/);
+  assert.match(app, /e\.key === "Escape" && !hostPanel\.hidden/);
+  assert.match(app, /e\.target === hostPanel/);
+  assert.match(app, /execCommand\("copy"\)/);
+});
