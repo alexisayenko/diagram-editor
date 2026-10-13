@@ -282,21 +282,26 @@ exportButton.addEventListener("click", async () => {
 });
 const hostPanel = document.querySelector("#hs"), hostText = document.querySelector("#hstext"), hostNote = document.querySelector("#hsnote");
 function hostClose() { hostPanel.hidden = true; document.querySelector("#hostscript").focus(); }
-async function hostCopy() {
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (_) {}
+  const t = document.createElement("textarea");
+  t.value = text; t.setAttribute("readonly", ""); t.style.cssText = "position:fixed;left:-9999px;top:0";
+  document.body.appendChild(t); t.select();
   let ok = false;
-  try { await navigator.clipboard.writeText(HOST_SCRIPT); ok = true; } catch (_) {}
-  if (!ok) {
-    const t = document.createElement("textarea");
-    t.value = HOST_SCRIPT; t.setAttribute("readonly", ""); t.style.cssText = "position:fixed;left:-9999px;top:0";
-    document.body.appendChild(t); t.select();
-    try { ok = document.execCommand("copy"); } catch (_) {}
-    t.remove();
-  }
-  hostNote.textContent = ok ? "Copied" : "Copy failed: select the text and copy it manually";
-  hostNote.style.color = ok ? "" : "#a31c1c";
+  try { ok = document.execCommand("copy"); } catch (_) {}
+  t.remove();
+  return ok;
 }
-document.querySelector("#hostscript").addEventListener("click", () => { hostText.textContent = HOST_SCRIPT; hostNote.textContent = ""; hostPanel.hidden = false; document.querySelector("#hscopy").focus(); });
-document.querySelector("#hscopy").addEventListener("click", hostCopy);
+async function hostCopy(btn) {
+  const ok = await copyText(document.querySelector(btn.dataset.copy).textContent);
+  const label = btn.dataset.label || (btn.dataset.label = btn.textContent);
+  clearTimeout(btn.timer);
+  btn.textContent = ok ? "Copied" : "Copy failed";
+  hostNote.textContent = ok ? "" : "Copy failed: select the text and copy it manually";
+  btn.timer = setTimeout(() => { btn.textContent = label; hostNote.textContent = ""; }, 1500);
+}
+document.querySelector("#hostscript").addEventListener("click", () => { hostText.textContent = HOST_SCRIPT; hostNote.textContent = ""; document.querySelector("#hsd").open = false; hostPanel.hidden = false; document.querySelector("#hs .cp").focus(); });
+hostPanel.querySelectorAll(".cp").forEach((btn) => btn.addEventListener("click", () => hostCopy(btn)));
 document.querySelector("#hsclose").addEventListener("click", hostClose);
 hostPanel.addEventListener("mousedown", (e) => { if (e.target === hostPanel) hostClose(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !hostPanel.hidden) { e.preventDefault(); hostClose(); } });

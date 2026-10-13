@@ -107,13 +107,19 @@ This dependency-free parser supports an explicit **TOML subset**: top-level keys
 
 ## Collecting server facts
 
-`tools/remote-script-ip.sh` is a read-only Linux probe (bash, `ip`, `ss`, `systemctl`, `crontab -l`, docker/podman if present; no writes, no installs, 5 s timeouts; no environment variables or command arguments are printed). It uses `sudo -n` only when it works without a password, otherwise it runs as the plain user and says so (process names may then show as `?`). Feed it over stdin:
+`tools/host-probe.sh` is a read-only Linux probe (bash, `ip`, `ss`, `systemctl`, `crontab -l`, docker/podman if present; no writes, no installs, 5 s timeouts; no environment variables or command arguments are printed). It uses `sudo -n` only when it works without a password, otherwise it runs as the plain user and says so (process names may then show as `?`). Feed it over stdin, once per host in `hosts.txt` (one IP or DNS name per line, `#` lines are comments):
 
 ```sh
-for ip in $hosts; do echo "##### $ip"; ssh -o StrictHostKeyChecking=accept-new $ip 'hostname && bash -s' < tools/remote-script-ip.sh; echo; done
+mkdir -p out
+while read -r host _ || [ -n "$host" ]; do
+  case "$host" in ''|'#'*) continue ;; esac
+  echo "##### $host"
+  ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=10 \n    "$host" 'bash -s' < tools/host-probe.sh | tee "out/$host.toml"
+  echo
+done < hosts.txt
 ```
 
-It prints one `servers/<id>.toml` snippet: `id` and `name` from the hostname, `ips` (global IPv4 CIDRs, loopback/docker/veth skipped), `os` (`PRETTY_NAME`), `jobs` (`cron: <schedule> <command name>` and `timer: <unit>`), `systemd_services` (running units minus stock OS ones) and `details` (kernel, CPU, memory, uptime, containers, and a `Listening` list of `proto/port process`). Add `region`, `role`, `server_type` and the `services` you want shown, then save it as `servers/<id>.toml`. The page header's **Host script** button opens the same script (embedded at build time, so it matches the file) in a read-only panel with the ssh loop and a **Copy** button; Esc, Close or a click outside closes it. It works in view and edit mode and without the local server. Review the output before committing anything: real hostnames and IPs stay out of this repo.
+It prints one `servers/<id>.toml` snippet: `id` and `name` from the hostname, `ips` (global IPv4 CIDRs, loopback/docker/veth skipped), `os` (`PRETTY_NAME`), `jobs` (`cron: <schedule> <command name>` and `timer: <unit>`), `systemd_services` (running units minus stock OS ones) and `details` (kernel, CPU, memory, uptime, containers, and a `Listening` list of `proto/port process`). Add `region`, `role`, `server_type` and the `services` you want shown, then save it as `servers/<id>.toml`. The page header's **Host script** button opens a four-step dialog (save the script as `host-probe.sh`, create `hosts.txt`, run the loop, review and save as `servers/<id>.toml`). Each command block has its own **Copy** button ("Copied" for 1.5 s); the script itself sits in a collapsed **Show script** section (embedded at build time, so it matches the file); Esc, Close or a click outside closes it. It works in view and edit mode and without the local server. Review the output before committing anything: real hostnames and IPs stay out of this repo.
 
 ```toml
 id = "app-01"
