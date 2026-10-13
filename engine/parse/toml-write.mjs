@@ -83,7 +83,7 @@ function prepare(src) {
   return { flat, spans, at, root: parseToml(flat, spans) };
 }
 
-export const SERVER_STRINGS = ["os", "hardware", "role"];
+export const SERVER_STRINGS = ["os", "hardware", "cpu", "ram", "swap", "disk", "role"];
 export const SERVER_LISTS = ["ips", "dns", "jobs", "rmi_services", "systemd_services"];
 const FIELD_ORDER = ["name", "server_type", ...SERVER_STRINGS, ...SERVER_LISTS, "details"];
 

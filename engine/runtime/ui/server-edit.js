@@ -1,6 +1,6 @@
 InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], function (core, selection, panels) {
   var $ = core.$;
-  var TEXTS = [["os", "OS", "Ubuntu 24.04"], ["hardware", "Hardware", "8 vCPU, 16 GB RAM"], ["role", "Role", "Reverse proxy"]];
+  var TEXTS = [["os", "OS", "Ubuntu 24.04"], ["hardware", "Hardware", "8 vCPU, 16 GB RAM"], ["cpu", "CPU", "8 cores"], ["ram", "RAM", "16 GiB"], ["swap", "Swap", "2 GiB"], ["disk", "Disk", "50G"], ["role", "Role", "Reverse proxy"]];
   var LISTS = [
     ["ips", "IPs", "Add IP", "192.0.2.10/24"], ["dns", "DNS", "Add DNS name", "host.example.test"], ["jobs", "Jobs", "Add job", "Job 104 batch import"],
     ["rmi_services", "RMI services", "Add RMI service", "ExampleService"], ["systemd_services", "systemd services", "Add systemd service", "example.service"]

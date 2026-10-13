@@ -232,7 +232,7 @@ export function tomlModel(files, folder = "diagram", nets = null) {
   }
   const names = new Set();
   for (const s of t.servers || []) {
-    keys(s, ["id", "name", "server_type", "region", "services", "ips", "os", "details", "proposed", "hardware", "role", "dns", "jobs", "rmi_services", "systemd_services"], "server");
+    keys(s, ["id", "name", "server_type", "region", "services", "ips", "os", "details", "proposed", "hardware", "cpu", "ram", "swap", "disk", "role", "dns", "jobs", "rmi_services", "systemd_services"], "server");
     const eid = entity(s, "server"), cluster = s.region ?? null;
     if (cluster !== null && !model.clusters.has(cluster)) fail(`${eid}: unknown region '${cluster}'`);
     const ty = type(s.server_type ?? (cluster && (t.regions || []).find((r) => r.id === cluster).server_type), eid);
@@ -244,13 +244,13 @@ export function tomlModel(files, folder = "diagram", nets = null) {
     const title = str(s.name ?? eid, eid + ".name");
     if (names.has(title)) fail(`${eid}: duplicate server name '${title}'`);
     names.add(title);
-    model.nodes.set(eid, { id: eid, title, cluster, db: !!TYPES[ty].db, body: list(s.services, eid + ".services"), ip: ips });
+    model.nodes.set(eid, { id: eid, title, cluster, db: !!TYPES[ty].db, body: serviceLines(list(s.services, eid + ".services"), list(s.jobs, eid + ".jobs"), list(s.rmi_services, eid + ".rmi_services"), list(s.systemd_services, eid + ".systemd_services")), svc: list(s.services, eid + ".services").length, hw: hardwareStrip(s), ip: ips, os: typeof s.os === "string" && s.os && !/^TBD$/i.test(s.os) ? s.os : null });
     classes(eid, ty, bool(s.proposed, eid + ".proposed"));
-    for (const k of ["os", "hardware", "role"]) if (s[k] !== undefined) str(s[k], eid + "." + k);
+    for (const k of ["os", "hardware", "cpu", "ram", "swap", "disk", "role"]) if (s[k] !== undefined) str(s[k], eid + "." + k);
     if (s.details !== undefined && typeof s.details !== "string") fail(`${eid}.details must be a string`);
     const dns = list(s.dns, eid + ".dns"), jobs = list(s.jobs, eid + ".jobs"), rmi = list(s.rmi_services, eid + ".rmi_services"), units = list(s.systemd_services, eid + ".systemd_services");
     for (const name of dns) { const problem = dnsProblem(name); if (problem) fail(`${eid}: ${problem}`); }
-    const rows = [["OS", s.os], ["Hardware", s.hardware], ["Role", s.role]].filter(([, v]) => v).map(([k, v]) => `| ${k} | ${v.replace(/\|/g, "/")} |`);
+    const rows = [["OS", s.os], ["Hardware", s.hardware], ["CPU", s.cpu], ["RAM", s.ram], ["Swap", s.swap], ["Disk", s.disk], ["Role", s.role]].filter(([, v]) => v).map(([k, v]) => `| ${k} | ${v.replace(/\|/g, "/")} |`);
     const block = (head, items) => items.length ? `## ${head}\n\n${items.map((i) => "- " + i).join("\n")}\n\n` : "";
     sections[title] = (rows.length ? `| Key | Value |\n|---|---|\n${rows.join("\n")}\n\n` : "") + block("IPs", nets ? ips.map((ip) => `${ip} — ${nets.of(ip)?.name ?? "unassigned network"}`) : ips) + block("DNS", dns) + block("Jobs", jobs) + block("RMI services", rmi) + block("systemd services", units) + (s.details || "");
   }
@@ -270,11 +270,28 @@ export function tomlModel(files, folder = "diagram", nets = null) {
       for (const [end, prefix] of [[from, process.from], [to, process.to]]) {
         if (prefix === null) continue;
         str(prefix, k + ".service");
-        const matches = model.nodes.get(end)?.body.filter((line) => line.startsWith(prefix)) || [];
+        const matches = model.nodes.get(end)?.body.slice(0, model.nodes.get(end).svc).filter((line) => line.startsWith(prefix)) || [];
         if (matches.length !== 1) fail(`${k}: service '${prefix}' must match exactly one service on '${end}'`);
       }
       config.processes[k] = Object.fromEntries(Object.entries(process).filter(([, v]) => v !== null));
     }
   }
   return { config, model, sections, notes, docs };
+}
+
+// Body lines of a server card: its services, then jobs, RMI services and systemd services, each of the last three
+// capped at LIST_LINES with a "+N more" line, so probe-imported servers show content; the details panel lists everything.
+export const LIST_LINES = 4;
+export function serviceLines(services, jobs = [], rmi = [], units = []) {
+  const cap = (a) => (a.length > LIST_LINES ? [...a.slice(0, LIST_LINES), `+${a.length - LIST_LINES} more`] : a);
+  return [...services, ...cap(jobs), ...cap(rmi), ...cap(units)];
+}
+
+// One-line hardware strip: set cells of cpu / ram / swap / disk ("sd"), else the free-text hardware key; "" when none.
+export const HW_SEP = " │ ";
+export function hardwareStrip(s) {
+  const cells = [["cpu", s.cpu], ["ram", s.ram], ["swap", s.swap], ["sd", s.disk]].filter(([, v]) => typeof v === "string" && v.trim()).map(([k, v]) => `${k}: ${v.trim()}`);
+  if (cells.length) return cells.join(HW_SEP);
+  const h = typeof s.hardware === "string" ? s.hardware.trim() : "";
+  return h.length > 48 ? h.slice(0, 47) + "…" : h;
 }

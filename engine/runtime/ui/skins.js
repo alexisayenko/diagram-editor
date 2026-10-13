@@ -21,9 +21,11 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
       bottom = Math.max(bottom, p[1] - g.y + 7);
       return measure(els[ix.i[k]], 14, CW[S]);
     });
-    var W = Math.max(g.w, tl + tw + 28), HH = 20;
+    var W = Math.max(g.w, tl + tw + 28), HH = 20, m = D.meta.nodes[id] || {}, nb = g.body.length, hwY = 18 + 16 * nb;
     boxW[id] = W;
     var h = "";
+    var hw = m.hw ? '<text class="hw" x="' + (g.body.length ? g.body[0][0] - g.x : 10) + '" y="' + hwY + '">' + core.esc(m.hw) + "</text>" : "";
+    if (S === "sketch") { delete boxW[id]; return hw; }
     if (S === "clean") {
       h = '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="10"/><path class="hd" d="M0 0V-10Q0 -20 10 -20H' + (W - 10) + "Q" + W + " -20 " + W + ' -10V0Z"/>';
     } else if (S === "dark") {
@@ -32,6 +34,12 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
       h = '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
     }
     h += '<g class="ic" transform="translate(' + (W - 17) + ' -16) scale(.75)">' + icon(e.db ? "db" : "server") + "</g>";
+    h += hw;
+    var dv = function (y) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; };
+    var below = !!(m.hw || m.os || g.ip.length);
+    if (nb && below) h += dv(8 + 16 * nb);
+    if (m.hw && (m.os || g.ip.length)) h += dv(hwY + 6);
+    if (m.os && g.ip.length) h += dv(g.ip[0][1] - g.y - 12.5);
     g.ip.forEach(function (p, k) {
       var w = Math.round(ipw[k] + 10);
       h += '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x - 5) + '" y="' + (p[1] - g.y - 11) + '" width="' + w + '" height="15" rx="' + (S === "clean" ? 8 : S === "dark" ? 3 : 0) + '"/>';
@@ -44,7 +52,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     btn = {};
     Object.keys(D.idx.nodes).forEach(function (id) {
       var ix = D.idx.nodes[id];
-      els[ix.c].innerHTML = ctx.style === "sketch" ? "" : nodeChrome(id);
+      els[ix.c].innerHTML = nodeChrome(id);
       if (!ix.w.some(function (w) { return w >= 0; })) return;
       btn[id] = { W: boxW[id] || D.layout.nodes[id].w, tw: ix.i.map(function (i) { return measure(els[i], 14, CW[ctx.style]); }) };
     });

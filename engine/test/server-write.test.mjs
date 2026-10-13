@@ -10,10 +10,10 @@ import { demo as loadDemo, mod, withFile, mini } from "./helpers.mjs";
 const demoFiles = loadDemo(), ctx = mergeFolder(demoFiles);
 const file = (id) => demoFiles.get(`servers/${id}.toml`);
 const set = (id, fields) => setServer(file(id), id, fields, ctx);
-const blank = { name: "", os: "", hardware: "", role: "", ips: [], dns: [], jobs: [], rmi_services: [], systemd_services: [], details: "" };
+const blank = { name: "", os: "", hardware: "", cpu: "", ram: "", swap: "", disk: "", role: "", ips: [], dns: [], jobs: [], rmi_services: [], systemd_services: [], details: "" };
 const fieldsOf = (src) => {
   const s = parseToml(src);
-  return { ...blank, name: s.name ?? s.id, os: s.os ?? "", hardware: s.hardware ?? "", role: s.role ?? "", details: s.details ?? "",
+  return { ...blank, name: s.name ?? s.id, os: s.os ?? "", hardware: s.hardware ?? "", cpu: s.cpu ?? "", ram: s.ram ?? "", swap: s.swap ?? "", disk: s.disk ?? "", role: s.role ?? "", details: s.details ?? "",
     ips: s.ips ?? [], dns: s.dns ?? [], jobs: s.jobs ?? [], rmi_services: s.rmi_services ?? [], systemd_services: s.systemd_services ?? [] };
 };
 const server = (src) => parseToml(src);

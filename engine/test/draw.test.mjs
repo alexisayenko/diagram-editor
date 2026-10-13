@@ -92,7 +92,7 @@ test("Save and Export write drawings and keep unknown layout keys", () => {
   assert.match(app, /drawApi\(\)\.markSaved\(\)/);
   assert.match(app, /drawings: drawApi\(\)\.list\(\)/);
   assert.equal((app.match(/layoutText: JSON\.stringify/g) || []).length, 1);
-  assert.match(app, /download\(names\.layout, p\.layoutText\)/);
+  assert.match(app, /packDiagram\(p\.files, p\.layoutText\)/);
   assert.match(app, /text: p\.layoutText/);
 });
 

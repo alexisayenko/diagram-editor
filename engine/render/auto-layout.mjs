@@ -11,9 +11,11 @@ export function autoLayoutKit(geometry) {
   function range(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
   function dup(o) { return JSON.parse(JSON.stringify(o)); }
 
+  // Text rows above the IP pills: body lines, hardware strip, OS pill.
+  function rows(t) { return t.nb + (t.hw ? 1 : 0) + (t.os ? 1 : 0); }
   // Box size from text lengths and line counts (same width rule as geometryKit.fitBox).
   function size(t) {
-    return { w: Math.ceil(Math.max(t.tl * 6.6 + 38, 20 + t.bl * 6.6, t.il ? 36 + t.il * 7 : 0)), h: 20 + 16 * t.nb + 18 * t.ni };
+    return { w: Math.ceil(Math.max(t.tl * 6.6 + 38, 20 + t.bl * 6.6, t.il ? 36 + t.il * 7 : 0, t.os ? 24 + (t.ol + 4) * 5.6 : 0, t.hw ? 20 + t.hw.length * 5.6 : 0)), h: 20 + 16 * rows(t) + 18 * t.ni };
   }
   // Server whose drawn box (incl. header) has its top-left corner at x, y.
   function box(t, x, y) {
@@ -21,7 +23,7 @@ export function autoLayoutKit(geometry) {
     return {
       x: x, y: by, w: z.w, h: z.h, title: [x + 10, by - 6],
       body: range(t.nb).map(function (i) { return [x + 10, by + 18 + 16 * i]; }),
-      ip: range(t.ni).map(function (i) { return [x + 10, by + 22 + 16 * t.nb + 18 * i]; }),
+      ip: range(t.ni).map(function (i) { return [x + 10, by + 22 + 16 * rows(t) + 18 * i]; }),
     };
   }
 

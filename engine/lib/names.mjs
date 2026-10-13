@@ -12,7 +12,5 @@ export function stamp(d) {
   return `${d.getFullYear()}${two(d.getMonth() + 1)}${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}${two(d.getSeconds())}`;
 }
 
-export function exportNames(folder, d = new Date()) {
-  const prefix = `${folder}-${stamp(d)}`;
-  return { layout: `${prefix}-diagram.layout.json`, file: (path) => `${prefix}-${path.replace(/\//g, "-")}` };
-}
+
+export const archiveName = (folder, d = new Date()) => `${folder}-${stamp(d)}.diag.zip`;

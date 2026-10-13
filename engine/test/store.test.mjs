@@ -4,7 +4,7 @@ import { mkdtempSync, readdirSync, readFileSync, writeFileSync, mkdirSync, rmSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createStore, handleApi, MAX_BYTES, MAX_FILES } from "../lib/store.mjs";
-import { validName, exportNames, stamp, layoutNameFor } from "../lib/names.mjs";
+import { validName, archiveName, stamp, layoutNameFor } from "../lib/names.mjs";
 import { createApp } from "../serve.mjs";
 
 const fresh = () => { const dir = join(mkdtempSync(join(tmpdir(), "store-")), "local"); return { dir, store: createStore(dir) }; };
@@ -16,12 +16,10 @@ test("file names: strict allowlist", () => {
   for (const bad of ["", ".hidden.toml", "../a.toml", "/a.toml", "a//b.toml", "a/../b.toml", "a/.hidden.toml", "a/b/c/d.toml", "a\b.toml", "a.txt", "a.toml.exe", "a..b.toml", "a b.toml", "a.toml\n", "x".repeat(151) + ".toml", null, 5]) assert.ok(!validName(bad), String(bad));
 });
 
-test("export names carry a timestamp and keep the original name", () => {
+test("archive names carry a timestamp and the diagram id", () => {
   const d = new Date(2026, 9, 7, 14, 30, 12);
   assert.equal(stamp(d), "20261007-143012");
-  const names = exportNames("demo", d);
-  assert.equal(names.layout, "demo-20261007-143012-diagram.layout.json");
-  assert.equal(names.file("servers/web01.toml"), "demo-20261007-143012-servers-web01.toml");
+  assert.equal(archiveName("demo", d), "demo-20261007-143012.diag.zip");
   assert.equal(layoutNameFor("demo"), "demo/diagram.layout.json");
 });
 

@@ -67,7 +67,7 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
     loadToggles();
     buildLegend();
     setLabels(core.lsGet("labels") === "1", false);
-    setOs(core.lsGet("os") === "1", false);
+    setOs(core.lsGet("os") !== "0", false);
     applyToggles();
   }
 

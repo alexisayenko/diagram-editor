@@ -34,10 +34,10 @@ test("diagram names follow the id rule", () => {
   assert.throws(() => newDiagram("Bad Name"), /lowercase/);
 });
 
-test("New diagram is guarded by the discard prompt and never overwrites a stored diagram", () => {
-  const start = app.indexOf('newButton.addEventListener("click"'), body = app.slice(start, app.indexOf("\n});\n", start));
-  assert.match(body, /if \(!discard\(\)\) return;/);
-  assert.match(body, /stored\(folder \+ "\/topology\.toml"\) !== null/);
+test("New diagram is guarded by the discard prompt and refuses stored names live", () => {
+  const start = app.indexOf("function nwCreate()"), body = app.slice(start, app.indexOf("\n}\n", start));
+  assert.match(body, /nameProblem\(folder, nwTaken\) \|\| !discard\(\)/);
   assert.match(body, /active\.source = new Map\(\)/);
+  assert.match(app, /nwName\.addEventListener\("input", nwCheck\)/);
   assert.match(app, /add: addNewServer/);
 });

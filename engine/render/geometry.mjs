@@ -1,15 +1,19 @@
 import { edgeKey, endKey } from "../parse/mmd.mjs";
 import { processAnchors } from "../parse/config.mjs";
 
+// Longest server name drawn in a header; longer names are cut with an ellipsis (the full name stays in a tooltip).
+export const TITLE_MAX = 34;
+export function shortTitle(t) { return t.length > TITLE_MAX ? t.slice(0, TITLE_MAX - 1) + "…" : t; }
+
 // Static facts the kit needs besides layout.json geometry; built once, shipped to the runtime as D.meta.
-// Node nb / ni: body and IP line counts (auto-layout). Edge lv: "process" when an endpoint is a body line (diagram.json processes), else "server".
+// Node nb / ni: body and IP line counts, os / ol: 1 and the text length when the server has an OS pill row, hw: hardware strip text (own row when not empty) (auto-layout). Edge lv: "process" when an endpoint is a body line (diagram.json processes), else "server".
 export function geometryMeta(model, groups, processes) {
   const len = (a) => a.reduce((m, s) => Math.max(m, s.length), 0);
   const gOf = {}, pa = processAnchors(processes, model.nodes);
   for (const [g, d] of Object.entries(groups || {})) for (const k of d.edges) gOf[k] = g;
   return {
     clusters: Object.fromEntries([...model.clusters.values()].map((c) => [c.id, { tl: c.title.length }])),
-    nodes: Object.fromEntries([...model.nodes.values()].map((n) => [n.id, { tl: n.title.length, bl: len(n.body), il: len(n.ip), nb: n.body.length, ni: n.ip.length, cl: n.cluster }])),
+    nodes: Object.fromEntries([...model.nodes.values()].map((n) => [n.id, { tl: shortTitle(n.title).length, os: n.os ? 1 : 0, ol: n.os ? n.os.length : 0, hw: n.hw || "", bl: len(n.body), il: len(n.ip), nb: n.body.length, ni: n.ip.length, cl: n.cluster }])),
     edges: model.edges.map((e) => ({ k: edgeKey(e), from: endKey(model, e.from), to: endKey(model, e.to), ll: e.label.length, fw: e.fw, g: gOf[edgeKey(e)] || null, fl: pa[edgeKey(e)]?.fl ?? null, tl: pa[edgeKey(e)]?.tl ?? null, lv: pa[edgeKey(e)] ? "process" : "server" })),
   };
 }
@@ -18,7 +22,7 @@ export function geometryMeta(model, groups, processes) {
 // Self-contained on purpose: assets.mjs inlines this function's source as the "canvas/geometry" runtime module,
 // so the build and edit mode compute identical geometry.
 export function geometryKit() {
-  var HEAD = 20, TITLE_CW = 6.6, BODY_CW = 6.6, IP_CW = 7, TEXT_X = 10;
+  var HEAD = 20, TITLE_CW = 6.6, BODY_CW = 6.6, IP_CW = 7, OS_CW = 5.6, HW_CW = 5.6, TEXT_X = 10;
   var BAND = 30, BAND_GAP = 10, MIN_GAP = 20, PAD = 16, MIN_W = 100, MIN_H = 60;
   var M = 10, BEND = 50, REGION = 1.5, HUG = 2, TIGHT = 0.3, RAD = 22;
   var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
@@ -37,7 +41,7 @@ export function geometryKit() {
   function fitBox(g, t) {
     g.body.forEach(function (p) { p[0] = g.x + TEXT_X; });
     g.ip.forEach(function (p) { p[0] = g.x + TEXT_X; });
-    var need = Math.max(g.title[0] - g.x + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0);
+    var need = Math.max(g.title[0] - g.x + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0, t.os ? TEXT_X + (t.ol + 4) * OS_CW + 14 : 0, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0);
     g.w = Math.max(g.w, Math.ceil(need));
   }
 

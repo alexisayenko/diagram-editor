@@ -42,8 +42,9 @@ export function prepareDiagram(files, folder, saved = null, refit = []) {
     if (!g) continue;
     if (![g.x, g.y, g.w, g.h].every(Number.isFinite) || g.w <= 0 || g.h <= 0 || !point(g.title)) throw new Error(`Invalid saved server geometry: ${id}`);
     // Text positions depend on the current services, preserving the server's position.
-    layout.nodes[id] = { x: g.x, y: g.y, w: refit.includes(id) ? 0 : g.w, h: refit.includes(id) ? 20 + 16 * n.body.length + 18 * n.ip.length : Math.max(g.h, 20 + 16 * n.body.length + 18 * n.ip.length), title: g.title.slice(),
-      body: n.body.map((_, i) => [g.x + 10, g.y + 18 + 16 * i]), ip: n.ip.map((_, i) => [g.x + 10, g.y + 22 + 16 * n.body.length + 18 * i]) };
+    const rows = n.body.length + (n.hw ? 1 : 0) + (n.os ? 1 : 0), need = 20 + 16 * rows + 18 * n.ip.length;
+    layout.nodes[id] = { x: g.x, y: g.y, w: refit.includes(id) ? 0 : g.w, h: refit.includes(id) ? need : Math.max(g.h, need), title: g.title.slice(),
+      body: n.body.map((_, i) => [g.x + 10, g.y + 18 + 16 * i]), ip: n.ip.map((_, i) => [g.x + 10, g.y + 22 + 16 * rows + 18 * i]) };
   }
   for (const e of model.edges) {
     const k = edgeKey(e), old = saved?.edges?.[k];

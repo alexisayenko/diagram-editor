@@ -63,6 +63,8 @@ svg:not(.s-sketch) .ch .sel,svg:not(.s-sketch) .ch.sel .cd{stroke:var(--tc);stro
 svg:not(.s-sketch) .ic{fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 svg:not(.s-sketch) .nt{font-size:11px}
 svg:not(.s-sketch) .cch .cd{display:none}
+.hw{fill:var(--mut);font-family:var(--mono);font-size:9px}
+.dv{stroke:var(--mut);stroke-opacity:.35;stroke-width:.75;fill:none}
 svg.s-clean .d{fill:var(--clf);stroke:var(--clln)}
 svg.s-clean .cd{fill:var(--card);stroke:var(--cardln);filter:drop-shadow(0 2px 4px rgba(15,23,42,.14))}
 svg.s-clean .hd{fill:var(--tc)}
@@ -156,11 +158,15 @@ body>svg.s-dark{background-image:linear-gradient(#14213A 1px,transparent 1px),li
 [hidden]{display:none!important}
 #ta{position:fixed;top:8px;left:8px;right:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;justify-content:space-between;font:12px system-ui,sans-serif;z-index:5;pointer-events:none}
 #ta>*{pointer-events:auto}
-#tar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end;margin-left:auto}
-#ta button{font:inherit;padding:3px 8px;border:1px solid var(--fg);border-radius:4px;background:var(--panel);color:var(--fg);cursor:pointer}
+#tar{flex:1 1 360px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end;margin-left:auto}
+#ta button{font:inherit;box-sizing:border-box;height:26px;padding:0 8px;line-height:1;white-space:nowrap;border:1px solid var(--fg);border-radius:4px;background:var(--panel);color:var(--fg);cursor:pointer}
 #ta button:focus-visible,.sw:focus-visible,.reset:focus-visible,#pc:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
 #ta[data-on="1"] #te{background:var(--red);border-color:var(--red);color:#fff}
-#ta label,#tm:not(:empty){display:flex;gap:3px;align-items:center;padding:3px 6px;border-radius:4px;background:var(--panel);color:var(--fg)}
+#tx{display:contents}
+#ta[data-on="1"] #tar::after{content:"";order:2;flex:0 0 100%;height:0}
+#ta label,#tm:not(:empty){order:3;display:flex;gap:4px;align-items:center;box-sizing:border-box;min-height:26px;padding:0 8px;border:1px solid transparent;border-radius:4px;background:var(--panel);color:var(--fg)}
+#ta label{white-space:nowrap}
+#ta label input{margin:0}
 #tal{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 #ss,#zm{display:inline-flex}
 #ss button,#zm button{border-radius:0;margin-left:-1px}
@@ -195,6 +201,13 @@ svg.edit{touch-action:none;user-select:none}
 svg.edit [data-e]{cursor:grab}
 svg.edit .b[data-e]:hover,svg.edit .cd:hover{stroke-opacity:.6}
 svg.edit .d[data-e]:hover{stroke:var(--red)}
+svg:not(.edit) #rh{display:none}
+svg.edit .rh{fill:none;stroke:none;pointer-events:all}
+svg.edit path.rh{stroke:transparent;stroke-width:8;pointer-events:stroke}
+svg.edit .rh-n,svg.edit .rh-s{cursor:ns-resize}
+svg.edit .rh-e,svg.edit .rh-w{cursor:ew-resize}
+svg.edit .rh-nw,svg.edit .rh-se{cursor:nwse-resize}
+svg.edit .rh-ne,svg.edit .rh-sw{cursor:nesw-resize}
 body{-webkit-user-select:none;user-select:none}
 #pn,.note,#dl,input,textarea{-webkit-user-select:text;user-select:text}
 #pn button,.cph{-webkit-user-select:none;user-select:none}
@@ -230,6 +243,9 @@ svg.edit .nwb{display:none}
 svg.edit .ch.bad .cd{stroke:var(--red);stroke-width:2}
 svg.edit.s-sketch .b.bad{stroke:var(--red);stroke-width:2.5}
 svg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}
+#cm{position:fixed;min-width:140px;padding:4px;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.2);font:13px system-ui,sans-serif;z-index:9}
+#cm button{display:block;width:100%;text-align:left;font:inherit;color:inherit;background:none;border:0;border-radius:4px;padding:5px 10px;cursor:pointer}
+#cm button:hover,#cm button:focus-visible{background:var(--line);outline:none}
 #lg{display:flex;flex-direction:column;align-items:flex-start;gap:0}
 #lg b,.lk b,.lo b{display:block;margin:4px 0 2px;font:500 10px ui-monospace,Consolas,monospace;color:var(--mut);letter-spacing:.06em;text-transform:uppercase}
 .sw{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:4px 2px;color:var(--fg);font:inherit;cursor:pointer;border-radius:6px}
@@ -532,7 +548,7 @@ svg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}
 <li><a href="https://wiki.example.test/display/DEMO/Networks" target="_blank" rel="noopener">Network concept</a></li>
 </ul></aside>
 </div>
-<script type="application/json" id="layout-data">{"id":"demo","legacyId":null,"layout":{"clusters":{"web":{"x":20,"y":20,"w":196,"h":312,"title":[118,40]},"ifc":{"x":276,"y":20,"w":198,"h":184,"title":[375,40]},"cache":{"x":534,"y":20,"w":220,"h":120,"title":[644,40]},"app":{"x":20,"y":392,"w":570,"h":166,"title":[305,412]},"mongo":{"x":650,"y":392,"w":209,"h":150,"title":[754.5,412]},"ora":{"x":20,"y":618,"w":543,"h":166,"title":[291.5,638]},"nas":{"x":623,"y":618,"w":217,"h":150,"title":[731.5,638]}},"nodes":{"web01":{"x":36,"y":80,"w":164,"h":88,"title":[46,74],"body":[[46,98],[46,114]],"ip":[[46,134],[46,152]]},"web02":{"x":36,"y":208,"w":164,"h":88,"title":[46,202],"body":[[46,226],[46,242]],"ip":[[46,262],[46,280]]},"ifc01":{"x":292,"y":80,"w":166,"h":88,"title":[302,74],"body":[[302,98],[302,114]],"ip":[[302,134],[302,152]]},"app01":{"x":36,"y":452,"w":164,"h":70,"title":[46,446],"body":[[46,470],[46,486]],"ip":[[46,506]]},"app02":{"x":222,"y":452,"w":164,"h":70,"title":[232,446],"body":[[232,470],[232,486]],"ip":[[232,506]]},"app03":{"x":408,"y":452,"w":166,"h":70,"title":[418,446],"body":[[418,470],[418,486]],"ip":[[418,506]]},"mongo01":{"x":666,"y":452,"w":177,"h":54,"title":[676,446],"body":[[676,470]],"ip":[[676,490]]},"db01":{"x":36,"y":678,"w":157,"h":70,"title":[46,672],"body":[[46,696],[46,712]],"ip":[[46,732]]},"db02":{"x":213,"y":678,"w":157,"h":70,"title":[223,672],"body":[[223,696],[223,712]],"ip":[[223,732]]},"db03":{"x":390,"y":678,"w":157,"h":70,"title":[400,672],"body":[[400,696],[400,712]],"ip":[[400,732]]},"nas01":{"x":639,"y":678,"w":185,"h":54,"title":[649,672],"body":[[649,696]],"ip":[[649,716]]},"stats01":{"x":20,"y":864,"w":177,"h":54,"title":[30,858],"body":[[30,882]],"ip":[[30,902]]}},"edges":{"web01>app01":{},"web02>app02":{},"app01>ora":{},"app02>ora":{},"app01>mongo01":{},"ifc01>app03":{"firewall":true},"app03>db01":{},"app03>nas01":{"firewall":true},"stats01>app":{},"app02>cache":{}}},"meta":{"clusters":{"web":{"tl":11},"ifc":{"tl":17},"app":{"tl":19},"cache":{"tl":13},"ora":{"tl":17},"mongo":{"tl":16},"nas":{"tl":3}},"nodes":{"web01":{"tl":19,"bl":19,"il":15,"nb":2,"ni":2,"cl":"web"},"web02":{"tl":19,"bl":19,"il":15,"nb":2,"ni":2,"cl":"web"},"ifc01":{"tl":19,"bl":22,"il":16,"nb":2,"ni":2,"cl":"ifc"},"app01":{"tl":19,"bl":18,"il":13,"nb":2,"ni":1,"cl":"app"},"app02":{"tl":19,"bl":20,"il":13,"nb":2,"ni":1,"cl":"app"},"app03":{"tl":19,"bl":22,"il":13,"nb":2,"ni":1,"cl":"app"},"db01":{"tl":18,"bl":17,"il":13,"nb":2,"ni":1,"cl":"ora"},"db02":{"tl":18,"bl":17,"il":13,"nb":2,"ni":1,"cl":"ora"},"db03":{"tl":18,"bl":17,"il":13,"nb":2,"ni":1,"cl":"ora"},"mongo01":{"tl":21,"bl":21,"il":13,"nb":1,"ni":1,"cl":"mongo"},"nas01":{"tl":19,"bl":25,"il":17,"nb":1,"ni":1,"cl":"nas"},"stats01":{"tl":21,"bl":18,"il":17,"nb":1,"ni":1,"cl":null}},"edges":[{"k":"web01>app01","from":"n:web01","to":"n:app01","ll":11,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"web02>app02","from":"n:web02","to":"n:app02","ll":11,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app01>ora","from":"n:app01","to":"c:ora","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app02>ora","from":"n:app02","to":"c:ora","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app01>mongo01","from":"n:app01","to":"n:mongo01","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"ifc01>app03","from":"n:ifc01","to":"n:app03","ll":19,"fw":true,"g":"job-104","fl":1,"tl":0,"lv":"process"},{"k":"app03>db01","from":"n:app03","to":"n:db01","ll":23,"fw":false,"g":"job-104","fl":0,"tl":null,"lv":"process"},{"k":"app03>nas01","from":"n:app03","to":"n:nas01","ll":21,"fw":true,"g":null,"fl":1,"tl":null,"lv":"process"},{"k":"stats01>app","from":"n:stats01","to":"c:app","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app02>cache","from":"n:app02","to":"c:cache","ll":20,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"}]},"idx":{"clusters":{"web":[0,1,2],"ifc":[3,4,5],"app":[6,7,8],"cache":[9,10,11],"ora":[12,13,14],"mongo":[15,16,17],"nas":[18,19,20]},"nodes":{"web01":{"c":21,"t":22,"r":23,"b":[24,25],"i":[26,27],"w":[28,29],"o":30},"web02":{"c":31,"t":32,"r":33,"b":[34,35],"i":[36,37],"w":[38,39],"o":40},"ifc01":{"c":41,"t":42,"r":43,"b":[44,45],"i":[46,47],"w":[48,49],"o":50},"app01":{"c":51,"t":52,"r":53,"b":[54,55],"i":[56],"w":[57],"o":58},"app02":{"c":59,"t":60,"r":61,"b":[62,63],"i":[64],"w":[65],"o":66},"app03":{"c":67,"t":68,"r":69,"b":[70,71],"i":[72],"w":[73],"o":74},"db01":{"c":75,"t":76,"r":77,"b":[78,79],"i":[80],"w":[81],"o":82},"db02":{"c":83,"t":84,"r":85,"b":[86,87],"i":[88],"w":[89],"o":90},"db03":{"c":91,"t":92,"r":93,"b":[94,95],"i":[96],"w":[97],"o":98},"mongo01":{"c":99,"t":100,"r":101,"b":[102],"i":[103],"w":[104],"o":105},"nas01":{"c":106,"t":107,"r":108,"b":[109],"i":[110],"w":[111],"o":112},"stats01":{"c":113,"t":114,"r":115,"b":[116],"i":[117],"w":[118],"o":119}},"edges":{"web01>app01":{"p":120,"l":122,"lp":121},"web02>app02":{"p":123,"l":125,"lp":124},"app01>ora":{"p":126,"l":128,"lp":127},"app02>ora":{"p":129,"l":131,"lp":130},"app01>mongo01":{"p":132,"l":134,"lp":133},"ifc01>app03":{"p":135,"l":137,"lp":136,"fw":138},"app03>db01":{"p":139,"l":141,"lp":140},"app03>nas01":{"p":142,"l":144,"lp":143,"fw":145},"stats01>app":{"p":146,"l":148,"lp":147},"app02>cache":{"p":149,"l":151,"lp":150}}},"kids":{"web":["web01","web02"],"ifc":["ifc01"],"app":["app01","app02","app03"],"ora":["db01","db02","db03"],"mongo":["mongo01"],"nas":["nas01"]},"edges":[{"k":"web01>app01","from":"n:web01","to":"n:app01"},{"k":"web02>app02","from":"n:web02","to":"n:app02"},{"k":"app01>ora","from":"n:app01","to":"c:ora"},{"k":"app02>ora","from":"n:app02","to":"c:ora"},{"k":"app01>mongo01","from":"n:app01","to":"n:mongo01"},{"k":"ifc01>app03","from":"n:ifc01","to":"n:app03"},{"k":"app03>db01","from":"n:app03","to":"n:db01"},{"k":"app03>nas01","from":"n:app03","to":"n:nas01"},{"k":"stats01>app","from":"n:stats01","to":"c:app"},{"k":"app02>cache","from":"n:app02","to":"c:cache"}],"edgeSwitches":[{"k":"lv:server","label":"Server connections"},{"k":"lv:process","label":"Process connections"},{"k":"g:job-104","g":"job-104","label":"Job 104 connections"}],"ent":{"c:web":{"title":"Web Servers","cl":null,"db":false,"ty":"web","prop":false,"tk":"web","tag":"WEB SERVER"},"c:ifc":{"title":"Interface Servers","cl":null,"db":false,"ty":"interface","prop":false,"tk":"interface","tag":"INTERNAL INTERFACE SERVER"},"c:app":{"title":"Application Servers","cl":null,"db":false,"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER"},"c:cache":{"title":"Cache Servers","cl":null,"db":false,"ty":"cache","prop":true,"tk":"proposed","tag":"CACHE SERVER · PROPOSED"},"c:ora":{"title":"Oracle DB Cluster","cl":null,"db":false,"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER"},"c:mongo":{"title":"Mongo DB Servers","cl":null,"db":false,"ty":"mongo","prop":false,"tk":"mongo","tag":"MONGO DATABASE SERVER"},"c:nas":{"title":"NAS","cl":null,"db":false,"ty":"nas","prop":false,"tk":"nas","tag":"NAS"},"n:web01":{"title":"web-01.example.test","cl":"web","db":false,"body":["nginx reverse proxy","Customer portal"],"ip":["203.0.113.10/24","192.0.2.10/24"],"ty":"web","prop":false,"tk":"web","tag":"WEB SERVER","os":{"v":"Ubuntu 24.04","eol":null}},"n:web02":{"title":"web-02.example.test","cl":"web","db":false,"body":["nginx reverse proxy","Customer portal"],"ip":["203.0.113.11/24","192.0.2.11/24"],"ty":"web","prop":false,"tk":"web","tag":"WEB SERVER","os":{"v":"Ubuntu 18.04","eol":"2023-05"}},"n:ifc01":{"title":"ifc-01.example.test","cl":"ifc","db":false,"body":["SFTP gateway","Job 104 \"Batch import\""],"ip":["198.51.100.20/25","192.0.2.20/24"],"ty":"interface","prop":false,"tk":"interface","tag":"INTERNAL INTERFACE SERVER","os":{"v":"Windows Server 2012 R2","eol":"2023-10"}},"n:app01":{"title":"app-01.example.test","cl":"app","db":false,"body":["Tomcat: core-api","RMI: order-service"],"ip":["192.0.2.31/24"],"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER","os":{"v":"Oracle Linux 8","eol":null}},"n:app02":{"title":"app-02.example.test","cl":"app","db":false,"body":["Tomcat: core-api","RMI: pricing-service"],"ip":["192.0.2.32/24"],"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER","os":{"v":"Oracle Linux 8","eol":null}},"n:app03":{"title":"app-03.example.test","cl":"app","db":false,"body":["Job 104 batch import","Job 210 nightly export"],"ip":["192.0.2.33/24"],"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER","os":{"v":"CentOS 7","eol":"2024-06"}},"n:db01":{"title":"db-01.example.test","cl":"ora","db":true,"body":["Oracle RAC node 1","SID demo1"],"ip":["192.0.2.41/24"],"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER","os":{"v":"Oracle Linux 7","eol":"2024-12"}},"n:db02":{"title":"db-02.example.test","cl":"ora","db":true,"body":["Oracle RAC node 2","SID demo2"],"ip":["192.0.2.42/24"],"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER","os":{"v":"Oracle Linux 7","eol":"2024-12"}},"n:db03":{"title":"db-03.example.test","cl":"ora","db":true,"body":["Oracle RAC node 3","SID demo3"],"ip":["192.0.2.43/24"],"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER","os":{"v":"Oracle Linux 9","eol":null}},"n:mongo01":{"title":"mongo-01.example.test","cl":"mongo","db":true,"body":["MongoDB 6 replica set"],"ip":["192.0.2.51/24"],"ty":"mongo","prop":false,"tk":"mongo","tag":"MONGO DATABASE SERVER","os":{"v":"Debian 12","eol":"2026-06"}},"n:nas01":{"title":"nas-01.example.test","cl":"nas","db":false,"body":["NFS share /export/archive"],"ip":["198.51.100.200/25"],"ty":"nas","prop":false,"tk":"nas","tag":"NAS","os":null},"n:stats01":{"title":"stats-01.example.test","cl":null,"db":false,"body":["Grafana dashboards"],"ip":["198.51.100.150/25"],"ty":"statistics","prop":false,"tk":"statistics","tag":"STATISTICS SERVER","os":{"v":"Debian 13","eol":null}}},"types":[{"k":"web","label":"Web Server","ty":"web"},{"k":"application","label":"Application Server","ty":"application"},{"k":"interface","label":"Internal Interface Server","ty":"interface"},{"k":"oracle","label":"Oracle Database Server","ty":"oracle"},{"k":"mongo","label":"Mongo Database Server","ty":"mongo"},{"k":"proposed","label":"Proposed","ty":"cache","dash":true},{"k":"nas","label":"NAS","ty":"nas","infra":true},{"k":"statistics","label":"Statistics Server","ty":"statistics","infra":true}],"sections":{"Web Servers":"Public entry point; both nodes sit behind a load balancer on 203.0.113.0/24.","web-01.example.test":"| Key | Value |\n|---|---|\n| OS | Ubuntu 24.04 |\n| Confluence | [web-01](https://wiki.example.test/display/DEMO/web-01) |\n| CPU / RAM | 4 vCPU / 8 GB |\n\n- nginx reverse proxy for the customer portal","web-02.example.test":"| Key | Value |\n|---|---|\n| OS | Ubuntu 18.04 |\n| Confluence | [web-02](https://wiki.example.test/display/DEMO/web-02) |","Interface Servers":"DMZ hosts for partner file exchange.","ifc-01.example.test":"| Key | Value |\n|---|---|\n| OS | Windows Server 2012 R2 |\n| Confluence | [ifc-01](https://wiki.example.test/display/DEMO/ifc-01) |\n\n- SFTP gateway on 198.51.100.20\n- Job 104 pulls batch files and hands them to app-03","Application Servers":"","app-01.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 8 |\n| Confluence | [app-01](https://wiki.example.test/display/DEMO/app-01) |","app-02.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 8 |","app-03.example.test":"| Key | Value |\n|---|---|\n| OS | CentOS 7 |\n| Confluence | [app-03](https://wiki.example.test/display/DEMO/app-03) |\n\n- Job 104 batch import\n- Job 210 nightly export to nas-01","Cache Servers":"Proposed tier, no hosts yet.","Oracle DB Cluster":"Three-node RAC; clients connect to the cluster service name.","db-01.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 7 |","db-02.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 7 |","db-03.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 9 |","Mongo DB Servers":"","mongo-01.example.test":"| Key | Value |\n|---|---|\n| OS | Debian 12 |","NAS":"","nas-01.example.test":"| Key | Value |\n|---|---|\n| OS | TBD |","stats-01.example.test":"| Key | Value |\n|---|---|\n| OS | Debian 13 |\n| Confluence | \u003chttps://wiki.example.test/display/DEMO/stats-01> |"},"notes":[{"title":"Demo data only","date":"2026-10-07","paras":["Every host, IP and link in this diagram is invented: IPs from the RFC 5737 documentation ranges, host names under example.test."]},{"title":"Cache tier proposed","date":"2026-09-15","paras":["The cache region is empty on purpose; app-02 would move lookups there (dashed connection)."]},{"title":"Firewall review","date":"2026-08-01","paras":["Job 104 imports cross the DMZ firewall; the NFS archive path crosses the storage firewall."]}],"edgeKey":[["\u003cline x1=\"2\" y1=\"12\" x2=\"40\" y2=\"12\" class=\"r\" marker-end=\"url(#ar)\"/>","connection"],["\u003cline x1=\"2\" y1=\"12\" x2=\"40\" y2=\"12\" class=\"k\" marker-end=\"url(#ak)\"/>","proposed move"],["\u003cline x1=\"2\" y1=\"12\" x2=\"42\" y2=\"12\" class=\"r\"/>\u003cpath class=\"fwb\" d=\"M-3.5 -11L3.5 -6.6L-3.5 -2.2L3.5 2.2L-3.5 6.6L3.5 11\" transform=\"translate(22 12) rotate(0)\"/>\u003cpath class=\"fwz\" d=\"M-3.5 -11L3.5 -6.6L-3.5 -2.2L3.5 2.2L-3.5 6.6L3.5 11\" transform=\"translate(22 12) rotate(0)\"/>","firewall on the path"],["\u003cline x1=\"2\" y1=\"12\" x2=\"40\" y2=\"12\" class=\"r\" data-g=\"job-104\" marker-end=\"url(#ag-job-104)\"/>","Job 104 connections"]],"drawings":[],"nets":[{"cidr":"","name":"Demo site","m":["n:web01","n:web02","n:ifc01","n:app01","n:app02","n:app03","n:db01","n:db02","n:db03","n:mongo01","n:nas01","n:stats01","c:web","c:ifc","c:app","c:ora","c:mongo","c:nas"]},{"cidr":"192.0.2.0/24","name":"Internal application network","m":["n:web01","n:web02","n:ifc01","n:app01","n:app02","n:app03","n:db01","n:db02","n:db03","n:mongo01","c:web","c:ifc","c:app","c:ora","c:mongo"]},{"cidr":"198.51.100.0/24","name":"Services","m":["n:ifc01","n:nas01","n:stats01","c:ifc","c:nas"]},{"cidr":"198.51.100.0/25","name":"DMZ","m":["n:ifc01","c:ifc"]},{"cidr":"198.51.100.128/25","name":"Storage and monitoring","m":["n:nas01","n:stats01","c:nas"]},{"cidr":"203.0.113.0/24","name":"Public","m":["n:web01","n:web02","c:web"]}],"ipNet":{"203.0.113.10":5,"192.0.2.10":1,"203.0.113.11":5,"192.0.2.11":1,"198.51.100.20":3,"192.0.2.20":1,"192.0.2.31":1,"192.0.2.32":1,"192.0.2.33":1,"192.0.2.41":1,"192.0.2.42":1,"192.0.2.43":1,"192.0.2.51":1,"198.51.100.200":4,"198.51.100.150":4}}</script>
+<script type="application/json" id="layout-data">{"id":"demo","legacyId":null,"layout":{"clusters":{"web":{"x":20,"y":20,"w":196,"h":312,"title":[118,40]},"ifc":{"x":276,"y":20,"w":198,"h":184,"title":[375,40]},"cache":{"x":534,"y":20,"w":220,"h":120,"title":[644,40]},"app":{"x":20,"y":392,"w":570,"h":166,"title":[305,412]},"mongo":{"x":650,"y":392,"w":209,"h":150,"title":[754.5,412]},"ora":{"x":20,"y":618,"w":543,"h":166,"title":[291.5,638]},"nas":{"x":623,"y":618,"w":217,"h":150,"title":[731.5,638]}},"nodes":{"web01":{"x":36,"y":80,"w":164,"h":88,"title":[46,74],"body":[[46,98],[46,114]],"ip":[[46,134],[46,152]]},"web02":{"x":36,"y":208,"w":164,"h":88,"title":[46,202],"body":[[46,226],[46,242]],"ip":[[46,262],[46,280]]},"ifc01":{"x":292,"y":80,"w":166,"h":88,"title":[302,74],"body":[[302,98],[302,114]],"ip":[[302,134],[302,152]]},"app01":{"x":36,"y":452,"w":164,"h":70,"title":[46,446],"body":[[46,470],[46,486]],"ip":[[46,506]]},"app02":{"x":222,"y":452,"w":164,"h":70,"title":[232,446],"body":[[232,470],[232,486]],"ip":[[232,506]]},"app03":{"x":408,"y":452,"w":166,"h":70,"title":[418,446],"body":[[418,470],[418,486]],"ip":[[418,506]]},"mongo01":{"x":666,"y":452,"w":177,"h":54,"title":[676,446],"body":[[676,470]],"ip":[[676,490]]},"db01":{"x":36,"y":678,"w":157,"h":70,"title":[46,672],"body":[[46,696],[46,712]],"ip":[[46,732]]},"db02":{"x":213,"y":678,"w":157,"h":70,"title":[223,672],"body":[[223,696],[223,712]],"ip":[[223,732]]},"db03":{"x":390,"y":678,"w":157,"h":70,"title":[400,672],"body":[[400,696],[400,712]],"ip":[[400,732]]},"nas01":{"x":639,"y":678,"w":185,"h":54,"title":[649,672],"body":[[649,696]],"ip":[[649,716]]},"stats01":{"x":20,"y":864,"w":177,"h":54,"title":[30,858],"body":[[30,882]],"ip":[[30,902]]}},"edges":{"web01>app01":{},"web02>app02":{},"app01>ora":{},"app02>ora":{},"app01>mongo01":{},"ifc01>app03":{"firewall":true},"app03>db01":{},"app03>nas01":{"firewall":true},"stats01>app":{},"app02>cache":{}}},"meta":{"clusters":{"web":{"tl":11},"ifc":{"tl":17},"app":{"tl":19},"cache":{"tl":13},"ora":{"tl":17},"mongo":{"tl":16},"nas":{"tl":3}},"nodes":{"web01":{"tl":19,"os":0,"ol":0,"hw":"","bl":19,"il":15,"nb":2,"ni":2,"cl":"web"},"web02":{"tl":19,"os":0,"ol":0,"hw":"","bl":19,"il":15,"nb":2,"ni":2,"cl":"web"},"ifc01":{"tl":19,"os":0,"ol":0,"hw":"","bl":22,"il":16,"nb":2,"ni":2,"cl":"ifc"},"app01":{"tl":19,"os":0,"ol":0,"hw":"","bl":18,"il":13,"nb":2,"ni":1,"cl":"app"},"app02":{"tl":19,"os":0,"ol":0,"hw":"","bl":20,"il":13,"nb":2,"ni":1,"cl":"app"},"app03":{"tl":19,"os":0,"ol":0,"hw":"","bl":22,"il":13,"nb":2,"ni":1,"cl":"app"},"db01":{"tl":18,"os":0,"ol":0,"hw":"","bl":17,"il":13,"nb":2,"ni":1,"cl":"ora"},"db02":{"tl":18,"os":0,"ol":0,"hw":"","bl":17,"il":13,"nb":2,"ni":1,"cl":"ora"},"db03":{"tl":18,"os":0,"ol":0,"hw":"","bl":17,"il":13,"nb":2,"ni":1,"cl":"ora"},"mongo01":{"tl":21,"os":0,"ol":0,"hw":"","bl":21,"il":13,"nb":1,"ni":1,"cl":"mongo"},"nas01":{"tl":19,"os":0,"ol":0,"hw":"","bl":25,"il":17,"nb":1,"ni":1,"cl":"nas"},"stats01":{"tl":21,"os":0,"ol":0,"hw":"","bl":18,"il":17,"nb":1,"ni":1,"cl":null}},"edges":[{"k":"web01>app01","from":"n:web01","to":"n:app01","ll":11,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"web02>app02","from":"n:web02","to":"n:app02","ll":11,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app01>ora","from":"n:app01","to":"c:ora","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app02>ora","from":"n:app02","to":"c:ora","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app01>mongo01","from":"n:app01","to":"n:mongo01","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"ifc01>app03","from":"n:ifc01","to":"n:app03","ll":19,"fw":true,"g":"job-104","fl":1,"tl":0,"lv":"process"},{"k":"app03>db01","from":"n:app03","to":"n:db01","ll":23,"fw":false,"g":"job-104","fl":0,"tl":null,"lv":"process"},{"k":"app03>nas01","from":"n:app03","to":"n:nas01","ll":21,"fw":true,"g":null,"fl":1,"tl":null,"lv":"process"},{"k":"stats01>app","from":"n:stats01","to":"c:app","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app02>cache","from":"n:app02","to":"c:cache","ll":20,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"}]},"idx":{"clusters":{"web":[0,1,2],"ifc":[3,4,5],"app":[6,7,8],"cache":[9,10,11],"ora":[12,13,14],"mongo":[15,16,17],"nas":[18,19,20]},"nodes":{"web01":{"c":21,"t":22,"r":23,"b":[24,25],"i":[26,27],"w":[28,29],"o":30},"web02":{"c":31,"t":32,"r":33,"b":[34,35],"i":[36,37],"w":[38,39],"o":40},"ifc01":{"c":41,"t":42,"r":43,"b":[44,45],"i":[46,47],"w":[48,49],"o":50},"app01":{"c":51,"t":52,"r":53,"b":[54,55],"i":[56],"w":[57],"o":58},"app02":{"c":59,"t":60,"r":61,"b":[62,63],"i":[64],"w":[65],"o":66},"app03":{"c":67,"t":68,"r":69,"b":[70,71],"i":[72],"w":[73],"o":74},"db01":{"c":75,"t":76,"r":77,"b":[78,79],"i":[80],"w":[81],"o":82},"db02":{"c":83,"t":84,"r":85,"b":[86,87],"i":[88],"w":[89],"o":90},"db03":{"c":91,"t":92,"r":93,"b":[94,95],"i":[96],"w":[97],"o":98},"mongo01":{"c":99,"t":100,"r":101,"b":[102],"i":[103],"w":[104],"o":105},"nas01":{"c":106,"t":107,"r":108,"b":[109],"i":[110],"w":[111],"o":112},"stats01":{"c":113,"t":114,"r":115,"b":[116],"i":[117],"w":[118],"o":119}},"edges":{"web01>app01":{"p":120,"l":122,"lp":121},"web02>app02":{"p":123,"l":125,"lp":124},"app01>ora":{"p":126,"l":128,"lp":127},"app02>ora":{"p":129,"l":131,"lp":130},"app01>mongo01":{"p":132,"l":134,"lp":133},"ifc01>app03":{"p":135,"l":137,"lp":136,"fw":138},"app03>db01":{"p":139,"l":141,"lp":140},"app03>nas01":{"p":142,"l":144,"lp":143,"fw":145},"stats01>app":{"p":146,"l":148,"lp":147},"app02>cache":{"p":149,"l":151,"lp":150}}},"kids":{"web":["web01","web02"],"ifc":["ifc01"],"app":["app01","app02","app03"],"ora":["db01","db02","db03"],"mongo":["mongo01"],"nas":["nas01"]},"edges":[{"k":"web01>app01","from":"n:web01","to":"n:app01"},{"k":"web02>app02","from":"n:web02","to":"n:app02"},{"k":"app01>ora","from":"n:app01","to":"c:ora"},{"k":"app02>ora","from":"n:app02","to":"c:ora"},{"k":"app01>mongo01","from":"n:app01","to":"n:mongo01"},{"k":"ifc01>app03","from":"n:ifc01","to":"n:app03"},{"k":"app03>db01","from":"n:app03","to":"n:db01"},{"k":"app03>nas01","from":"n:app03","to":"n:nas01"},{"k":"stats01>app","from":"n:stats01","to":"c:app"},{"k":"app02>cache","from":"n:app02","to":"c:cache"}],"edgeSwitches":[{"k":"lv:server","label":"Server connections"},{"k":"lv:process","label":"Process connections"},{"k":"g:job-104","g":"job-104","label":"Job 104 connections"}],"ent":{"c:web":{"title":"Web Servers","cl":null,"db":false,"ty":"web","prop":false,"tk":"web","tag":"WEB SERVER"},"c:ifc":{"title":"Interface Servers","cl":null,"db":false,"ty":"interface","prop":false,"tk":"interface","tag":"INTERNAL INTERFACE SERVER"},"c:app":{"title":"Application Servers","cl":null,"db":false,"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER"},"c:cache":{"title":"Cache Servers","cl":null,"db":false,"ty":"cache","prop":true,"tk":"proposed","tag":"CACHE SERVER · PROPOSED"},"c:ora":{"title":"Oracle DB Cluster","cl":null,"db":false,"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER"},"c:mongo":{"title":"Mongo DB Servers","cl":null,"db":false,"ty":"mongo","prop":false,"tk":"mongo","tag":"MONGO DATABASE SERVER"},"c:nas":{"title":"NAS","cl":null,"db":false,"ty":"nas","prop":false,"tk":"nas","tag":"NAS"},"n:web01":{"title":"web-01.example.test","cl":"web","db":false,"body":["nginx reverse proxy","Customer portal"],"ip":["203.0.113.10/24","192.0.2.10/24"],"ty":"web","prop":false,"tk":"web","tag":"WEB SERVER","os":{"v":"Ubuntu 24.04","eol":null}},"n:web02":{"title":"web-02.example.test","cl":"web","db":false,"body":["nginx reverse proxy","Customer portal"],"ip":["203.0.113.11/24","192.0.2.11/24"],"ty":"web","prop":false,"tk":"web","tag":"WEB SERVER","os":{"v":"Ubuntu 18.04","eol":"2023-05"}},"n:ifc01":{"title":"ifc-01.example.test","cl":"ifc","db":false,"body":["SFTP gateway","Job 104 \"Batch import\""],"ip":["198.51.100.20/25","192.0.2.20/24"],"ty":"interface","prop":false,"tk":"interface","tag":"INTERNAL INTERFACE SERVER","os":{"v":"Windows Server 2012 R2","eol":"2023-10"}},"n:app01":{"title":"app-01.example.test","cl":"app","db":false,"body":["Tomcat: core-api","RMI: order-service"],"ip":["192.0.2.31/24"],"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER","os":{"v":"Oracle Linux 8","eol":null}},"n:app02":{"title":"app-02.example.test","cl":"app","db":false,"body":["Tomcat: core-api","RMI: pricing-service"],"ip":["192.0.2.32/24"],"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER","os":{"v":"Oracle Linux 8","eol":null}},"n:app03":{"title":"app-03.example.test","cl":"app","db":false,"body":["Job 104 batch import","Job 210 nightly export"],"ip":["192.0.2.33/24"],"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER","os":{"v":"CentOS 7","eol":"2024-06"}},"n:db01":{"title":"db-01.example.test","cl":"ora","db":true,"body":["Oracle RAC node 1","SID demo1"],"ip":["192.0.2.41/24"],"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER","os":{"v":"Oracle Linux 7","eol":"2024-12"}},"n:db02":{"title":"db-02.example.test","cl":"ora","db":true,"body":["Oracle RAC node 2","SID demo2"],"ip":["192.0.2.42/24"],"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER","os":{"v":"Oracle Linux 7","eol":"2024-12"}},"n:db03":{"title":"db-03.example.test","cl":"ora","db":true,"body":["Oracle RAC node 3","SID demo3"],"ip":["192.0.2.43/24"],"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER","os":{"v":"Oracle Linux 9","eol":null}},"n:mongo01":{"title":"mongo-01.example.test","cl":"mongo","db":true,"body":["MongoDB 6 replica set"],"ip":["192.0.2.51/24"],"ty":"mongo","prop":false,"tk":"mongo","tag":"MONGO DATABASE SERVER","os":{"v":"Debian 12","eol":"2026-06"}},"n:nas01":{"title":"nas-01.example.test","cl":"nas","db":false,"body":["NFS share /export/archive"],"ip":["198.51.100.200/25"],"ty":"nas","prop":false,"tk":"nas","tag":"NAS","os":null},"n:stats01":{"title":"stats-01.example.test","cl":null,"db":false,"body":["Grafana dashboards"],"ip":["198.51.100.150/25"],"ty":"statistics","prop":false,"tk":"statistics","tag":"STATISTICS SERVER","os":{"v":"Debian 13","eol":null}}},"types":[{"k":"web","label":"Web Server","ty":"web"},{"k":"application","label":"Application Server","ty":"application"},{"k":"interface","label":"Internal Interface Server","ty":"interface"},{"k":"oracle","label":"Oracle Database Server","ty":"oracle"},{"k":"mongo","label":"Mongo Database Server","ty":"mongo"},{"k":"proposed","label":"Proposed","ty":"cache","dash":true},{"k":"nas","label":"NAS","ty":"nas","infra":true},{"k":"statistics","label":"Statistics Server","ty":"statistics","infra":true}],"sections":{"Web Servers":"Public entry point; both nodes sit behind a load balancer on 203.0.113.0/24.","web-01.example.test":"| Key | Value |\n|---|---|\n| OS | Ubuntu 24.04 |\n| Confluence | [web-01](https://wiki.example.test/display/DEMO/web-01) |\n| CPU / RAM | 4 vCPU / 8 GB |\n\n- nginx reverse proxy for the customer portal","web-02.example.test":"| Key | Value |\n|---|---|\n| OS | Ubuntu 18.04 |\n| Confluence | [web-02](https://wiki.example.test/display/DEMO/web-02) |","Interface Servers":"DMZ hosts for partner file exchange.","ifc-01.example.test":"| Key | Value |\n|---|---|\n| OS | Windows Server 2012 R2 |\n| Confluence | [ifc-01](https://wiki.example.test/display/DEMO/ifc-01) |\n\n- SFTP gateway on 198.51.100.20\n- Job 104 pulls batch files and hands them to app-03","Application Servers":"","app-01.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 8 |\n| Confluence | [app-01](https://wiki.example.test/display/DEMO/app-01) |","app-02.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 8 |","app-03.example.test":"| Key | Value |\n|---|---|\n| OS | CentOS 7 |\n| Confluence | [app-03](https://wiki.example.test/display/DEMO/app-03) |\n\n- Job 104 batch import\n- Job 210 nightly export to nas-01","Cache Servers":"Proposed tier, no hosts yet.","Oracle DB Cluster":"Three-node RAC; clients connect to the cluster service name.","db-01.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 7 |","db-02.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 7 |","db-03.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 9 |","Mongo DB Servers":"","mongo-01.example.test":"| Key | Value |\n|---|---|\n| OS | Debian 12 |","NAS":"","nas-01.example.test":"| Key | Value |\n|---|---|\n| OS | TBD |","stats-01.example.test":"| Key | Value |\n|---|---|\n| OS | Debian 13 |\n| Confluence | \u003chttps://wiki.example.test/display/DEMO/stats-01> |"},"notes":[{"title":"Demo data only","date":"2026-10-07","paras":["Every host, IP and link in this diagram is invented: IPs from the RFC 5737 documentation ranges, host names under example.test."]},{"title":"Cache tier proposed","date":"2026-09-15","paras":["The cache region is empty on purpose; app-02 would move lookups there (dashed connection)."]},{"title":"Firewall review","date":"2026-08-01","paras":["Job 104 imports cross the DMZ firewall; the NFS archive path crosses the storage firewall."]}],"edgeKey":[["\u003cline x1=\"2\" y1=\"12\" x2=\"40\" y2=\"12\" class=\"r\" marker-end=\"url(#ar)\"/>","connection"],["\u003cline x1=\"2\" y1=\"12\" x2=\"40\" y2=\"12\" class=\"k\" marker-end=\"url(#ak)\"/>","proposed move"],["\u003cline x1=\"2\" y1=\"12\" x2=\"42\" y2=\"12\" class=\"r\"/>\u003cpath class=\"fwb\" d=\"M-3.5 -11L3.5 -6.6L-3.5 -2.2L3.5 2.2L-3.5 6.6L3.5 11\" transform=\"translate(22 12) rotate(0)\"/>\u003cpath class=\"fwz\" d=\"M-3.5 -11L3.5 -6.6L-3.5 -2.2L3.5 2.2L-3.5 6.6L3.5 11\" transform=\"translate(22 12) rotate(0)\"/>","firewall on the path"],["\u003cline x1=\"2\" y1=\"12\" x2=\"40\" y2=\"12\" class=\"r\" data-g=\"job-104\" marker-end=\"url(#ag-job-104)\"/>","Job 104 connections"]],"drawings":[],"nets":[{"cidr":"","name":"Demo site","m":["n:web01","n:web02","n:ifc01","n:app01","n:app02","n:app03","n:db01","n:db02","n:db03","n:mongo01","n:nas01","n:stats01","c:web","c:ifc","c:app","c:ora","c:mongo","c:nas"]},{"cidr":"192.0.2.0/24","name":"Internal application network","m":["n:web01","n:web02","n:ifc01","n:app01","n:app02","n:app03","n:db01","n:db02","n:db03","n:mongo01","c:web","c:ifc","c:app","c:ora","c:mongo"]},{"cidr":"198.51.100.0/24","name":"Services","m":["n:ifc01","n:nas01","n:stats01","c:ifc","c:nas"]},{"cidr":"198.51.100.0/25","name":"DMZ","m":["n:ifc01","c:ifc"]},{"cidr":"198.51.100.128/25","name":"Storage and monitoring","m":["n:nas01","n:stats01","c:nas"]},{"cidr":"203.0.113.0/24","name":"Public","m":["n:web01","n:web02","c:web"]}],"ipNet":{"203.0.113.10":5,"192.0.2.10":1,"203.0.113.11":5,"192.0.2.11":1,"198.51.100.20":3,"192.0.2.20":1,"192.0.2.31":1,"192.0.2.32":1,"192.0.2.33":1,"192.0.2.41":1,"192.0.2.42":1,"192.0.2.43":1,"192.0.2.51":1,"198.51.100.200":4,"198.51.100.150":4}}</script>
 <script>
 window.InfraDiagram = { modules: {} };
 InfraDiagram.define = function (name, deps, factory) {
@@ -740,9 +756,11 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
       bottom = Math.max(bottom, p[1] - g.y + 7);
       return measure(els[ix.i[k]], 14, CW[S]);
     });
-    var W = Math.max(g.w, tl + tw + 28), HH = 20;
+    var W = Math.max(g.w, tl + tw + 28), HH = 20, m = D.meta.nodes[id] || {}, nb = g.body.length, hwY = 18 + 16 * nb;
     boxW[id] = W;
     var h = "";
+    var hw = m.hw ? '<text class="hw" x="' + (g.body.length ? g.body[0][0] - g.x : 10) + '" y="' + hwY + '">' + core.esc(m.hw) + "</text>" : "";
+    if (S === "sketch") { delete boxW[id]; return hw; }
     if (S === "clean") {
       h = '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="10"/><path class="hd" d="M0 0V-10Q0 -20 10 -20H' + (W - 10) + "Q" + W + " -20 " + W + ' -10V0Z"/>';
     } else if (S === "dark") {
@@ -751,6 +769,12 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
       h = '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
     }
     h += '<g class="ic" transform="translate(' + (W - 17) + ' -16) scale(.75)">' + icon(e.db ? "db" : "server") + "</g>";
+    h += hw;
+    var dv = function (y) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; };
+    var below = !!(m.hw || m.os || g.ip.length);
+    if (nb && below) h += dv(8 + 16 * nb);
+    if (m.hw && (m.os || g.ip.length)) h += dv(hwY + 6);
+    if (m.os && g.ip.length) h += dv(g.ip[0][1] - g.y - 12.5);
     g.ip.forEach(function (p, k) {
       var w = Math.round(ipw[k] + 10);
       h += '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x - 5) + '" y="' + (p[1] - g.y - 11) + '" width="' + w + '" height="15" rx="' + (S === "clean" ? 8 : S === "dark" ? 3 : 0) + '"/>';
@@ -763,7 +787,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     btn = {};
     Object.keys(D.idx.nodes).forEach(function (id) {
       var ix = D.idx.nodes[id];
-      els[ix.c].innerHTML = ctx.style === "sketch" ? "" : nodeChrome(id);
+      els[ix.c].innerHTML = nodeChrome(id);
       if (!ix.w.some(function (w) { return w >= 0; })) return;
       btn[id] = { W: boxW[id] || D.layout.nodes[id].w, tw: ix.i.map(function (i) { return measure(els[i], 14, CW[ctx.style]); }) };
     });
@@ -1027,7 +1051,7 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
     loadToggles();
     buildLegend();
     setLabels(core.lsGet("labels") === "1", false);
-    setOs(core.lsGet("os") === "1", false);
+    setOs(core.lsGet("os") !== "0", false);
     applyToggles();
   }
 
@@ -1179,7 +1203,7 @@ InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], functio
     var c = svg.cloneNode(true);
     var r = resolveCss();
     [].forEach.call(c.querySelectorAll("[data-e]"), function (n) { n.removeAttribute("data-e"); });
-    [].forEach.call(c.querySelectorAll(".nwb"), function (n) { n.remove(); });
+    [].forEach.call(c.querySelectorAll(".nwb,#rh"), function (n) { n.remove(); });
     c.classList.remove("edit", "zoomed", "panning", "draw-pencil", "draw-eraser");
     [].forEach.call(c.querySelectorAll(".dwp.hot"), function (n) { n.classList.remove("hot"); });
     c.removeAttribute("style");
@@ -1505,7 +1529,7 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
 
 InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], function (core, selection, panels) {
   var $ = core.$;
-  var TEXTS = [["os", "OS", "Ubuntu 24.04"], ["hardware", "Hardware", "8 vCPU, 16 GB RAM"], ["role", "Role", "Reverse proxy"]];
+  var TEXTS = [["os", "OS", "Ubuntu 24.04"], ["hardware", "Hardware", "8 vCPU, 16 GB RAM"], ["cpu", "CPU", "8 cores"], ["ram", "RAM", "16 GiB"], ["swap", "Swap", "2 GiB"], ["disk", "Disk", "50G"], ["role", "Role", "Reverse proxy"]];
   var LISTS = [
     ["ips", "IPs", "Add IP", "192.0.2.10/24"], ["dns", "DNS", "Add DNS name", "host.example.test"], ["jobs", "Jobs", "Add job", "Job 104 batch import"],
     ["rmi_services", "RMI services", "Add RMI service", "ExampleService"], ["systemd_services", "systemd services", "Add systemd service", "example.service"]
@@ -1703,8 +1727,8 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
 
 InfraDiagram.define("canvas/geometry", [], function () {
   var kit = (function geometryKit() {
-    var HEAD = 20, TITLE_CW = 6.6, BODY_CW = 6.6, IP_CW = 7, TEXT_X = 10;
-    var BAND = 30, BAND_GAP = 10, MIN_GAP = 20, PAD = 16;
+    var HEAD = 20, TITLE_CW = 6.6, BODY_CW = 6.6, IP_CW = 7, OS_CW = 5.6, HW_CW = 5.6, TEXT_X = 10;
+    var BAND = 30, BAND_GAP = 10, MIN_GAP = 20, PAD = 16, MIN_W = 100, MIN_H = 60;
     var M = 10, BEND = 50, REGION = 1.5, HUG = 2, TIGHT = 0.3, RAD = 22;
     var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
     var cache = { n: 0 };
@@ -1722,22 +1746,43 @@ InfraDiagram.define("canvas/geometry", [], function () {
     function fitBox(g, t) {
       g.body.forEach(function (p) { p[0] = g.x + TEXT_X; });
       g.ip.forEach(function (p) { p[0] = g.x + TEXT_X; });
-      var need = Math.max(g.title[0] - g.x + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0);
+      var need = Math.max(g.title[0] - g.x + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0, t.os ? TEXT_X + (t.ol + 4) * OS_CW + 14 : 0, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0);
       g.w = Math.max(g.w, Math.ceil(need));
+    }
+
+    // Smallest rectangle that holds a region's visible servers with padding and the header band, or null when it has none.
+    function regionBounds(s, meta, cid, w) {
+      var r = null;
+      Object.keys(meta.nodes).forEach(function (id) {
+        var g = s.nodes[id];
+        if (meta.nodes[id].cl !== cid || !g || g.hidden) return;
+        var e = boxExtent(g, meta.nodes[id].tl, w && w[id]);
+        r = r || { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+        r.x0 = Math.min(r.x0, e.x0 - PAD); r.x1 = Math.max(r.x1, e.x1 + PAD); r.y1 = Math.max(r.y1, e.y1 + PAD);
+        r.y0 = Math.min(r.y0, e.y0 - BAND - BAND_GAP);
+      });
+      return r;
     }
 
     // Region grown (never shrunk below base) to hold its servers with padding and the header band.
     function fitRegion(s, meta, cid, baseRect, w) {
       var c = s.clusters[cid], b = baseRect || c, x0 = b.x, y0 = b.y, x1 = b.x + b.w, y1 = b.y + b.h;
-      Object.keys(meta.nodes).forEach(function (id) {
-        var g = s.nodes[id];
-        if (meta.nodes[id].cl !== cid || !g || g.hidden) return;
-        var e = boxExtent(g, meta.nodes[id].tl, w && w[id]);
-        x0 = Math.min(x0, e.x0 - PAD); x1 = Math.max(x1, e.x1 + PAD); y1 = Math.max(y1, e.y1 + PAD);
-        y0 = Math.min(y0, e.y0 - BAND - BAND_GAP);
-      });
+      var r = regionBounds(s, meta, cid, w);
+      if (r) { x0 = Math.min(x0, r.x0); x1 = Math.max(x1, r.x1); y1 = Math.max(y1, r.y1); y0 = Math.min(y0, r.y0); }
       var t = baseRect ? baseRect.title : c.title, centred = Math.abs(t[0] - (b.x + b.w / 2)) <= 2;
       c.title = [centred ? r1((x0 + x1) / 2) : t[0] + (x0 - b.x), t[1] + (y0 - b.y)];
+      c.x = x0; c.y = y0; c.w = x1 - x0; c.h = y1 - y0;
+    }
+
+    // Moves the sides named in side ("n", "se", ...) of a region by dx / dy, never past its servers or the absolute minimum; the title follows the left / top side or stays centred.
+    function resizeRegion(s, meta, cid, side, dx, dy, w) {
+      var c = s.clusters[cid], b = regionBounds(s, meta, cid, w), t = c.title, centred = Math.abs(t[0] - (c.x + c.w / 2)) <= 2;
+      var x0 = c.x, y0 = c.y, x1 = c.x + c.w, y1 = c.y + c.h;
+      if (side.indexOf("w") >= 0) x0 = Math.min(x0 + dx, b ? b.x0 : Infinity, x1 - MIN_W);
+      if (side.indexOf("e") >= 0) x1 = Math.max(x1 + dx, b ? b.x1 : -Infinity, x0 + MIN_W);
+      if (side.indexOf("n") >= 0) y0 = Math.min(y0 + dy, b ? b.y0 : Infinity, y1 - MIN_H);
+      if (side.indexOf("s") >= 0) y1 = Math.max(y1 + dy, b ? b.y1 : -Infinity, y0 + MIN_H);
+      c.title = [centred ? r1((x0 + x1) / 2) : t[0] + (x0 - c.x), t[1] + (y0 - c.y)];
       c.x = x0; c.y = y0; c.w = x1 - x0; c.h = y1 - y0;
     }
 
@@ -2150,10 +2195,10 @@ InfraDiagram.define("canvas/geometry", [], function () {
       return bad;
     }
 
-    return { boxExtent: boxExtent, fitBox: fitBox, fitRegion: fitRegion, route: route, problems: problems };
+    return { boxExtent: boxExtent, fitBox: fitBox, fitRegion: fitRegion, regionBounds: regionBounds, resizeRegion: resizeRegion, route: route, problems: problems };
   })();
 
-  return { boxExtent: kit.boxExtent, fitBox: kit.fitBox, fitRegion: kit.fitRegion, route: kit.route, problems: kit.problems };
+  return { boxExtent: kit.boxExtent, fitBox: kit.fitBox, fitRegion: kit.fitRegion, regionBounds: kit.regionBounds, resizeRegion: kit.resizeRegion, route: kit.route, problems: kit.problems };
 });
 
 InfraDiagram.define("canvas/draw-kit", [], function () {
@@ -2291,6 +2336,51 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     return s;
   }
 
+  // Resizing a region moves its sides only; servers stay put and bound how far it can shrink.
+  function resize(from, id, side, dx, dy) {
+    var s = clone(from);
+    geometry.resizeRegion(s, D.meta, id, side, dx, dy, skins.widths());
+    return s;
+  }
+
+  var SIDES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"], HS = 8, RR = 14, handles = null;
+
+  // Edit-mode resize handles: invisible hit bands along each region's outline (edge strips, stroked arcs on the rounded corners); only the cursor shows them.
+  function syncHandles(s) {
+    var NS = "http://www.w3.org/2000/svg";
+    if (!handles) {
+      handles = {};
+      var layer = document.createElementNS(NS, "g");
+      layer.setAttribute("id", "rh");
+      Object.keys(D.idx.clusters).forEach(function (id) {
+        handles[id] = SIDES.map(function (side) {
+          var r = document.createElementNS(NS, side.length === 2 ? "path" : "rect");
+          r.setAttribute("class", "rh rh-" + side);
+          r.setAttribute("data-rc", id); r.setAttribute("data-rs", side);
+          layer.appendChild(r);
+          return r;
+        });
+      });
+      svg.appendChild(layer);
+    }
+    Object.keys(handles).forEach(function (id) {
+      var g = s.clusters[id], h = HS / 2, q = RR, r = g.x + g.w, b = g.y + g.h;
+      var arcs = {
+        nw: "M" + g.x + " " + (g.y + q) + "A" + q + " " + q + " 0 0 1 " + (g.x + q) + " " + g.y,
+        ne: "M" + (r - q) + " " + g.y + "A" + q + " " + q + " 0 0 1 " + r + " " + (g.y + q),
+        se: "M" + r + " " + (b - q) + "A" + q + " " + q + " 0 0 1 " + (r - q) + " " + b,
+        sw: "M" + (g.x + q) + " " + b + "A" + q + " " + q + " 0 0 1 " + g.x + " " + (b - q) };
+      var rects = { n: [g.x + q, g.y - h, g.w - 2 * q, HS], s: [g.x + q, b - h, g.w - 2 * q, HS],
+        w: [g.x - h, g.y + q, HS, g.h - 2 * q], e: [r - h, g.y + q, HS, g.h - 2 * q] };
+      handles[id].forEach(function (el, i) {
+        var side = SIDES[i];
+        if (arcs[side]) { el.setAttribute("d", arcs[side]); return; }
+        var v = rects[side];
+        el.setAttribute("x", v[0]); el.setAttribute("y", v[1]); el.setAttribute("width", Math.max(v[2], 0)); el.setAttribute("height", Math.max(v[3], 0));
+      });
+    });
+  }
+
   function each(fn) {
     Object.keys(D.idx.clusters).forEach(function (id) {
       var e = D.idx.clusters[id];
@@ -2344,6 +2434,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     });
     routeEdges(s);
     markBad(s);
+    syncHandles(s);
     skins.sync(s);
   }
 
@@ -2359,7 +2450,16 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     return m ? p.matrixTransform(m.inverse()) : p;
   }
 
-  return { base: base, state: state, clone: clone, apply: apply, each: each, render: render, point: point };
+  function regionAt(s, p) {
+    var best = null, area = Infinity;
+    Object.keys(s.clusters).forEach(function (id) {
+      var c = s.clusters[id];
+      if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h && c.w * c.h < area) { best = id; area = c.w * c.h; }
+    });
+    return best;
+  }
+
+  return { base: base, state: state, clone: clone, apply: apply, resize: resize, each: each, render: render, point: point, regionAt: regionAt };
 });
 
 InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (core, model) {
@@ -2724,11 +2824,11 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
 
   svg.addEventListener("pointerdown", function (e) {
     if (!state.on || e.button > 0) return;
-    var t = e.target.closest && e.target.closest("[data-e]");
-    if (!t) return;
+    var t = e.target.closest && e.target.closest("[data-e]"), h = !t && e.target.closest && e.target.closest("[data-rc]");
+    if (!t && !h) return;
     e.preventDefault();
     var p = model.point(e);
-    drag = { key: t.getAttribute("data-e"), x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
+    drag = { key: h ? "c:" + h.getAttribute("data-rc") : t.getAttribute("data-e"), side: h && h.getAttribute("data-rs"), x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
     try { svg.setPointerCapture(e.pointerId); } catch (x) {}
   });
 
@@ -2736,21 +2836,47 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     if (!drag || e.pointerId !== drag.id) return;
     var p = model.point(e);
     var dx = Math.round(p.x - drag.x), dy = Math.round(p.y - drag.y);
-    if ($("ts").checked && !e.shiftKey) {
-      var o = origin(drag.from, drag.key);
-      dx = Math.round((o.x + dx) / GRID) * GRID - o.x;
-      dy = Math.round((o.y + dy) / GRID) * GRID - o.y;
+    if (drag.side) {
+      var r = drag.from.clusters[drag.key.slice(2)], sn = $("ts").checked && !e.shiftKey, sd = drag.side;
+      if (sn) {
+        if (sd.indexOf("w") >= 0) dx = Math.round((r.x + dx) / GRID) * GRID - r.x;
+        if (sd.indexOf("e") >= 0) dx = Math.round((r.x + r.w + dx) / GRID) * GRID - r.x - r.w;
+        if (sd.indexOf("n") >= 0) dy = Math.round((r.y + dy) / GRID) * GRID - r.y;
+        if (sd.indexOf("s") >= 0) dy = Math.round((r.y + r.h + dy) / GRID) * GRID - r.y - r.h;
+      }
+      state.st = model.resize(drag.from, drag.key.slice(2), sd, dx, dy);
+    } else {
+      if ($("ts").checked && !e.shiftKey) {
+        var o = origin(drag.from, drag.key);
+        dx = Math.round((o.x + dx) / GRID) * GRID - o.x;
+        dy = Math.round((o.y + dy) / GRID) * GRID - o.y;
+      }
+      state.st = model.apply(drag.from, drag.key, dx, dy);
     }
-    state.st = model.apply(drag.from, drag.key, dx, dy);
     // Routing runs once per frame, not per pointer event.
     if (!frame) frame = requestAnimationFrame(function () { frame = 0; model.render(state.st); });
   });
 
+  function drop(d, e) {
+    var api = window.InfraDiagram.serverEditor, id = d.key.slice(2), meta = core.D.meta.nodes[id];
+    if (d.key.charAt(0) !== "n" || !api || !api.move || !meta) return false;
+    var from = meta.cl || null, to = model.regionAt(d.from, model.point(e));
+    if (to === from) return false;
+    if (from) state.st.clusters[from] = model.clone(d.from.clusters[from]);
+    var err = api.move(id, to);
+    if (!err) return true;
+    state.st = model.clone(d.from);
+    model.render(state.st);
+    say(err);
+    return false;
+  }
+
   function end(e) {
     if (!drag || e.pointerId !== drag.id) return;
+    var d = drag, moved = e.type === "pointerup" && drop(d, e);
     drag = null;
     saveDraft();
-    fit();
+    if (!moved) fit();
   }
   svg.addEventListener("pointerup", end);
   svg.addEventListener("pointercancel", end);
@@ -2764,6 +2890,97 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   init.init({ getState: function () { return state.on ? state.st : base; }, isEdit: function () { return state.on; }, fit: fit });
 
   return { currentLayout: currentLayout, isDirty: isDirty, commit: commit };
+});
+
+InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model"], function (core, model) {
+  var state = model.state;
+  var menu = null;
+
+  function bridge() { return window.InfraDiagram.serverEditor || null; }
+
+  function close() {
+    if (!menu) return;
+    menu.remove();
+    menu = null;
+  }
+
+  function addItem(label, run) {
+    var item = document.createElement("button");
+    item.type = "button";
+    item.setAttribute("role", "menuitem");
+    item.textContent = label;
+    item.addEventListener("click", function () {
+      close();
+      var err = run();
+      if (err) core.$("tm").textContent = err;
+    });
+    menu.appendChild(item);
+    return item;
+  }
+
+  function serverAt(target) {
+    var el = target && target.closest && target.closest("[data-ent]"), k = el && el.getAttribute("data-ent");
+    return k && k.indexOf("n:") === 0 ? k.slice(2) : null;
+  }
+
+  function editable(t) {
+    var tag = t && t.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!(t && t.isContentEditable);
+  }
+
+  function show(e, fill) {
+    close();
+    menu = document.createElement("div");
+    menu.id = "cm";
+    menu.setAttribute("role", "menu");
+    var first = fill();
+    document.body.appendChild(menu);
+    menu.style.left = Math.max(0, Math.min(e.clientX, window.innerWidth - menu.offsetWidth)) + "px";
+    menu.style.top = Math.max(0, Math.min(e.clientY, window.innerHeight - menu.offsetHeight)) + "px";
+    first.focus();
+  }
+
+  function pickType(at, free, x, y) {
+    show(at, function () {
+      var first = null;
+      free.forEach(function (t) {
+        var item = addItem(t.label, function () { return bridge().addRegion(t.id, x, y); });
+        first = first || item;
+      });
+      return first;
+    });
+  }
+
+  function open(e) {
+    var p = model.point(e), api = bridge(), id = serverAt(e.target), region = model.regionAt(state.st, p), at = { clientX: e.clientX, clientY: e.clientY };
+    show(e, function () {
+      var first = id && api.duplicate
+        ? addItem("Duplicate server", function () { return api.duplicate(id); })
+        : addItem("Add Server", function () { return api.add(region, Math.round(p.x), Math.round(p.y)); });
+      if (!id && !region && api.addRegion && api.regionTypes) {
+        var free = api.regionTypes(), item = addItem("Add Region", function () { pickType(at, free, Math.round(p.x), Math.round(p.y)); });
+        if (!free.length) {
+          item.textContent = "Add Region (every server type has one)";
+          item.disabled = true;
+        }
+      }
+      return first;
+    });
+  }
+
+  document.addEventListener("contextmenu", function (e) {
+    if (!state.on || !bridge() || !bridge().add || editable(e.target)) return;
+    e.preventDefault();
+    close();
+    open(e);
+  });
+  document.addEventListener("pointerdown", function (e) { if (menu && !menu.contains(e.target)) close(); }, true);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && menu) { e.stopPropagation(); close(); } }, true);
+  window.addEventListener("scroll", close, true);
+  window.addEventListener("wheel", close, { passive: true });
+  window.addEventListener("blur", close);
+
+  return { close: close };
 });
 </script>
 </body>

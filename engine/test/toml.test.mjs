@@ -52,7 +52,7 @@ test("restore, update service count, add and remove objects without losing exist
   const second = prepareDiagram(changed, "demo", saved);
   assert.equal(second.layout.nodes.app01.x, first.layout.nodes.app01.x);
   assert.equal(second.layout.nodes.app01.y, first.layout.nodes.app01.y);
-  assert.equal(second.layout.nodes.app01.body.length, 3);
+  assert.equal(second.layout.nodes.app01.body.length, 8);
   assert.ok(second.layout.nodes.new01);
   assert.ok(!second.layout.nodes.removed);
   assert.ok(!second.layout.edges["removed>app01"]);
@@ -68,7 +68,7 @@ test("invalid saved geometry and mismatched model identity are rejected", () => 
 test("browser bundle uses the real renderer and embeds text safely", () => {
   const html = readFileSync(new URL("../../diagram.html", import.meta.url), "utf8");
   const start = html.indexOf("<script>") + 8, end = html.lastIndexOf("</script>");
-  const prefix = html.slice(start, end).split("// A diagram is a folder")[0];
+  const prefix = html.slice(start, end).split("// A saved diagram is a folder")[0];
   const bundled = runInNewContext(prefix + '\nrequire("browser/render.mjs").renderDiagram(files, "demo", null, ASSETS)', { files: demo });
   assert.match(bundled.html, /InfraDiagram\.define/);
   assert.match(bundled.html, /web-01\.example\.test/);

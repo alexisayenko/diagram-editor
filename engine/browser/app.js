@@ -1,13 +1,16 @@
-// A diagram is a folder in local/ behind engine/serve.mjs; the model and geometry stay in this tab.
+// A saved diagram is a folder in local/ behind engine/serve.mjs; the model and geometry stay in this tab. Files travel as .diag.zip archives.
 const { setNotes, setServer, addServer, duplicateServer, addRegion, moveServer, freeRegionTypes } = require("parse/toml-write.mjs");
 const { parseNoteText, mergeFolder, withRoot } = require("parse/toml.mjs");
 const { mergeTypes } = require("parse/types.mjs");
 const { newDiagram, DIAGRAM_ID } = require("parse/new-diagram.mjs");
 const { planImport, gridPlacements, summary } = require("parse/import-servers.mjs");
-const { validName, layoutNameFor, exportNames } = require("lib/names.mjs");
+const { layoutNameFor, archiveName } = require("lib/names.mjs");
+const { listDiagrams, filterDiagrams, FILTER_MIN, nameProblem, whenText, packDiagram, unpackDiagram } = require("lib/diagrams.mjs");
+const { isArchiveName, MAX_ARCHIVE_BYTES } = require("lib/zip.mjs");
 const newButton = document.querySelector("#new");
 const openButton = document.querySelector("#open");
-const picker = document.querySelector("#picker");
+const diagButton = document.querySelector("#importdiag");
+const diagFile = document.querySelector("#diagfile");
 const saveButton = document.querySelector("#save");
 const exportButton = document.querySelector("#export");
 const importButton = document.querySelector("#import");
@@ -27,6 +30,7 @@ function controls() {
   frame.inert = busy;
   newButton.disabled = busy;
   openButton.disabled = busy;
+  diagButton.disabled = busy;
   saveButton.disabled = busy || !ready || !serverOk || !dirty(); exportButton.disabled = busy || !ready;
   importButton.disabled = busy || !ready || !impPanel.hidden;
 }
@@ -45,15 +49,8 @@ async function stored(name) {
   catch (e) { if (e.status === 404) return null; throw e; }
 }
 const putFiles = (files) => call("/api/files", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ files }) });
-async function latestStored() {
-  const { files } = await call("/api/files"), newest = new Map();
-  for (const f of files) {
-    const folder = f.name.split("/")[0];
-    newest.set(folder, Math.max(newest.get(folder) ?? 0, f.mtime));
-  }
-  const folders = files.filter((f) => /^[^/]+\/(topology|diagram)\.toml$/.test(f.name)).map((f) => f.name.split("/")[0]).sort((x, y) => newest.get(y) - newest.get(x));
-  return folders.length ? folders[0] : null;
-}
+async function listStored() { return listDiagrams((await call("/api/files")).files); }
+async function latestStored() { return (await listStored())[0]?.name ?? null; }
 function load(folder, files, layoutText) {
   const layoutName = layoutNameFor(folder);
   let saved = null;
@@ -92,52 +89,98 @@ frame.addEventListener("load", () => {
   }
   controls();
 });
-newButton.addEventListener("click", async () => {
+const decode = async (file) => new TextDecoder("utf-8", { ignoreBOM: true }).decode(await file.arrayBuffer());
+const opPanel = document.querySelector("#op"), opList = document.querySelector("#oplist"), opQuery = document.querySelector("#opq"), opNote = document.querySelector("#opnote");
+const nwPanel = document.querySelector("#nw"), nwName = document.querySelector("#nwname"), nwMsg = document.querySelector("#nwmsg"), nwList = document.querySelector("#nwlist"), nwOk = document.querySelector("#nwok");
+let opRows = [], nwTaken = [];
+function opClose() { opPanel.hidden = true; openButton.focus(); }
+function opRender() {
+  const rows = filterDiagrams(opRows, opQuery.value);
+  opList.textContent = "";
+  for (const r of rows) {
+    const li = document.createElement("li"), b = document.createElement("button"), n = document.createElement("strong"), meta = document.createElement("span");
+    b.type = "button"; b.className = "item"; b.dataset.name = r.name;
+    n.textContent = r.name;
+    meta.textContent = `${r.servers} server${r.servers === 1 ? "" : "s"} · ${whenText(r.mtime)}`;
+    b.append(n, meta);
+    b.addEventListener("click", () => opPick(r.name));
+    li.append(b); opList.append(li);
+  }
+  if (!opRows.length) opNote.textContent = "No saved diagrams yet. Use New diagram or Import diagram.";
+  else opNote.textContent = rows.length ? "" : "No diagram matches the filter.";
+}
+async function opShow() {
+  opRows = []; opQuery.value = ""; opQuery.hidden = true; opList.textContent = ""; opNote.textContent = "";
+  opPanel.hidden = false;
+  if (!serverOk) opNote.textContent = "No local server is running, so there are no saved diagrams. Use Import diagram to open a .diag.zip file, or run node engine/serve.mjs.";
+  else {
+    try { opRows = await listStored(); opQuery.hidden = opRows.length < FILTER_MIN; opRender(); }
+    catch (e) { opNote.textContent = e.message; }
+  }
+  (opQuery.hidden ? opList.querySelector("button") ?? document.querySelector("#opclose") : opQuery).focus();
+}
+async function opPick(name) {
   if (!discard()) return;
-  const asked = window.prompt("Name the new diagram (lowercase letters, digits and hyphens). It is saved as a folder of this name:", "new-diagram");
-  if (asked === null) return;
-  const folder = asked.trim();
+  opPanel.hidden = true;
   busy = true; controls();
+  try { await loadStored(name); }
+  catch (e) { message(e.message, true); }
+  finally { busy = false; controls(); }
+}
+openButton.addEventListener("click", opShow);
+opQuery.addEventListener("input", opRender);
+document.querySelector("#opclose").addEventListener("click", opClose);
+opPanel.addEventListener("mousedown", (e) => { if (e.target === opPanel) opClose(); });
+function nwClose() { nwPanel.hidden = true; newButton.focus(); }
+function nwCheck() {
+  const problem = nameProblem(nwName.value.trim(), nwTaken);
+  nwMsg.textContent = nwName.value.trim() ? problem || "" : "";
+  nwOk.disabled = !!problem;
+}
+async function nwShow() {
+  nwTaken = [];
+  if (serverOk) { try { nwTaken = (await listStored()).map((r) => r.name); } catch (_) {} }
+  nwList.textContent = "";
+  for (const n of nwTaken) { const li = document.createElement("li"); li.textContent = n; nwList.append(li); }
+  document.querySelector("#nwtaken").hidden = !nwTaken.length;
+  nwName.value = "new-diagram"; nwCheck();
+  nwPanel.hidden = false;
+  nwName.focus(); nwName.select();
+}
+function nwCreate() {
+  const folder = nwName.value.trim();
+  if (nameProblem(folder, nwTaken) || !discard()) return;
+  nwPanel.hidden = true;
   try {
-    if (!DIAGRAM_ID.test(folder)) throw new Error("A diagram name uses lowercase letters, digits and hyphens.");
-    if (serverOk && await stored(folder + "/topology.toml") !== null) throw new Error(`${folder} already exists in local/. Open it, or choose another name.`);
     load(folder, newDiagram(folder), null);
     active.source = new Map();
     message(`${folder} · New diagram, not saved yet${serverOk ? "" : " · No local server: Export downloads it"}`);
   } catch (e) { message(e.message, true); }
-  finally { busy = false; controls(); }
-});
-const decode = async (file) => new TextDecoder("utf-8", { ignoreBOM: true }).decode(await file.arrayBuffer());
-openButton.addEventListener("click", () => { if (discard()) picker.click(); });
-picker.addEventListener("change", async () => {
-  const chosen = [...picker.files]; picker.value = "";
-  if (!chosen.length) return;
+  controls();
+}
+newButton.addEventListener("click", nwShow);
+nwName.addEventListener("input", nwCheck);
+nwName.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); nwCreate(); } });
+nwOk.addEventListener("click", nwCreate);
+document.querySelector("#nwcancel").addEventListener("click", nwClose);
+nwPanel.addEventListener("mousedown", (e) => { if (e.target === nwPanel) nwClose(); });
+async function importArchive(file) {
+  if (!isArchiveName(file.name)) { message("Only .diag.zip files can be opened.", true); return; }
+  if (file.size > MAX_ARCHIVE_BYTES) { message("The archive is larger than 20 MB.", true); return; }
+  if (!discard()) return;
   busy = true; controls();
   try {
-    const parts = chosen.map((f) => ({ f, path: (f.webkitRelativePath || f.name).split("/") })).filter((x) => x.path.length > 1);
-    if (!parts.length) throw new Error("Choose a diagram folder (it holds topology.toml).");
-    const folder = parts[0].path[0], texts = new Map();
-    for (const { f, path } of parts) {
-      const rel = path.slice(1).join("/");
-      if (rel !== LAYOUT && !(isTomlPath(rel) && path.length <= 3)) continue;
-      if (!validName(folder + "/" + rel)) throw new Error(`Unsupported file name: ${folder}/${rel}. Use letters, digits, dot, dash or underscore, ending in .toml or .json.`);
-      texts.set(rel, await decode(f));
-    }
-    const layoutText = texts.get(LAYOUT) ?? null;
-    texts.delete(LAYOUT);
-    const rooted = withRoot(texts);
-    if (!rooted.has("topology.toml")) throw new Error(`${folder} has no topology.toml.`);
-    if (!serverOk) { load(folder, rooted, layoutText); return; }
-    const all = new Map([...rooted].map(([p, t]) => [folder + "/" + p, t]));
-    if (layoutText !== null) all.set(layoutNameFor(folder), layoutText);
-    const differing = [];
-    for (const [n, text] of all) { const old = await stored(n); if (old !== null && old !== text) differing.push(n); }
-    if (differing.length && !window.confirm(`Replace ${differing.length} stored file(s) (${differing.slice(0, 3).join(", ")}${differing.length > 3 ? ", ..." : ""}) with the folder you chose?`)) return;
-    await putFiles([...all].map(([n, text]) => ({ name: n, text, overwrite: true })));
-    await loadStored(folder);
+    const opened = await unpackDiagram(new Uint8Array(await file.arrayBuffer()), file.name);
+    load(opened.name, withRoot(opened.files), opened.layoutText);
+    active.source = new Map(); active.text = null; active.carryLayout = true; active.fresh = true;
+    message(`${opened.name} · Imported from ${file.name}, not saved yet${serverOk ? "" : " · No local server: Export downloads it"}`);
   } catch (e) { message(e.message, true); }
   finally { busy = false; controls(); }
-});
+}
+diagButton.addEventListener("click", () => diagFile.click());
+diagFile.addEventListener("change", () => { const f = diagFile.files[0]; diagFile.value = ""; if (f) importArchive(f); });
+window.addEventListener("dragover", (e) => { if (e.dataTransfer?.types?.includes("Files")) e.preventDefault(); });
+window.addEventListener("drop", (e) => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); if (!busy) importArchive(e.dataTransfer.files[0]); });
 const serverPath = (id) => `servers/${id}.toml`;
 function serverSource(id) {
   const root = mergeFolder(active.work), s = (root.servers || []).find((x) => x.id === id);
@@ -247,9 +290,15 @@ saveButton.addEventListener("click", async () => {
   try {
     await settle();
     p = pending();
-    const prefix = active.folder + "/", files = [{ name: active.layoutName, text: p.layoutText, base: active.text }];
-    for (const path of p.changed) files.push({ name: prefix + path, text: p.files.get(path), base: active.source.get(path) ?? null });
+    let replace = false;
+    if (active.fresh && serverOk && await stored(active.folder + "/topology.toml") !== null) {
+      if (!window.confirm(`Replace the saved diagram ${active.folder}?`)) return;
+      replace = true;
+    }
+    const prefix = active.folder + "/", files = [replace ? { name: active.layoutName, text: p.layoutText, overwrite: true } : { name: active.layoutName, text: p.layoutText, base: active.text }];
+    for (const path of p.changed) files.push(replace ? { name: prefix + path, text: p.files.get(path), overwrite: true } : { name: prefix + path, text: p.files.get(path), base: active.source.get(path) ?? null });
     await putFiles(files);
+    active.fresh = false;
     afterSave(p, files.map((f) => f.name));
     message(p.changed.length ? `Saved ${active.layoutName} and ${p.changed.length} file(s) in local/${active.folder}/` : `Saved ${active.layoutName} in local/`);
   } catch (e) {
@@ -269,9 +318,9 @@ function afterSave(p, names) {
     if (path === NOTES) { active.notes = p.texts; p.notes.markSaved(p.texts); }
   }
 }
-function download(name, text) {
+function download(name, bytes, type) {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+  a.href = URL.createObjectURL(new Blob([bytes], { type }));
   a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
@@ -280,10 +329,9 @@ exportButton.addEventListener("click", async () => {
   if (!editor()) return;
   try {
     await settle();
-    const p = pending(), names = exportNames(active.folder);
-    download(names.layout, p.layoutText);
-    p.changed.forEach((path, i) => setTimeout(() => download(names.file(path), p.files.get(path)), 400 * (i + 1)));
-    message(`Exported ${names.layout}${p.changed.length ? ` and ${p.changed.length} changed file(s)` : ""} to your downloads`);
+    const p = pending(), name = archiveName(active.folder);
+    download(name, await packDiagram(p.files, p.layoutText), "application/zip");
+    message(`Exported ${name} (${p.files.size + 1} files) to your downloads`);
   } catch (e) { message("Export failed: " + e.message, true); }
 });
 const impPanel = document.querySelector("#imp"), impFiles = document.querySelector("#impfiles"), impList = document.querySelector("#implist"), impType = document.querySelector("#imptype"), impRegion = document.querySelector("#impregion"), impInfo = document.querySelector("#impinfo"), impOk = document.querySelector("#impok");
@@ -378,7 +426,7 @@ document.querySelector("#hostscript").addEventListener("click", () => { hostText
 hostPanel.querySelectorAll(".cp").forEach((btn) => btn.addEventListener("click", () => hostCopy(btn)));
 document.querySelector("#hsclose").addEventListener("click", hostClose);
 hostPanel.addEventListener("mousedown", (e) => { if (e.target === hostPanel) hostClose(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !impPanel.hidden) { e.preventDefault(); impClose(); } else if (e.key === "Escape" && !hostPanel.hidden) { e.preventDefault(); hostClose(); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !opPanel.hidden) { e.preventDefault(); opClose(); } else if (e.key === "Escape" && !nwPanel.hidden) { e.preventDefault(); nwClose(); } else if (e.key === "Escape" && !impPanel.hidden) { e.preventDefault(); impClose(); } else if (e.key === "Escape" && !hostPanel.hidden) { e.preventDefault(); hostClose(); } });
 window.addEventListener("beforeunload", (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
 setInterval(() => { if (!busy) controls(); }, 250);
 (async () => {
@@ -390,7 +438,7 @@ setInterval(() => { if (!busy) controls(); }, 250);
     if (serverOk && active) message(e.message, true);
     else {
       serverOk = !/not reachable/.test(e.message);
-      message(serverOk ? e.message : "No local server: folders open in memory only and cannot be saved here. Run node engine/serve.mjs and open its address to store and save folders; Export still works.", true);
+      message(serverOk ? e.message : "No local server: saved diagrams are unavailable and nothing can be saved here. Use Import diagram to open a .diag.zip, or run node engine/serve.mjs and open its address; Export still works.", true);
     }
   }
   controls();

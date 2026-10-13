@@ -1,6 +1,7 @@
 import { esc } from "../lib/util.mjs";
 import { edgeKey, endKey, isDashed } from "../parse/mmd.mjs";
 import { fwGlyph } from "./firewall.mjs";
+import { shortTitle } from "./geometry.mjs";
 
 const NET_ICON = "M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75";
 
@@ -38,7 +39,7 @@ export function renderSvgBody(model, layout, ent, nets, ipNet, routes, groups, m
     if (g.hidden) continue;
     const k = "n:" + n.id;
     const e = { c: add(`<g class="ch"${A(k)}></g>`) };
-    e.t = add(t(g.title[0], g.title[1], n.title, ` class="nt"${A(k)}`));
+    e.t = add(`<text class="nt"${A(k)} x="${g.title[0]}" y="${g.title[1]}">${esc(shortTitle(n.title))}${shortTitle(n.title) === n.title ? "" : `<title>${esc(n.title)}</title>`}</text>`);
     e.r = add(`<rect class="b"${A(k)} x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="14"/>`);
     e.b = n.body.map((s, i) => {
       const h = hl[n.id + ":" + i];

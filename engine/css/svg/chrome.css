@@ -18,3 +18,5 @@ svg:not(.s-sketch) .ch .sel,svg:not(.s-sketch) .ch.sel .cd{stroke:var(--tc);stro
 svg:not(.s-sketch) .ic{fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 svg:not(.s-sketch) .nt{font-size:11px}
 svg:not(.s-sketch) .cch .cd{display:none}
+.hw{fill:var(--mut);font-family:var(--mono);font-size:9px}
+.dv{stroke:var(--mut);stroke-opacity:.35;stroke-width:.75;fill:none}
