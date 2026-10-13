@@ -11,7 +11,7 @@ test("Save follows the dirty state: notes and layout enable it, clean or no serv
   assert.match(app, /setInterval\(\(\) => \{ if \(!busy\) controls\(\); \}/);
   const run = (state, mods) => {
     const el = () => ({ disabled: null });
-    const ctx = { newButton: el(), openButton: el(), select: { ...el(), options: [1, 2] }, reloadButton: el(), saveButton: el(), exportButton: el(), frame: { contentWindow: { InfraDiagram: { modules: mods } } } };
+    const ctx = { newButton: el(), openButton: el(), select: { ...el(), options: [1, 2] }, reloadButton: el(), saveButton: el(), exportButton: el(), importButton: el(), impPanel: { hidden: true }, frame: { contentWindow: { InfraDiagram: { modules: mods } } } };
     runInNewContext(`let busy = false, serverOk = true, ready = true, active = { work: new Map(), source: new Map(), notes: [], carryLayout: false };\n${state}\n${lines}\n${fn}\ncontrols()`, ctx);
     return ctx.saveButton.disabled;
   };
@@ -49,8 +49,25 @@ test("Host script panel embeds tools/host-probe.sh byte-for-byte", () => {
   assert.equal(runInNewContext(m[1]), file);
   assert.ok(!m[1].includes("<"));
   assert.match(html, /id="hostscript"/);
-  assert.match(html, /id="hs" hidden/);
+  assert.match(html, /id="hs" class="dlg" hidden/);
   assert.match(app, /e\.key === "Escape" && !hostPanel\.hidden/);
   assert.match(app, /e\.target === hostPanel/);
   assert.match(app, /execCommand\("copy"\)/);
+});
+
+test("Import servers is enabled with an open diagram and adds files as unsaved work", () => {
+  const lines = app.split("\n").filter((l) => /^const (editor|notesApi|serverApi|drawApi|unsaved|dirty) = /.test(l)).join("\n");
+  const start = app.indexOf("function controls()"), fn = app.slice(start, app.indexOf("\n}\n", start) + 2);
+  const run = (ready, busy, panelHidden = true) => {
+    const el = () => ({ disabled: null });
+    const ctx = { newButton: el(), openButton: el(), saveButton: el(), exportButton: el(), importButton: el(), impPanel: { hidden: panelHidden }, frame: { contentWindow: { InfraDiagram: { modules: {} } } } };
+    runInNewContext(`let busy = ${busy}, serverOk = true, ready = ${ready}, active = { work: new Map(), source: new Map(), notes: [], carryLayout: false };\n${lines}\n${fn}\ncontrols()`, ctx);
+    return ctx.importButton.disabled;
+  };
+  assert.equal(run(true, false), false);
+  assert.equal(run(false, false), true);
+  assert.equal(run(true, true), true);
+  const confirm = app.slice(app.indexOf("function impConfirm()"), app.indexOf("importButton.addEventListener"));
+  assert.match(confirm, /rerenderMany\(files, places, ids, null\)/);
+  assert.match(app, /unsaved = \(\) => !!active && \(JSON\.stringify\(\[\.\.\.active\.work\]\) !== JSON\.stringify\(\[\.\.\.active\.source\]\)/);
 });

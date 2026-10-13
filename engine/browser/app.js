@@ -3,12 +3,14 @@ const { setNotes, setServer, addServer, duplicateServer, addRegion, moveServer, 
 const { parseNoteText, mergeFolder, withRoot } = require("parse/toml.mjs");
 const { mergeTypes } = require("parse/types.mjs");
 const { newDiagram, DIAGRAM_ID } = require("parse/new-diagram.mjs");
+const { planImport, gridPlacements, summary } = require("parse/import-servers.mjs");
 const { validName, layoutNameFor, exportNames } = require("lib/names.mjs");
 const newButton = document.querySelector("#new");
 const openButton = document.querySelector("#open");
 const picker = document.querySelector("#picker");
 const saveButton = document.querySelector("#save");
 const exportButton = document.querySelector("#export");
+const importButton = document.querySelector("#import");
 const status = document.querySelector("#status");
 const frame = document.querySelector("#view");
 let serverOk = false, active = null, ready = false, busy = false;
@@ -26,6 +28,7 @@ function controls() {
   newButton.disabled = busy;
   openButton.disabled = busy;
   saveButton.disabled = busy || !ready || !serverOk || !dirty(); exportButton.disabled = busy || !ready;
+  importButton.disabled = busy || !ready || !impPanel.hidden;
 }
 function discard() { return !dirty() || window.confirm("Discard unsaved changes?"); }
 async function call(path, options) {
@@ -201,17 +204,20 @@ function withNotes(files, texts) {
   return out;
 }
 function rerender(path, next, id, at, extra = {}) {
+  rerenderMany(new Map([[path, next]]), at ? { [id]: at } : {}, [id], extra.key ?? "n:" + id, extra);
+}
+function rerenderMany(added, places, ids, key, extra = {}) {
   const api = editor(), notes = notesApi(), texts = notes.texts();
   const edited = JSON.stringify(texts) !== JSON.stringify(active.notes);
-  const work = new Map(active.work).set(path, next);
+  const work = new Map([...active.work, ...added]);
   const layout = { ...api.currentLayout(), drawings: drawApi().list() };
-  if (at) layout.nodes[id] = { x: at[0], y: at[1], w: 1, h: 1, title: at.slice() };
-  if (extra.region) layout.clusters[id] = extra.region;
-  const result = require("browser/render.mjs").renderDiagram(edited ? withNotes(work, texts) : work, active.folder, layout, ASSETS, [id]);
+  for (const [id, at] of Object.entries(places)) layout.nodes[id] = { x: at[0], y: at[1], w: 1, h: 1, title: at.slice() };
+  if (extra.region) layout.clusters[ids[0]] = extra.region;
+  const result = require("browser/render.mjs").renderDiagram(edited ? withNotes(work, texts) : work, active.folder, layout, ASSETS, ids);
   const wasEdit = !!frame.contentWindow.InfraDiagram.modules["canvas/model"].state.on;
   active.carryLayout = active.carryLayout || api.isDirty() || drawApi().isDirty();
   active.work = work;
-  active.after = { key: extra.key ?? "n:" + id, edit: wasEdit };
+  active.after = { key, edit: wasEdit };
   ready = false;
   active.reload = new Promise((resolve) => frame.addEventListener("load", () => { active.reload = null; resolve(); }, { once: true }));
   frame.srcdoc = result.html;
@@ -280,6 +286,74 @@ exportButton.addEventListener("click", async () => {
     message(`Exported ${names.layout}${p.changed.length ? ` and ${p.changed.length} changed file(s)` : ""} to your downloads`);
   } catch (e) { message("Export failed: " + e.message, true); }
 });
+const impPanel = document.querySelector("#imp"), impFiles = document.querySelector("#impfiles"), impList = document.querySelector("#implist"), impType = document.querySelector("#imptype"), impRegion = document.querySelector("#impregion"), impInfo = document.querySelector("#impinfo"), impOk = document.querySelector("#impok");
+let impEntries = [], impPlan = null;
+function impClose() { impPanel.hidden = true; impPlan = null; controls(); importButton.focus(); }
+function impRender() {
+  const skip = new Set([...impList.querySelectorAll("input:not(:checked)")].map((i) => i.dataset.file));
+  const region = impRegion.value;
+  impType.disabled = !!region;
+  impPlan = planImport(active.work, impEntries, { server_type: impType.value, region: region || undefined, skip });
+  impList.textContent = "";
+  for (const row of impPlan.rows) {
+    const li = document.createElement("li"), label = document.createElement("label"), box = document.createElement("input"), text = document.createElement("span");
+    box.type = "checkbox"; box.dataset.file = row.file; box.checked = row.included && !row.error; box.disabled = !!row.error;
+    box.addEventListener("change", impRender);
+    text.textContent = row.error ? `${row.file}: ${row.error}` : `${row.id} · ${row.name} · ${row.ips} IP${row.ips === 1 ? "" : "s"}`;
+    if (row.error) text.className = "bad";
+    label.append(box, text);
+    if (row.renamed) { const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = `renamed to ${row.id}${row.name !== row.origName ? ` (${row.name})` : ""}`; label.append(tag); }
+    li.append(label); impList.append(li);
+  }
+  const n = impPlan.files.size;
+  impInfo.textContent = n ? `${n} server${n === 1 ? "" : "s"} will be added` : "Nothing selected";
+  impOk.disabled = !n;
+}
+function impOpen(entries) {
+  const root = mergeFolder(active.work), types = Object.entries(mergeTypes(root.server_types));
+  impEntries = entries;
+  impType.textContent = ""; impRegion.textContent = "";
+  for (const [id, t] of types) impType.add(new Option(`${t.label ?? id} (${id})`, id));
+  impType.value = types.some(([id]) => id === "server") ? "server" : types[0][0];
+  impRegion.add(new Option("None (use the server type)", ""));
+  for (const r of root.regions || []) impRegion.add(new Option(r.title ?? r.id, r.id));
+  impList.textContent = "";
+  impPlan = null;
+  impPanel.hidden = false;
+  controls();
+  impRender();
+}
+function impConfirm() {
+  const open = notesApi().finish() || serverApi().finish();
+  if (open) { impInfo.textContent = "Fix the open edit first: " + open; return; }
+  if (!ready || !impPlan?.files.size) return;
+  try {
+    const { rows, files } = impPlan, ids = rows.filter((r) => r.path && r.included).map((r) => r.id), layout = editor().currentLayout();
+    const regionId = impRegion.value, box = regionId ? layout.clusters[regionId] : null;
+    const occupied = Object.values(layout.nodes);
+    if (!box) occupied.push(...Object.values(layout.clusters));
+    const origin = box ? { x: box.x + 20, y: box.y + 50, cols: Math.max(1, Math.floor((box.w - 20) / 240)) } : { x: 40, y: 40, cols: 4 };
+    const spots = gridPlacements(ids.length, occupied, origin), places = {};
+    ids.forEach((id, i) => { places[id] = spots[i]; });
+    const text = summary(rows);
+    impPanel.hidden = true;
+    rerenderMany(files, places, ids, null);
+    message(text + (serverOk ? "" : " · No local server: Export downloads them"));
+    impPlan = null;
+  } catch (e) { impPanel.hidden = false; impInfo.textContent = String(e.message).replace(/^TOML: /, ""); }
+  controls();
+}
+importButton.addEventListener("click", () => { if (ready) impFiles.click(); });
+impFiles.addEventListener("change", async () => {
+  const chosen = [...impFiles.files]; impFiles.value = "";
+  if (!chosen.length || !ready) return;
+  try { impOpen(await Promise.all(chosen.map(async (f) => ({ name: f.name, text: await decode(f) })))); }
+  catch (e) { message("Import failed: " + e.message, true); }
+});
+[impType, impRegion].forEach((el) => el.addEventListener("change", impRender));
+impOk.addEventListener("click", impConfirm);
+document.querySelector("#impcancel").addEventListener("click", impClose);
+impPanel.addEventListener("mousedown", (e) => { if (e.target === impPanel) impClose(); });
 const hostPanel = document.querySelector("#hs"), hostText = document.querySelector("#hstext"), hostNote = document.querySelector("#hsnote");
 function hostClose() { hostPanel.hidden = true; document.querySelector("#hostscript").focus(); }
 async function copyText(text) {
@@ -304,7 +378,7 @@ document.querySelector("#hostscript").addEventListener("click", () => { hostText
 hostPanel.querySelectorAll(".cp").forEach((btn) => btn.addEventListener("click", () => hostCopy(btn)));
 document.querySelector("#hsclose").addEventListener("click", hostClose);
 hostPanel.addEventListener("mousedown", (e) => { if (e.target === hostPanel) hostClose(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !hostPanel.hidden) { e.preventDefault(); hostClose(); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !impPanel.hidden) { e.preventDefault(); impClose(); } else if (e.key === "Escape" && !hostPanel.hidden) { e.preventDefault(); hostClose(); } });
 window.addEventListener("beforeunload", (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
 setInterval(() => { if (!busy) controls(); }, 250);
 (async () => {

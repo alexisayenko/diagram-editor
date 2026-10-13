@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Infrastructure diagrams</title>
 <style>
-*{box-sizing:border-box}body{margin:0;font:14px system-ui,sans-serif;color:#172b45;background:#f3f5f9;display:flex;flex-direction:column;height:100vh}header{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 16px;background:white;border-bottom:1px solid #cbd5e1}button,select{font:inherit;border:1px solid #a8b5c8;background:#fff;border-radius:5px;padding:7px 12px}button{cursor:pointer}button:disabled,select:disabled{opacity:.5;cursor:default}#save{background:#1565c0;color:#fff;border-color:#1565c0}#status{padding:8px 16px;min-height:36px;font-size:13px;overflow-wrap:anywhere}.error{color:#a31c1c}iframe{width:100%;flex:1;border:0;min-height:0}#welcome{max-width:620px;margin:64px auto;padding:28px;background:#fff;border:1px solid #d9e1eb;border-radius:10px;line-height:1.7}h1{font-size:24px;margin-top:0}code{background:#edf2f7;padding:2px 5px;border-radius:3px}#hs{position:fixed;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;z-index:10}#hs{--hs-bg:#fff;--hs-fg:#172b45;--hs-code:#eef2f8;--hs-line:#cbd5e1;--hs-ok:#2e7d32}@media (prefers-color-scheme:dark){#hs{--hs-bg:#1b2433;--hs-fg:#e2e8f0;--hs-code:#0f172a;--hs-line:#3b4a63;--hs-ok:#6ee7a0}}#hs>div{background:var(--hs-bg);color:var(--hs-fg);border-radius:8px;padding:16px;width:min(860px,94vw);max-width:100%;max-height:90vh;display:flex;flex-direction:column;gap:10px}#hs h2{margin:0;font-size:18px}#hs h3{margin:0 0 4px;font-size:15px}#hs p{margin:0 0 6px;line-height:1.5}#hs .body{overflow:auto;min-height:0;display:flex;flex-direction:column;gap:10px}#hs ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:12px}#hs li{min-width:0}#hs pre{margin:0;overflow:auto;max-width:100%;background:var(--hs-code);color:var(--hs-fg);border:1px solid var(--hs-line);padding:10px;border-radius:5px;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre}#hs .code,#hs .bar{display:flex;gap:8px;align-items:flex-start}#hs .code pre,#hs .bar details{flex:1;min-width:0}#hs summary{cursor:pointer;padding:5px 0}#hs #hstext{max-height:40vh;margin-top:4px}#hs .cp{flex:none}#hs .row{display:flex;gap:8px;align-items:center;justify-content:flex-end}#hs .row span{margin-right:auto;color:var(--hs-ok)}[hidden]{display:none!important}
+*{box-sizing:border-box}body{margin:0;font:14px system-ui,sans-serif;color:#172b45;background:#f3f5f9;display:flex;flex-direction:column;height:100vh}header{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 16px;background:white;border-bottom:1px solid #cbd5e1}button,select{font:inherit;border:1px solid #a8b5c8;background:#fff;border-radius:5px;padding:7px 12px}button{cursor:pointer}button:disabled,select:disabled{opacity:.5;cursor:default}#save{background:#1565c0;color:#fff;border-color:#1565c0}#status{padding:8px 16px;min-height:36px;font-size:13px;overflow-wrap:anywhere}.error{color:#a31c1c}iframe{width:100%;flex:1;border:0;min-height:0}#welcome{max-width:620px;margin:64px auto;padding:28px;background:#fff;border:1px solid #d9e1eb;border-radius:10px;line-height:1.7}h1{font-size:24px;margin-top:0}code{background:#edf2f7;padding:2px 5px;border-radius:3px}.dlg{position:fixed;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;z-index:10}.dlg{--hs-bg:#fff;--hs-fg:#172b45;--hs-code:#eef2f8;--hs-line:#cbd5e1;--hs-ok:#2e7d32}@media (prefers-color-scheme:dark){.dlg{--hs-bg:#1b2433;--hs-fg:#e2e8f0;--hs-code:#0f172a;--hs-line:#3b4a63;--hs-ok:#6ee7a0}}.dlg>div{background:var(--hs-bg);color:var(--hs-fg);border-radius:8px;padding:16px;width:min(860px,94vw);max-width:100%;max-height:90vh;display:flex;flex-direction:column;gap:10px}.dlg h2{margin:0;font-size:18px}.dlg h3{margin:0 0 4px;font-size:15px}.dlg p{margin:0 0 6px;line-height:1.5}.dlg .body{overflow:auto;min-height:0;display:flex;flex-direction:column;gap:10px}.dlg ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:12px}.dlg li{min-width:0}.dlg pre{margin:0;overflow:auto;max-width:100%;background:var(--hs-code);color:var(--hs-fg);border:1px solid var(--hs-line);padding:10px;border-radius:5px;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;white-space:pre}.dlg .code,.dlg .bar{display:flex;gap:8px;align-items:flex-start}.dlg .code pre,.dlg .bar details{flex:1;min-width:0}.dlg summary{cursor:pointer;padding:5px 0}.dlg #hstext{max-height:40vh;margin-top:4px}.dlg .cp{flex:none}.dlg .row{display:flex;gap:8px;align-items:center;justify-content:flex-end}.dlg .row span{margin-right:auto;color:var(--hs-ok)}.dlg .opts{display:flex;gap:12px;flex-wrap:wrap}.dlg .opts label{display:flex;flex-direction:column;gap:3px;min-width:200px}.dlg ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}.dlg li label{display:flex;gap:8px;align-items:baseline}.dlg .tag{color:var(--hs-ok);font-size:12px}.dlg .bad{color:#c62828}.dlg #impinfo{color:var(--hs-fg)}[hidden]{display:none!important}
 </style></head><body>
-<header><strong>Infrastructure diagrams</strong><button id="new">New diagram</button><button id="open">Open diagram folder</button><input id="picker" type="file" webkitdirectory hidden><button id="save" disabled>Save</button><button id="export" disabled>Export</button><button id="hostscript">Host script</button></header>
+<header><strong>Infrastructure diagrams</strong><button id="new">New diagram</button><button id="open">Open diagram folder</button><input id="picker" type="file" webkitdirectory hidden><button id="save" disabled>Save</button><button id="export" disabled>Export</button><button id="import" disabled>Import servers</button><input id="impfiles" type="file" accept=".toml" multiple hidden><button id="hostscript">Host script</button></header>
 <div id="status" role="status" aria-live="polite">Open a diagram folder (topology.toml, servers/, ...).</div>
 <main id="welcome"><h1>From servers to a diagram</h1><p>Start a <b>New diagram</b> or open a diagram folder; the most recently saved diagram on the local server opens automatically. The engine arranges your servers and connections automatically.</p><p>Use <b>Edit layout</b> to move servers and regions, then <b>Save</b>. Your arrangement is stored in the folder as <code>diagram.layout.json</code>; edited notes go back into <code>notes.toml</code> and edited servers into their <code>servers/&lt;id&gt;.toml</code>. <b>Export</b> downloads the layout and the changed files with a timestamp.</p><p>After changing services or adding servers in the folder, reload the page. Existing positions are restored and new objects are placed automatically.</p><p>Start with <code>examples/demo/</code>. See <code>AUTHORING.md</code> for the format. Storing and saving need <code>node engine/serve.mjs</code>; any modern browser works.</p></main>
-<div id="hs" hidden><div role="dialog" aria-modal="true" aria-labelledby="hst"><h2 id="hst">Host script</h2><div class="body"><p>Collect facts from Linux servers over SSH and get a <code>servers/&lt;id&gt;.toml</code> snippet for each. The probe is read-only and needs no sudo. Run the steps on a machine that can SSH to the servers.</p><ol>
+<div id="hs" class="dlg" hidden><div role="dialog" aria-modal="true" aria-labelledby="hst"><h2 id="hst">Host script</h2><div class="body"><p>Collect facts from Linux servers over SSH and get a <code>servers/&lt;id&gt;.toml</code> snippet for each. The probe is read-only and needs no sudo. Run the steps on a machine that can SSH to the servers.</p><ol>
 <li><h3>Save the script</h3><p>Save it as <code>host-probe.sh</code> in the folder you will work in; the loop in step 3 reads it from there.</p><div class="bar"><details id="hsd"><summary>Show script</summary><pre id="hstext" tabindex="0"></pre></details><button type="button" class="cp" data-copy="#hstext">Copy</button></div></li>
 <li><h3>List the hosts</h3><p>Create <code>hosts.txt</code> next to it: one host (IP address or DNS name) per line. Lines starting with <code>#</code> are comments; blank lines are skipped.</p><div class="code"><pre id="hshosts" tabindex="0"># web servers
 192.0.2.10
@@ -20,8 +20,9 @@ while read -r host _ || [ -n "$host" ]; do
     "$host" 'bash -s' &lt; host-probe.sh | tee "out/$host.toml"
   echo
 done &lt; hosts.txt</pre><button type="button" class="cp" data-copy="#hscmd">Copy</button></div></li>
-<li><h3>Review and add to the diagram</h3><p>Open each <code>out/&lt;host&gt;.toml</code>, check it, add <code>region</code>, <code>role</code> and <code>server_type</code>, and save it as <code>servers/&lt;id&gt;.toml</code> in the diagram folder. Then open that folder here (<b>Open diagram folder</b>).</p></li>
+<li><h3>Import into the diagram</h3><p>Open or create a diagram here, click <b>Import servers</b> in the toolbar and choose the <code>out/*.toml</code> files. Pick a server type or a region, review the list and confirm; the servers are added as new <code>servers/&lt;id&gt;.toml</code> files and <b>Save</b> writes them.</p></li>
 </ol></div><div class="row"><span id="hsnote" role="status"></span><button id="hsclose">Close</button></div></div></div>
+<div id="imp" class="dlg" hidden><div role="dialog" aria-modal="true" aria-labelledby="impt"><h2 id="impt">Import servers</h2><div class="body"><div class="opts"><label>Server type<select id="imptype"></select></label><label>Region (optional)<select id="impregion"></select></label></div><ul id="implist"></ul></div><div class="row"><span id="impinfo" role="status"></span><button id="impcancel">Cancel</button><button id="impok">Import</button></div></div></div>
 <iframe id="view" title="Infrastructure diagram" hidden></iframe>
 <script>const factories = {"browser/render.mjs": function(require, exports) {
 const { NETWORKS_FILE, tomlModel } = require("parse/toml.mjs");
@@ -2014,6 +2015,27 @@ function addServer(files, { region, server_type } = {}) {
   return { path, text, id };
 }
 
+// Sets top-level string keys: existing values are replaced in place, missing keys are appended after the last key.
+function setKeys(src, pairs) {
+  const eol = eolOf(src), { flat, spans, at } = prepare(src), edits = [], lines = [];
+  for (const [k, v] of pairs) {
+    const cur = spans.keys[k];
+    if (cur) edits.push({ from: at(cur.valueStart), to: at(cur.valueEnd), text: basic(v) });
+    else lines.push(`${k} = ${basic(v)}`);
+  }
+  if (lines.length) {
+    const last = Object.keys(spans.keys).sort((a, b) => spans.keys[b].start - spans.keys[a].start)[0];
+    const end = last ? flat.indexOf("\n", spans.keys[last].valueEnd) : -1, pos = end < 0 ? src.length : at(end + 1);
+    const lead = end < 0 && src.length && !flat.endsWith("\n") ? eol : "";
+    edits.push({ from: pos, to: pos, text: lead + lines.join(eol) + eol });
+  }
+  let text = src;
+  for (const e of edits.sort((a, b) => b.from - a.from || b.to - a.to)) text = text.slice(0, e.from) + e.text + text.slice(e.to);
+  const after = parseToml(text);
+  for (const [k, v] of pairs) if (after[k] !== v) throw new Error("Internal error: the rewritten TOML does not match the edit; nothing was written");
+  return text;
+}
+
 function duplicateServer(files, id) {
   const srcPath = `servers/${id}.toml`, src = files.get(srcPath);
   if (src === undefined) throw new Error(`Server '${id}' has no file ${srcPath}.`);
@@ -2124,7 +2146,7 @@ function moveServer(files, id, region) {
   return { path, text, id };
 }
 
-Object.assign(exports, {formatNotes,setNotes,SERVER_STRINGS,SERVER_LISTS,checkServerFields,setServer,addServer,duplicateServer,freeRegionTypes,addRegion,moveServer});
+Object.assign(exports, {formatNotes,setNotes,SERVER_STRINGS,SERVER_LISTS,checkServerFields,setServer,addServer,setKeys,duplicateServer,freeRegionTypes,addRegion,moveServer});
 },
 "parse/new-diagram.mjs": function(require, exports) {
 const DIAGRAM_ID = /^[a-z0-9][a-z0-9-]*$/;
@@ -2166,6 +2188,88 @@ function newDiagram(id) {
 
 Object.assign(exports, {DIAGRAM_ID,titleFor,newDiagram});
 },
+"parse/import-servers.mjs": function(require, exports) {
+// Pure logic of the Import servers dialog: probe snippets become new servers/<id>.toml files.
+const { parseToml, mergeFolder, tomlModel } = require("parse/toml.mjs");
+const { mergeTypes } = require("parse/types.mjs");
+const { setKeys } = require("parse/toml-write.mjs");
+
+const VALID_ID = /^[A-Za-z][A-Za-z0-9_-]*$/;
+
+function sanitizeId(raw) {
+  let id = String(raw).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  if (!id) return "server";
+  if (/^[0-9]/.test(id)) id = "s" + id;
+  return id;
+}
+
+const clean = (message) => String(message).replace(/^TOML: /, "");
+
+// entries: [{ name, text }]; opts: { server_type, region, skip: Set of file names left out }.
+// Returns one row per entry in order and `files`, the new path -> text entries for the included, valid rows.
+function planImport(files, entries, { server_type, region, skip = new Set() } = {}) {
+  const root = mergeFolder(files), types = Object.keys(mergeTypes(root.server_types));
+  const regionObj = region ? (root.regions || []).find((r) => r.id === region) : null;
+  if (region && !regionObj) throw new Error(`Unknown region '${region}'.`);
+  if (!region && !types.includes(server_type)) throw new Error("Choose a server type.");
+  const taken = new Set([...(root.regions || []), ...(root.servers || [])].map((e) => e.id));
+  const names = new Set((root.servers || []).map((s) => s.name ?? s.id));
+  const work = new Map(files), added = new Map(), rows = [];
+  for (const entry of entries) {
+    const row = { file: entry.name, ok: false, included: !skip.has(entry.name), error: null };
+    rows.push(row);
+    let doc;
+    try { doc = parseToml(entry.text.replace(/^﻿/, "").replace(/\r\n/g, "\n")); }
+    catch (e) { row.error = clean(e.message); continue; }
+    const rawId = typeof doc.id === "string" && doc.id ? doc.id : entry.name.split(/[\/]/).pop().replace(/\.toml$/i, "");
+    const baseId = VALID_ID.test(rawId) ? rawId : sanitizeId(rawId);
+    row.id = baseId; row.name = row.origName = typeof doc.name === "string" ? doc.name : baseId; row.ips = Array.isArray(doc.ips) ? doc.ips.length : 0;
+    if (!row.included) { row.ok = true; continue; }
+    let newId = baseId, n = 1;
+    while (taken.has(newId) || work.has(`servers/${newId}.toml`)) newId = `${baseId}-${++n}`;
+    const own = typeof doc.name === "string" && doc.name, base = own ? doc.name : newId;
+    let name = base, m = n > 1 ? n : 2;
+    while (names.has(name)) name = `${base} (${m++})`;
+    const pairs = [];
+    if (doc.id !== newId) pairs.push(["id", newId]);
+    if (name !== base || (own && name !== doc.name)) pairs.push(["name", name]);
+    if (regionObj) {
+      pairs.push(["region", region]);
+      if (typeof doc.server_type === "string") pairs.push(["server_type", regionObj.server_type]);
+    } else if (typeof doc.server_type !== "string") pairs.push(["server_type", server_type]);
+    const path = `servers/${newId}.toml`;
+    try {
+      const text = setKeys(entry.text, pairs);
+      tomlModel(new Map(work).set(path, text));
+      work.set(path, text); added.set(path, text);
+    } catch (e) { row.error = clean(e.message); continue; }
+    taken.add(newId); names.add(name);
+    Object.assign(row, { ok: true, id: newId, name, path, renamed: newId !== baseId || name !== base });
+    row.text = added.get(path);
+  }
+  return { rows, files: added };
+}
+
+// Top-left cells of a grid, row by row, that do not touch any occupied { x, y, w, h } rectangle.
+function gridPlacements(count, occupied, { x = 40, y = 40, cols = 4, cw = 240, ch = 140, box = [220, 120] } = {}) {
+  const out = [], taken = [...occupied];
+  const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  for (let i = 0; out.length < count; i++) {
+    const rect = { x: x + (i % cols) * cw, y: y + Math.floor(i / cols) * ch, w: box[0], h: box[1] };
+    if (taken.some((o) => hit(rect, { x: o.x, y: o.y, w: o.w || 1, h: o.h || 1 }))) continue;
+    out.push([rect.x, rect.y]);
+  }
+  return out;
+}
+
+function summary(rows) {
+  const done = rows.filter((r) => r.ok && r.included && r.path);
+  const renamed = done.filter((r) => r.renamed).length, skipped = rows.filter((r) => r.error).length;
+  return `${done.length} imported, ${renamed} renamed, ${skipped} skipped (parse errors)`;
+}
+
+Object.assign(exports, {sanitizeId,planImport,gridPlacements,summary});
+},
 "lib/names.mjs": function(require, exports) {
 // File-name rules shared by the page and the local file server: <diagram folder>/[servers/]<name>.toml|json.
 const FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9][A-Za-z0-9._-]*){0,2}\.(toml|json)$/;
@@ -2197,12 +2301,14 @@ const { setNotes, setServer, addServer, duplicateServer, addRegion, moveServer, 
 const { parseNoteText, mergeFolder, withRoot } = require("parse/toml.mjs");
 const { mergeTypes } = require("parse/types.mjs");
 const { newDiagram, DIAGRAM_ID } = require("parse/new-diagram.mjs");
+const { planImport, gridPlacements, summary } = require("parse/import-servers.mjs");
 const { validName, layoutNameFor, exportNames } = require("lib/names.mjs");
 const newButton = document.querySelector("#new");
 const openButton = document.querySelector("#open");
 const picker = document.querySelector("#picker");
 const saveButton = document.querySelector("#save");
 const exportButton = document.querySelector("#export");
+const importButton = document.querySelector("#import");
 const status = document.querySelector("#status");
 const frame = document.querySelector("#view");
 let serverOk = false, active = null, ready = false, busy = false;
@@ -2220,6 +2326,7 @@ function controls() {
   newButton.disabled = busy;
   openButton.disabled = busy;
   saveButton.disabled = busy || !ready || !serverOk || !dirty(); exportButton.disabled = busy || !ready;
+  importButton.disabled = busy || !ready || !impPanel.hidden;
 }
 function discard() { return !dirty() || window.confirm("Discard unsaved changes?"); }
 async function call(path, options) {
@@ -2395,17 +2502,20 @@ function withNotes(files, texts) {
   return out;
 }
 function rerender(path, next, id, at, extra = {}) {
+  rerenderMany(new Map([[path, next]]), at ? { [id]: at } : {}, [id], extra.key ?? "n:" + id, extra);
+}
+function rerenderMany(added, places, ids, key, extra = {}) {
   const api = editor(), notes = notesApi(), texts = notes.texts();
   const edited = JSON.stringify(texts) !== JSON.stringify(active.notes);
-  const work = new Map(active.work).set(path, next);
+  const work = new Map([...active.work, ...added]);
   const layout = { ...api.currentLayout(), drawings: drawApi().list() };
-  if (at) layout.nodes[id] = { x: at[0], y: at[1], w: 1, h: 1, title: at.slice() };
-  if (extra.region) layout.clusters[id] = extra.region;
-  const result = require("browser/render.mjs").renderDiagram(edited ? withNotes(work, texts) : work, active.folder, layout, ASSETS, [id]);
+  for (const [id, at] of Object.entries(places)) layout.nodes[id] = { x: at[0], y: at[1], w: 1, h: 1, title: at.slice() };
+  if (extra.region) layout.clusters[ids[0]] = extra.region;
+  const result = require("browser/render.mjs").renderDiagram(edited ? withNotes(work, texts) : work, active.folder, layout, ASSETS, ids);
   const wasEdit = !!frame.contentWindow.InfraDiagram.modules["canvas/model"].state.on;
   active.carryLayout = active.carryLayout || api.isDirty() || drawApi().isDirty();
   active.work = work;
-  active.after = { key: extra.key ?? "n:" + id, edit: wasEdit };
+  active.after = { key, edit: wasEdit };
   ready = false;
   active.reload = new Promise((resolve) => frame.addEventListener("load", () => { active.reload = null; resolve(); }, { once: true }));
   frame.srcdoc = result.html;
@@ -2474,6 +2584,74 @@ exportButton.addEventListener("click", async () => {
     message(`Exported ${names.layout}${p.changed.length ? ` and ${p.changed.length} changed file(s)` : ""} to your downloads`);
   } catch (e) { message("Export failed: " + e.message, true); }
 });
+const impPanel = document.querySelector("#imp"), impFiles = document.querySelector("#impfiles"), impList = document.querySelector("#implist"), impType = document.querySelector("#imptype"), impRegion = document.querySelector("#impregion"), impInfo = document.querySelector("#impinfo"), impOk = document.querySelector("#impok");
+let impEntries = [], impPlan = null;
+function impClose() { impPanel.hidden = true; impPlan = null; controls(); importButton.focus(); }
+function impRender() {
+  const skip = new Set([...impList.querySelectorAll("input:not(:checked)")].map((i) => i.dataset.file));
+  const region = impRegion.value;
+  impType.disabled = !!region;
+  impPlan = planImport(active.work, impEntries, { server_type: impType.value, region: region || undefined, skip });
+  impList.textContent = "";
+  for (const row of impPlan.rows) {
+    const li = document.createElement("li"), label = document.createElement("label"), box = document.createElement("input"), text = document.createElement("span");
+    box.type = "checkbox"; box.dataset.file = row.file; box.checked = row.included && !row.error; box.disabled = !!row.error;
+    box.addEventListener("change", impRender);
+    text.textContent = row.error ? `${row.file}: ${row.error}` : `${row.id} · ${row.name} · ${row.ips} IP${row.ips === 1 ? "" : "s"}`;
+    if (row.error) text.className = "bad";
+    label.append(box, text);
+    if (row.renamed) { const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = `renamed to ${row.id}${row.name !== row.origName ? ` (${row.name})` : ""}`; label.append(tag); }
+    li.append(label); impList.append(li);
+  }
+  const n = impPlan.files.size;
+  impInfo.textContent = n ? `${n} server${n === 1 ? "" : "s"} will be added` : "Nothing selected";
+  impOk.disabled = !n;
+}
+function impOpen(entries) {
+  const root = mergeFolder(active.work), types = Object.entries(mergeTypes(root.server_types));
+  impEntries = entries;
+  impType.textContent = ""; impRegion.textContent = "";
+  for (const [id, t] of types) impType.add(new Option(`${t.label ?? id} (${id})`, id));
+  impType.value = types.some(([id]) => id === "server") ? "server" : types[0][0];
+  impRegion.add(new Option("None (use the server type)", ""));
+  for (const r of root.regions || []) impRegion.add(new Option(r.title ?? r.id, r.id));
+  impList.textContent = "";
+  impPlan = null;
+  impPanel.hidden = false;
+  controls();
+  impRender();
+}
+function impConfirm() {
+  const open = notesApi().finish() || serverApi().finish();
+  if (open) { impInfo.textContent = "Fix the open edit first: " + open; return; }
+  if (!ready || !impPlan?.files.size) return;
+  try {
+    const { rows, files } = impPlan, ids = rows.filter((r) => r.path && r.included).map((r) => r.id), layout = editor().currentLayout();
+    const regionId = impRegion.value, box = regionId ? layout.clusters[regionId] : null;
+    const occupied = Object.values(layout.nodes);
+    if (!box) occupied.push(...Object.values(layout.clusters));
+    const origin = box ? { x: box.x + 20, y: box.y + 50, cols: Math.max(1, Math.floor((box.w - 20) / 240)) } : { x: 40, y: 40, cols: 4 };
+    const spots = gridPlacements(ids.length, occupied, origin), places = {};
+    ids.forEach((id, i) => { places[id] = spots[i]; });
+    const text = summary(rows);
+    impPanel.hidden = true;
+    rerenderMany(files, places, ids, null);
+    message(text + (serverOk ? "" : " · No local server: Export downloads them"));
+    impPlan = null;
+  } catch (e) { impPanel.hidden = false; impInfo.textContent = String(e.message).replace(/^TOML: /, ""); }
+  controls();
+}
+importButton.addEventListener("click", () => { if (ready) impFiles.click(); });
+impFiles.addEventListener("change", async () => {
+  const chosen = [...impFiles.files]; impFiles.value = "";
+  if (!chosen.length || !ready) return;
+  try { impOpen(await Promise.all(chosen.map(async (f) => ({ name: f.name, text: await decode(f) })))); }
+  catch (e) { message("Import failed: " + e.message, true); }
+});
+[impType, impRegion].forEach((el) => el.addEventListener("change", impRender));
+impOk.addEventListener("click", impConfirm);
+document.querySelector("#impcancel").addEventListener("click", impClose);
+impPanel.addEventListener("mousedown", (e) => { if (e.target === impPanel) impClose(); });
 const hostPanel = document.querySelector("#hs"), hostText = document.querySelector("#hstext"), hostNote = document.querySelector("#hsnote");
 function hostClose() { hostPanel.hidden = true; document.querySelector("#hostscript").focus(); }
 async function copyText(text) {
@@ -2498,7 +2676,7 @@ document.querySelector("#hostscript").addEventListener("click", () => { hostText
 hostPanel.querySelectorAll(".cp").forEach((btn) => btn.addEventListener("click", () => hostCopy(btn)));
 document.querySelector("#hsclose").addEventListener("click", hostClose);
 hostPanel.addEventListener("mousedown", (e) => { if (e.target === hostPanel) hostClose(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !hostPanel.hidden) { e.preventDefault(); hostClose(); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !impPanel.hidden) { e.preventDefault(); impClose(); } else if (e.key === "Escape" && !hostPanel.hidden) { e.preventDefault(); hostClose(); } });
 window.addEventListener("beforeunload", (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
 setInterval(() => { if (!busy) controls(); }, 250);
 (async () => {

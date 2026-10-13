@@ -191,6 +191,27 @@ export function addServer(files, { region, server_type } = {}) {
   return { path, text, id };
 }
 
+// Sets top-level string keys: existing values are replaced in place, missing keys are appended after the last key.
+export function setKeys(src, pairs) {
+  const eol = eolOf(src), { flat, spans, at } = prepare(src), edits = [], lines = [];
+  for (const [k, v] of pairs) {
+    const cur = spans.keys[k];
+    if (cur) edits.push({ from: at(cur.valueStart), to: at(cur.valueEnd), text: basic(v) });
+    else lines.push(`${k} = ${basic(v)}`);
+  }
+  if (lines.length) {
+    const last = Object.keys(spans.keys).sort((a, b) => spans.keys[b].start - spans.keys[a].start)[0];
+    const end = last ? flat.indexOf("\n", spans.keys[last].valueEnd) : -1, pos = end < 0 ? src.length : at(end + 1);
+    const lead = end < 0 && src.length && !flat.endsWith("\n") ? eol : "";
+    edits.push({ from: pos, to: pos, text: lead + lines.join(eol) + eol });
+  }
+  let text = src;
+  for (const e of edits.sort((a, b) => b.from - a.from || b.to - a.to)) text = text.slice(0, e.from) + e.text + text.slice(e.to);
+  const after = parseToml(text);
+  for (const [k, v] of pairs) if (after[k] !== v) throw new Error("Internal error: the rewritten TOML does not match the edit; nothing was written");
+  return text;
+}
+
 export function duplicateServer(files, id) {
   const srcPath = `servers/${id}.toml`, src = files.get(srcPath);
   if (src === undefined) throw new Error(`Server '${id}' has no file ${srcPath}.`);
