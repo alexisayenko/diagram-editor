@@ -14,7 +14,7 @@ InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], functio
     var c = svg.cloneNode(true);
     var r = resolveCss();
     [].forEach.call(c.querySelectorAll("[data-e]"), function (n) { n.removeAttribute("data-e"); });
-    [].forEach.call(c.querySelectorAll(".nwb"), function (n) { n.remove(); });
+    [].forEach.call(c.querySelectorAll(".nwb,#rh"), function (n) { n.remove(); });
     c.classList.remove("edit", "zoomed", "panning", "draw-pencil", "draw-eraser");
     [].forEach.call(c.querySelectorAll(".dwp.hot"), function (n) { n.classList.remove("hot"); });
     c.removeAttribute("style");

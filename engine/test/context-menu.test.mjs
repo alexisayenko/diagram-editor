@@ -17,7 +17,9 @@ test("addServer creates a uniquely named servers/<id>.toml in the region or with
   tomlModel(withFile(next, second.path, second.text));
 });
 
-function harness({ on = true, add = () => null, duplicate } = {}) {
+const regionAt = new Function("return " + readFileSync(new URL("../runtime/canvas/model.js", import.meta.url), "utf8").match(/function regionAt[\s\S]*?\n  }\n/)[0])();
+
+function harness({ on = true, add = () => null, duplicate, regions } = {}) {
   const make = () => {
     const e = { children: [], attrs: {}, listeners: {}, style: {}, offsetWidth: 100, offsetHeight: 30, removed: false, focus() {}, setAttribute(k, v) { e.attrs[k] = v; },
       addEventListener(t, f) { (e.listeners[t] ||= []).push(f); }, appendChild(c) { e.children.push(c); return c; }, remove() { e.removed = true; }, contains: (t) => t === e || e.children.includes(t) };
@@ -27,11 +29,12 @@ function harness({ on = true, add = () => null, duplicate } = {}) {
   doc.createElement = make; doc.body = make();
   win.innerWidth = 800; win.innerHeight = 600;
   win.addEventListener = (t, f) => { (win.listeners[t] ||= []).push(f); };
-  win.InfraDiagram = { serverEditor: { add: (...a) => { calls.push(a); return add(...a); }, ...(duplicate ? { duplicate: (id) => { calls.push(["dup", id]); return duplicate(id); } } : {}) } };
+  win.InfraDiagram = { serverEditor: { add: (...a) => { calls.push(a); return add(...a); }, ...(duplicate ? { duplicate: (id) => { calls.push(["dup", id]); return duplicate(id); } } : {}),
+    ...(regions ? { regionTypes: () => regions, addRegion: (...a) => { calls.push(["region", ...a]); return null; } } : {}) } };
   const state = { on, st: { clusters: { big: { x: 0, y: 0, w: 500, h: 500 }, small: { x: 100, y: 100, w: 100, h: 100 } } } };
   let mod;
   const src = readFileSync(new URL("../runtime/canvas/context-menu.js", import.meta.url), "utf8");
-  runInNewContext(src, { window: win, document: doc, InfraDiagram: { define: (n, d, f) => { mod = f({ svg, $: () => tm }, { state, point: (e) => ({ x: e.clientX, y: e.clientY }) }); } } });
+  runInNewContext(src, { window: win, document: doc, InfraDiagram: { define: (n, d, f) => { mod = f({ svg, $: () => tm }, { state, point: (e) => ({ x: e.clientX, y: e.clientY }), regionAt }); } } });
   const fire = (target, t, ev = {}) => (target.listeners[t] || []).forEach((f) => f({ target: svg, preventDefault() { prevented.push(t); }, stopPropagation() {}, ...ev }));
   return { svg, tm, doc, win, calls, prevented, state, mod, fire, menu: () => doc.body.children.find((c) => !c.removed) };
 }
@@ -114,4 +117,33 @@ test("duplicateServer keeps comments and adds a missing name; unknown id fails",
   const copy = duplicateServer(files, "a");
   assert.equal(copy.text, "# note\nid = \"a-copy\"\nserver_type = \"web\" # kind\nips = [\"192.0.2.1/24\"]\nname = \"a-copy\"\n");
   assert.throws(() => duplicateServer(files, "nope"), /no file/);
+});
+
+test("context menu: Add Region on empty canvas lists the free types and adds at the click", () => {
+  const h = harness({ regions: [{ id: "batch", label: "Batch Server" }, { id: "mongo", label: "Mongo Database Server" }] });
+  h.fire(h.doc, "contextmenu", { clientX: 900, clientY: 700 });
+  assert.deepEqual(h.menu().children.map((c) => c.textContent), ["Add Server", "Add Region"]);
+  h.menu().children[1].listeners.click[0]();
+  assert.deepEqual(h.menu().children.map((c) => c.textContent), ["Batch Server", "Mongo Database Server"]);
+  assert.deepEqual(h.calls, []);
+  h.menu().children[1].listeners.click[0]();
+  assert.deepEqual(h.calls, [["region", "mongo", 900, 700]]);
+  assert.equal(h.menu(), undefined);
+});
+
+test("context menu: Add Region is disabled with a message when every type has a region, and absent over regions and servers", () => {
+  const none = harness({ regions: [] });
+  none.fire(none.doc, "contextmenu", { clientX: 900, clientY: 900 });
+  const item = none.menu().children[1];
+  assert.equal(item.disabled, true);
+  assert.match(item.textContent, /every server type has one/);
+  const some = harness({ regions: [{ id: "batch", label: "Batch Server" }], duplicate: () => null });
+  some.fire(some.doc, "contextmenu", { clientX: 150, clientY: 150 });
+  assert.deepEqual(some.menu().children.map((c) => c.textContent), ["Add Server"]);
+  const server = { tagName: "g", closest: () => ({ getAttribute: () => "n:app01" }) };
+  some.fire(some.doc, "contextmenu", { target: server, clientX: 900, clientY: 900 });
+  assert.deepEqual(some.menu().children.map((c) => c.textContent), ["Duplicate server"]);
+  const plain = harness();
+  plain.fire(plain.doc, "contextmenu", { clientX: 900, clientY: 900 });
+  assert.deepEqual(plain.menu().children.map((c) => c.textContent), ["Add Server"]);
 });

@@ -4,15 +4,6 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model"], function
 
   function bridge() { return window.InfraDiagram.serverEditor || null; }
 
-  function regionAt(p) {
-    var best = null, area = Infinity;
-    Object.keys(state.st.clusters).forEach(function (id) {
-      var c = state.st.clusters[id];
-      if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h && c.w * c.h < area) { best = id; area = c.w * c.h; }
-    });
-    return best;
-  }
-
   function close() {
     if (!menu) return;
     menu.remove();
@@ -43,18 +34,44 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model"], function
     return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!(t && t.isContentEditable);
   }
 
-  function open(e) {
-    var p = model.point(e), api = bridge(), id = serverAt(e.target), region = regionAt(p);
+  function show(e, fill) {
+    close();
     menu = document.createElement("div");
     menu.id = "cm";
     menu.setAttribute("role", "menu");
-    var first = id && api.duplicate
-      ? addItem("Duplicate server", function () { return api.duplicate(id); })
-      : addItem("Add Server", function () { return api.add(region, Math.round(p.x), Math.round(p.y)); });
+    var first = fill();
     document.body.appendChild(menu);
     menu.style.left = Math.max(0, Math.min(e.clientX, window.innerWidth - menu.offsetWidth)) + "px";
     menu.style.top = Math.max(0, Math.min(e.clientY, window.innerHeight - menu.offsetHeight)) + "px";
     first.focus();
+  }
+
+  function pickType(at, free, x, y) {
+    show(at, function () {
+      var first = null;
+      free.forEach(function (t) {
+        var item = addItem(t.label, function () { return bridge().addRegion(t.id, x, y); });
+        first = first || item;
+      });
+      return first;
+    });
+  }
+
+  function open(e) {
+    var p = model.point(e), api = bridge(), id = serverAt(e.target), region = model.regionAt(state.st, p), at = { clientX: e.clientX, clientY: e.clientY };
+    show(e, function () {
+      var first = id && api.duplicate
+        ? addItem("Duplicate server", function () { return api.duplicate(id); })
+        : addItem("Add Server", function () { return api.add(region, Math.round(p.x), Math.round(p.y)); });
+      if (!id && !region && api.addRegion && api.regionTypes) {
+        var free = api.regionTypes(), item = addItem("Add Region", function () { pickType(at, free, Math.round(p.x), Math.round(p.y)); });
+        if (!free.length) {
+          item.textContent = "Add Region (every server type has one)";
+          item.disabled = true;
+        }
+      }
+      return first;
+    });
   }
 
   document.addEventListener("contextmenu", function (e) {

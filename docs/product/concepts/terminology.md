@@ -21,7 +21,7 @@ What the diagram depicts; part of every export.
 |---|---|---|
 | Server | One host, drawn as a box: header with hostname, body lines (services, jobs, deployments), IP lines. A node in `diagram.mmd`, key `nodes` in `layout.json`. | server panel, node, box |
 | Server type | Canonical role: Web, External Interface, Internal Interface, Application, Cache, Oracle Database, Mongo Database Server. Shown by colour. | badge, class |
-| Region | Bordered area grouping servers, e.g. one per server type ("Oracle DB Servers") or a cluster ("App Servers"). May be empty. A `subgraph` in `diagram.mmd`, key `clusters` in `layout.json`. | server type grouping, server type region, cluster |
+| Region | Bordered area grouping servers, e.g. one per server type ("Oracle DB Servers") or a cluster ("App Servers"). May be empty. At most one region per server type (the region's type is the default type of its servers; moving a server into a region gives it that type). A `subgraph` in `diagram.mmd`, key `clusters` in `layout.json`. | server type grouping, server type region, cluster |
 | OS pill | Small pill in a server box with its OS version from `details.md`, shown when "Display OS version" is on; amber outline plus "EOL" once the version is past end of standard support, faded dashed "OS ?" when unknown. | OS badge, OS label |
 | Network | IP range (CIDR) from `networks.md`, or a CIDR-less group of them. A server belongs to it when one of its IP lines falls inside; a region when one of its servers does. | subnet, VLAN |
 | Other infrastructure | Real infrastructure that is not a server type, e.g. NAS. | |

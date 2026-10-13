@@ -19,7 +19,7 @@ export function geometryMeta(model, groups, processes) {
 // so the build and edit mode compute identical geometry.
 export function geometryKit() {
   var HEAD = 20, TITLE_CW = 6.6, BODY_CW = 6.6, IP_CW = 7, TEXT_X = 10;
-  var BAND = 30, BAND_GAP = 10, MIN_GAP = 20, PAD = 16;
+  var BAND = 30, BAND_GAP = 10, MIN_GAP = 20, PAD = 16, MIN_W = 100, MIN_H = 60;
   var M = 10, BEND = 50, REGION = 1.5, HUG = 2, TIGHT = 0.3, RAD = 22;
   var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
   var cache = { n: 0 };
@@ -41,18 +41,39 @@ export function geometryKit() {
     g.w = Math.max(g.w, Math.ceil(need));
   }
 
-  // Region grown (never shrunk below base) to hold its servers with padding and the header band.
-  function fitRegion(s, meta, cid, baseRect, w) {
-    var c = s.clusters[cid], b = baseRect || c, x0 = b.x, y0 = b.y, x1 = b.x + b.w, y1 = b.y + b.h;
+  // Smallest rectangle that holds a region's visible servers with padding and the header band, or null when it has none.
+  function regionBounds(s, meta, cid, w) {
+    var r = null;
     Object.keys(meta.nodes).forEach(function (id) {
       var g = s.nodes[id];
       if (meta.nodes[id].cl !== cid || !g || g.hidden) return;
       var e = boxExtent(g, meta.nodes[id].tl, w && w[id]);
-      x0 = Math.min(x0, e.x0 - PAD); x1 = Math.max(x1, e.x1 + PAD); y1 = Math.max(y1, e.y1 + PAD);
-      y0 = Math.min(y0, e.y0 - BAND - BAND_GAP);
+      r = r || { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+      r.x0 = Math.min(r.x0, e.x0 - PAD); r.x1 = Math.max(r.x1, e.x1 + PAD); r.y1 = Math.max(r.y1, e.y1 + PAD);
+      r.y0 = Math.min(r.y0, e.y0 - BAND - BAND_GAP);
     });
+    return r;
+  }
+
+  // Region grown (never shrunk below base) to hold its servers with padding and the header band.
+  function fitRegion(s, meta, cid, baseRect, w) {
+    var c = s.clusters[cid], b = baseRect || c, x0 = b.x, y0 = b.y, x1 = b.x + b.w, y1 = b.y + b.h;
+    var r = regionBounds(s, meta, cid, w);
+    if (r) { x0 = Math.min(x0, r.x0); x1 = Math.max(x1, r.x1); y1 = Math.max(y1, r.y1); y0 = Math.min(y0, r.y0); }
     var t = baseRect ? baseRect.title : c.title, centred = Math.abs(t[0] - (b.x + b.w / 2)) <= 2;
     c.title = [centred ? r1((x0 + x1) / 2) : t[0] + (x0 - b.x), t[1] + (y0 - b.y)];
+    c.x = x0; c.y = y0; c.w = x1 - x0; c.h = y1 - y0;
+  }
+
+  // Moves the sides named in side ("n", "se", ...) of a region by dx / dy, never past its servers or the absolute minimum; the title follows the left / top side or stays centred.
+  function resizeRegion(s, meta, cid, side, dx, dy, w) {
+    var c = s.clusters[cid], b = regionBounds(s, meta, cid, w), t = c.title, centred = Math.abs(t[0] - (c.x + c.w / 2)) <= 2;
+    var x0 = c.x, y0 = c.y, x1 = c.x + c.w, y1 = c.y + c.h;
+    if (side.indexOf("w") >= 0) x0 = Math.min(x0 + dx, b ? b.x0 : Infinity, x1 - MIN_W);
+    if (side.indexOf("e") >= 0) x1 = Math.max(x1 + dx, b ? b.x1 : -Infinity, x0 + MIN_W);
+    if (side.indexOf("n") >= 0) y0 = Math.min(y0 + dy, b ? b.y0 : Infinity, y1 - MIN_H);
+    if (side.indexOf("s") >= 0) y1 = Math.max(y1 + dy, b ? b.y1 : -Infinity, y0 + MIN_H);
+    c.title = [centred ? r1((x0 + x1) / 2) : t[0] + (x0 - c.x), t[1] + (y0 - c.y)];
     c.x = x0; c.y = y0; c.w = x1 - x0; c.h = y1 - y0;
   }
 
@@ -465,5 +486,5 @@ export function geometryKit() {
     return bad;
   }
 
-  return { boxExtent: boxExtent, fitBox: fitBox, fitRegion: fitRegion, route: route, problems: problems };
+  return { boxExtent: boxExtent, fitBox: fitBox, fitRegion: fitRegion, regionBounds: regionBounds, resizeRegion: resizeRegion, route: route, problems: problems };
 }

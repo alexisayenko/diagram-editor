@@ -224,3 +224,79 @@ export function duplicateServer(files, id) {
   tomlModel(new Map(files).set(path, text));
   return { path, text, id: newId };
 }
+
+// Server types that have no region yet: a diagram has at most one region per server type.
+export function freeRegionTypes(files) {
+  const root = mergeFolder(files), used = new Set((root.regions || []).map((r) => r.server_type));
+  return Object.entries(mergeTypes(root.server_types)).filter(([tid]) => !used.has(tid)).map(([tid, t]) => ({ id: tid, label: t.label }));
+}
+
+// Appends a `[[regions]]` table to topology.toml after the last existing one; id and title come from the server type.
+export function addRegion(files, { server_type } = {}) {
+  const src = files.get("topology.toml");
+  if (src === undefined) throw new Error("topology.toml is missing");
+  const root = mergeFolder(files), types = mergeTypes(root.server_types);
+  if (typeof server_type !== "string" || !Object.hasOwn(types, server_type)) throw new Error(`Unknown server type '${server_type}'. Known: ${Object.keys(types).join(", ")}.`);
+  const dup = (root.regions || []).find((r) => r.server_type === server_type);
+  if (dup) throw new Error(`Server type '${server_type}' already has the region '${dup.id}'; a diagram has at most one region per server type.`);
+  const taken = new Set([...(root.regions || []), ...(root.servers || [])].map((e) => e.id));
+  let id = server_type, n = 1;
+  while (taken.has(id)) id = n++ === 1 ? `${server_type}-region` : `${server_type}-region-${n - 1}`;
+  const eol = eolOf(src), { flat, spans, at } = prepare(src), block = [`[[regions]]`, `id = ${basic(id)}`, `title = ${basic(types[server_type].label)}`, `server_type = ${basic(server_type)}`].join(eol);
+  const tables = spans.tables || [], last = tables.map((t) => t.name).lastIndexOf("regions");
+  let out;
+  if (last >= 0) {
+    const stop = last + 1 < tables.length ? tables[last + 1].start : flat.length, end = flat.slice(0, stop).replace(/\s+$/, "").length;
+    out = src.slice(0, at(end)) + eol + eol + block + (stop === flat.length && !flat.endsWith("\n") ? eol : "") + src.slice(at(end));
+  } else if (tables.length) out = src.slice(0, at(tables[0].start)) + block + eol + eol + src.slice(at(tables[0].start));
+  else out = src + (!src.length || flat.endsWith("\n") ? "" : eol) + (src.trim() ? eol : "") + block + eol;
+  const after = mergeFolder(new Map(files).set("topology.toml", out)), added = (after.regions || []).at(-1);
+  if ((after.regions || []).length !== (root.regions || []).length + 1 || added.id !== id || added.server_type !== server_type) {
+    throw new Error("Internal error: the rewritten TOML does not match the edit; nothing was written");
+  }
+  tomlModel(new Map(files).set("topology.toml", out));
+  return { path: "topology.toml", text: out, id };
+}
+
+function setTopKeys(src, changes) {
+  const eol = eolOf(src), { flat, spans, at, root: old } = prepare(src), expect = { ...old }, edits = [], lines = [];
+  const lineEnd = (k) => { const i = flat.indexOf("\n", spans.keys[k].valueEnd); return i < 0 ? flat.length : i + 1; };
+  for (const [k, v] of Object.entries(changes)) {
+    const cur = spans.keys[k];
+    if (v === null) {
+      if (cur) edits.push({ from: at(flat.lastIndexOf("\n", cur.start - 1) + 1), to: at(lineEnd(k)), text: "" });
+      delete expect[k];
+    } else if (old[k] !== v) {
+      expect[k] = v;
+      if (cur) edits.push({ from: at(cur.valueStart), to: at(cur.valueEnd), text: basic(v) });
+      else lines.push(`${k} = ${basic(v)}`);
+    }
+  }
+  if (lines.length) {
+    const last = Object.keys(spans.keys).sort((a, b) => spans.keys[b].start - spans.keys[a].start)[0];
+    const end = last ? lineEnd(last) : flat.length, atEof = end >= flat.length && flat.length > 0 && !flat.endsWith("\n"), block = lines.join(eol);
+    edits.push({ from: at(end), to: at(end), text: atEof ? eol + block + eol : block + eol });
+  }
+  let out = src;
+  for (const e of edits.sort((a, b) => b.from - a.from || b.to - a.to)) out = out.slice(0, e.from) + e.text + out.slice(e.to);
+  if (JSON.stringify(canonical(parseToml(out))) !== JSON.stringify(canonical(expect))) throw new Error("Internal error: the rewritten TOML does not match the edit; nothing was written");
+  return out;
+}
+
+// Puts server `id` into `region` (an id) or out of every region (null). Entering adopts the region's server_type when the file sets its own;
+// leaving writes the type it had, so the server keeps it.
+export function moveServer(files, id, region) {
+  const path = `servers/${id}.toml`, src = files.get(path);
+  if (src === undefined) throw new Error(`Server '${id}' has no file ${path}.`);
+  const root = mergeFolder(files), old = (root.servers || []).find((s) => s.id === id), regions = root.regions || [];
+  if (!old) throw new Error(`Server '${id}' not found.`);
+  const target = region === null ? null : regions.find((r) => r.id === region);
+  if (region !== null && !target) throw new Error(`Unknown region '${region}'.`);
+  if ((old.region ?? null) === region) return { path, text: src, id };
+  const changes = { region };
+  if (target) { if (old.server_type !== undefined) changes.server_type = target.server_type; }
+  else changes.server_type = old.server_type ?? regions.find((r) => r.id === old.region)?.server_type;
+  const text = setTopKeys(src, changes);
+  tomlModel(new Map(files).set(path, text));
+  return { path, text, id };
+}

@@ -31,6 +31,51 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     return s;
   }
 
+  // Resizing a region moves its sides only; servers stay put and bound how far it can shrink.
+  function resize(from, id, side, dx, dy) {
+    var s = clone(from);
+    geometry.resizeRegion(s, D.meta, id, side, dx, dy, skins.widths());
+    return s;
+  }
+
+  var SIDES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"], HS = 8, RR = 14, handles = null;
+
+  // Edit-mode resize handles: invisible hit bands along each region's outline (edge strips, stroked arcs on the rounded corners); only the cursor shows them.
+  function syncHandles(s) {
+    var NS = "http://www.w3.org/2000/svg";
+    if (!handles) {
+      handles = {};
+      var layer = document.createElementNS(NS, "g");
+      layer.setAttribute("id", "rh");
+      Object.keys(D.idx.clusters).forEach(function (id) {
+        handles[id] = SIDES.map(function (side) {
+          var r = document.createElementNS(NS, side.length === 2 ? "path" : "rect");
+          r.setAttribute("class", "rh rh-" + side);
+          r.setAttribute("data-rc", id); r.setAttribute("data-rs", side);
+          layer.appendChild(r);
+          return r;
+        });
+      });
+      svg.appendChild(layer);
+    }
+    Object.keys(handles).forEach(function (id) {
+      var g = s.clusters[id], h = HS / 2, q = RR, r = g.x + g.w, b = g.y + g.h;
+      var arcs = {
+        nw: "M" + g.x + " " + (g.y + q) + "A" + q + " " + q + " 0 0 1 " + (g.x + q) + " " + g.y,
+        ne: "M" + (r - q) + " " + g.y + "A" + q + " " + q + " 0 0 1 " + r + " " + (g.y + q),
+        se: "M" + r + " " + (b - q) + "A" + q + " " + q + " 0 0 1 " + (r - q) + " " + b,
+        sw: "M" + (g.x + q) + " " + b + "A" + q + " " + q + " 0 0 1 " + g.x + " " + (b - q) };
+      var rects = { n: [g.x + q, g.y - h, g.w - 2 * q, HS], s: [g.x + q, b - h, g.w - 2 * q, HS],
+        w: [g.x - h, g.y + q, HS, g.h - 2 * q], e: [r - h, g.y + q, HS, g.h - 2 * q] };
+      handles[id].forEach(function (el, i) {
+        var side = SIDES[i];
+        if (arcs[side]) { el.setAttribute("d", arcs[side]); return; }
+        var v = rects[side];
+        el.setAttribute("x", v[0]); el.setAttribute("y", v[1]); el.setAttribute("width", Math.max(v[2], 0)); el.setAttribute("height", Math.max(v[3], 0));
+      });
+    });
+  }
+
   function each(fn) {
     Object.keys(D.idx.clusters).forEach(function (id) {
       var e = D.idx.clusters[id];
@@ -84,6 +129,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     });
     routeEdges(s);
     markBad(s);
+    syncHandles(s);
     skins.sync(s);
   }
 
@@ -99,5 +145,14 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     return m ? p.matrixTransform(m.inverse()) : p;
   }
 
-  return { base: base, state: state, clone: clone, apply: apply, each: each, render: render, point: point };
+  function regionAt(s, p) {
+    var best = null, area = Infinity;
+    Object.keys(s.clusters).forEach(function (id) {
+      var c = s.clusters[id];
+      if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h && c.w * c.h < area) { best = id; area = c.w * c.h; }
+    });
+    return best;
+  }
+
+  return { base: base, state: state, clone: clone, apply: apply, resize: resize, each: each, render: render, point: point, regionAt: regionAt };
 });

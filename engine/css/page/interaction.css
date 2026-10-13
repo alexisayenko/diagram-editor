@@ -2,6 +2,13 @@ svg.edit{touch-action:none;user-select:none}
 svg.edit [data-e]{cursor:grab}
 svg.edit .b[data-e]:hover,svg.edit .cd:hover{stroke-opacity:.6}
 svg.edit .d[data-e]:hover{stroke:var(--red)}
+svg:not(.edit) #rh{display:none}
+svg.edit .rh{fill:none;stroke:none;pointer-events:all}
+svg.edit path.rh{stroke:transparent;stroke-width:8;pointer-events:stroke}
+svg.edit .rh-n,svg.edit .rh-s{cursor:ns-resize}
+svg.edit .rh-e,svg.edit .rh-w{cursor:ew-resize}
+svg.edit .rh-nw,svg.edit .rh-se{cursor:nwse-resize}
+svg.edit .rh-ne,svg.edit .rh-sw{cursor:nesw-resize}
 body{-webkit-user-select:none;user-select:none}
 #pn,.note,#dl,input,textarea{-webkit-user-select:text;user-select:text}
 #pn button,.cph{-webkit-user-select:none;user-select:none}

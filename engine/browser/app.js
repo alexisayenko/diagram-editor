@@ -1,5 +1,5 @@
 // A diagram is a folder in local/ behind engine/serve.mjs; the model and geometry stay in this tab.
-const { setNotes, setServer, addServer, duplicateServer } = require("parse/toml-write.mjs");
+const { setNotes, setServer, addServer, duplicateServer, addRegion, moveServer, freeRegionTypes } = require("parse/toml-write.mjs");
 const { parseNoteText, mergeFolder, withRoot } = require("parse/toml.mjs");
 const { mergeTypes } = require("parse/types.mjs");
 const { newDiagram, DIAGRAM_ID } = require("parse/new-diagram.mjs");
@@ -12,7 +12,7 @@ const exportButton = document.querySelector("#export");
 const status = document.querySelector("#status");
 const frame = document.querySelector("#view");
 let serverOk = false, active = null, ready = false, busy = false;
-const NOTES = "notes.toml", LAYOUT = "diagram.layout.json";
+const NOTES = "notes.toml", LAYOUT = "diagram.layout.json", REGION_W = 220, REGION_H = 120;
 const isTomlPath = (p) => /\.toml$/i.test(p);
 const editor = () => ready ? frame.contentWindow.InfraDiagram?.modules["canvas/edit-mode"] : null;
 const notesApi = () => ready ? frame.contentWindow.InfraDiagram?.modules["ui/notes-edit"] : null;
@@ -81,7 +81,7 @@ frame.addEventListener("load", () => {
   if (!ready) message("The diagram could not start. Reload it to retry.", true);
   else {
     diagram.noteParser = (text) => { const n = parseNoteText(text, "Note", true); return { title: n.title, date: n.date, paras: n.paras }; };
-    diagram.serverEditor = { source: serverSource, apply: applyServer, add: addNewServer, duplicate: duplicateExisting };
+    diagram.serverEditor = { source: serverSource, apply: applyServer, add: addNewServer, duplicate: duplicateExisting, regionTypes, addRegion: addNewRegion, move: moveToRegion };
     const after = active.after;
     active.after = null;
     if (after?.edit) frame.contentDocument.getElementById("te").click();
@@ -174,22 +174,44 @@ function duplicateExisting(id) {
     return null;
   } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
 }
+function regionTypes() { return freeRegionTypes(active.work); }
+function addNewRegion(type, x, y) {
+  const open = notesApi().finish() || serverApi().finish();
+  if (open) return "Fix the open edit first: " + open;
+  if (!ready) return "Try again once the diagram has reloaded.";
+  try {
+    const { path, text, id } = addRegion(active.work, { server_type: type });
+    rerender(path, text, id, null, { key: "c:" + id, region: { x, y, w: REGION_W, h: REGION_H, title: [x + REGION_W / 2, y + 20] } });
+    return null;
+  } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
+}
+function moveToRegion(id, region) {
+  const open = notesApi().finish() || serverApi().finish();
+  if (open) return "Fix the open edit first: " + open;
+  if (!ready) return "Try again once the diagram has reloaded.";
+  try {
+    const { path, text } = moveServer(active.work, id, region);
+    if (text !== active.work.get(path)) rerender(path, text, id);
+    return null;
+  } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
+}
 function withNotes(files, texts) {
   const out = new Map(files), prev = out.get(NOTES), next = setNotes(prev ?? "", texts);
   if (prev !== undefined || next !== "") out.set(NOTES, next);
   return out;
 }
-function rerender(path, next, id, at) {
+function rerender(path, next, id, at, extra = {}) {
   const api = editor(), notes = notesApi(), texts = notes.texts();
   const edited = JSON.stringify(texts) !== JSON.stringify(active.notes);
   const work = new Map(active.work).set(path, next);
   const layout = { ...api.currentLayout(), drawings: drawApi().list() };
   if (at) layout.nodes[id] = { x: at[0], y: at[1], w: 1, h: 1, title: at.slice() };
+  if (extra.region) layout.clusters[id] = extra.region;
   const result = require("browser/render.mjs").renderDiagram(edited ? withNotes(work, texts) : work, active.folder, layout, ASSETS, [id]);
   const wasEdit = !!frame.contentWindow.InfraDiagram.modules["canvas/model"].state.on;
   active.carryLayout = active.carryLayout || api.isDirty() || drawApi().isDirty();
   active.work = work;
-  active.after = { key: "n:" + id, edit: wasEdit };
+  active.after = { key: extra.key ?? "n:" + id, edit: wasEdit };
   ready = false;
   active.reload = new Promise((resolve) => frame.addEventListener("load", () => { active.reload = null; resolve(); }, { once: true }));
   frame.srcdoc = result.html;

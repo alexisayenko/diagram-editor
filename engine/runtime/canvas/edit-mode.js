@@ -87,11 +87,11 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
 
   svg.addEventListener("pointerdown", function (e) {
     if (!state.on || e.button > 0) return;
-    var t = e.target.closest && e.target.closest("[data-e]");
-    if (!t) return;
+    var t = e.target.closest && e.target.closest("[data-e]"), h = !t && e.target.closest && e.target.closest("[data-rc]");
+    if (!t && !h) return;
     e.preventDefault();
     var p = model.point(e);
-    drag = { key: t.getAttribute("data-e"), x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
+    drag = { key: h ? "c:" + h.getAttribute("data-rc") : t.getAttribute("data-e"), side: h && h.getAttribute("data-rs"), x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
     try { svg.setPointerCapture(e.pointerId); } catch (x) {}
   });
 
@@ -99,21 +99,47 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     if (!drag || e.pointerId !== drag.id) return;
     var p = model.point(e);
     var dx = Math.round(p.x - drag.x), dy = Math.round(p.y - drag.y);
-    if ($("ts").checked && !e.shiftKey) {
-      var o = origin(drag.from, drag.key);
-      dx = Math.round((o.x + dx) / GRID) * GRID - o.x;
-      dy = Math.round((o.y + dy) / GRID) * GRID - o.y;
+    if (drag.side) {
+      var r = drag.from.clusters[drag.key.slice(2)], sn = $("ts").checked && !e.shiftKey, sd = drag.side;
+      if (sn) {
+        if (sd.indexOf("w") >= 0) dx = Math.round((r.x + dx) / GRID) * GRID - r.x;
+        if (sd.indexOf("e") >= 0) dx = Math.round((r.x + r.w + dx) / GRID) * GRID - r.x - r.w;
+        if (sd.indexOf("n") >= 0) dy = Math.round((r.y + dy) / GRID) * GRID - r.y;
+        if (sd.indexOf("s") >= 0) dy = Math.round((r.y + r.h + dy) / GRID) * GRID - r.y - r.h;
+      }
+      state.st = model.resize(drag.from, drag.key.slice(2), sd, dx, dy);
+    } else {
+      if ($("ts").checked && !e.shiftKey) {
+        var o = origin(drag.from, drag.key);
+        dx = Math.round((o.x + dx) / GRID) * GRID - o.x;
+        dy = Math.round((o.y + dy) / GRID) * GRID - o.y;
+      }
+      state.st = model.apply(drag.from, drag.key, dx, dy);
     }
-    state.st = model.apply(drag.from, drag.key, dx, dy);
     // Routing runs once per frame, not per pointer event.
     if (!frame) frame = requestAnimationFrame(function () { frame = 0; model.render(state.st); });
   });
 
+  function drop(d, e) {
+    var api = window.InfraDiagram.serverEditor, id = d.key.slice(2), meta = core.D.meta.nodes[id];
+    if (d.key.charAt(0) !== "n" || !api || !api.move || !meta) return false;
+    var from = meta.cl || null, to = model.regionAt(d.from, model.point(e));
+    if (to === from) return false;
+    if (from) state.st.clusters[from] = model.clone(d.from.clusters[from]);
+    var err = api.move(id, to);
+    if (!err) return true;
+    state.st = model.clone(d.from);
+    model.render(state.st);
+    say(err);
+    return false;
+  }
+
   function end(e) {
     if (!drag || e.pointerId !== drag.id) return;
+    var d = drag, moved = e.type === "pointerup" && drop(d, e);
     drag = null;
     saveDraft();
-    fit();
+    if (!moved) fit();
   }
   svg.addEventListener("pointerup", end);
   svg.addEventListener("pointercancel", end);
