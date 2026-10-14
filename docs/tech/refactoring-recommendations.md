@@ -133,7 +133,7 @@ stay byte-identical unless the item says otherwise.
 | --- | --- | --- | --- | --- | --- |
 | BP-01 | CSP meta into the iframe `srcdoc` (`default-src 'none'`, inline script and style, data/blob images, `connect-src 'none'`) | Imported `.diag.zip` is untrusted; same-origin frame can reach `PUT /api/files` | S-M / low | `cov-app-*`, new test: hostile text fields stay escaped | D4 |
 | BP-03, BP-04 | Response headers (CSP, `Referrer-Policy`, `frame-ancestors 'none'`, CORP); run `checkOrigin` on every request; reject oversize early by `Content-Length`; set request timeouts | Clickjacking, uniform guard, free hardening | S / low | `store.test`, `cov-cli-serve-browser`; add Host and Origin edge cases | none |
-| BP-02 | `index-html.mjs`: pin `mermaid` and `marked` with SRI, escape `</script` in embedded markdown, allow only http(s) links | Unpinned CDN code and raw HTML; moot after D1 | S-M / low | `cov-parse-legacy`, `build --check` | D3 |
+| BP-02 | `index-html.mjs`: pin `mermaid` and `marked` with SRI, escape `</script` in embedded markdown, allow only http(s) links | Unpinned CDN code and raw HTML; moot after D1: the file and the CDN scripts are deleted in [ADR-0017](decisions/adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md) | S-M / low | `cov-parse-legacy`, `build --check` | D3 |
 | BP-05 | Host probe: replace `eval "$text"` (`tools/host-probe.sh:93`) with a key allow-list parser; strip control chars in `esc()` (:54) | Probe advertises "read-only" | S / low | `host-probe.test` | none |
 | BP-06 | Git-ignore or delete the untracked `.tmp-old/` | `git add -A` foot-gun (not in `.gitignore`) | S / none | `git status` | none |
 | BP-12 | Case-insensitive duplicate names (store, zip); refuse Windows reserved names (`con.toml`); `validName` accepts them today | Silent overwrite on Windows/macOS | S / low | `store.test`, `cov-lib-zip` | none |
@@ -192,14 +192,14 @@ Status: **done** (2026-10-14), all in 524d13f
 
 | IDs | What | Why | Effort / risk | Protected by | Needs | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| AR-01, CD-02, DK-01 (pipeline), AR-03, DK-09 | `renderModel(...)` in one pipeline module; `build.mjs` and `render.mjs` become loaders; one networks implementation | Every feature otherwise built twice | L / medium | `build --check`, `diagram.html --check`, `cov-app-render` | Wave 1 bundler, D1 | Done in 2789813 ([ADR-0016](decisions/adr-0016-one-render-pipeline-and-split-page-app.md)): `render/pipeline.mjs` (`renderModel`); `build.mjs` and `browser/render.mjs` are loaders. Deferred: the legacy `networks.md` tree stays a separate parser (different nesting and host-count rules) until the legacy pipeline is removed (D1); CIDR parsing is shared (`lib/net.mjs`). |
-| AR-02, DK-01 (legacy) | Move `edgeKey`, config normalise, OS, notes text into a model layer; then convert-and-delete or keep import-only | Legacy modules are load-bearing utilities | M then L / low then medium | `cov-parse-legacy`, `cov-cli-build-new` | D1 | AR-02 done: `engine/model/` (`edges`, `config`, `notes`, `os`, `server`, `server-fields`) holds the shared utilities; the legacy parsers (`mmd`, `details`, `networks`) depend only on it; `parse/errors`, `config` and `notes` are re-export shims for `build.mjs` and `new.mjs`. DK-01 (convert-and-delete) deferred to D1. |
+| AR-01, CD-02, DK-01 (pipeline), AR-03, DK-09 | `renderModel(...)` in one pipeline module; `build.mjs` and `render.mjs` become loaders; one networks implementation | Every feature otherwise built twice | L / medium | `build --check`, `diagram.html --check`, `cov-app-render` | Wave 1 bundler, D1 | Done in 2789813 ([ADR-0016](decisions/adr-0016-one-render-pipeline-and-split-page-app.md)): `render/pipeline.mjs` (`renderModel`); `build.mjs` and `browser/render.mjs` are loaders. Done with D1 ([ADR-0017](decisions/adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md)): the `networks.md` tree parser and the `networks.kind` switch are deleted, one networks implementation (`parse/shared-networks.mjs`) remains; CIDR parsing is shared (`lib/net.mjs`). |
+| AR-02, DK-01 (legacy) | Move `edgeKey`, config normalise, OS, notes text into a model layer; then convert-and-delete or keep import-only | Legacy modules are load-bearing utilities | M then L / low then medium | `cov-parse-legacy`, `cov-cli-build-new` | D1 | AR-02 done: `engine/model/` (`edges`, `config`, `notes`, `os`, `server`, `server-fields`) holds the shared utilities; the legacy parsers (`mmd`, `details`, `networks`) depend only on it; DK-01 (convert-and-delete) done in [ADR-0017](decisions/adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md): the legacy parsers (`mmd`, `details`, `documents`, `networks`, `layout`), the re-export shims (`parse/errors`, `config`, `notes`) and `page/index-html.mjs` are deleted; `build.mjs` and `new.mjs` work on TOML folders. |
 | AR-08 | Layered folders (`source`, `edit`, `model`, `layout`, `render`, `page`, `app`, `server`) enforced by an import-direction test | `parse/validate.mjs` imports the render kit | M / low | new `layering.test.mjs` | AR-02 | Done: `layering.test.mjs` with an import-direction table; `parse/validate.mjs` moved to `render/`, `lib/errors.mjs` is the leaf. One allow-listed pair: `render/pipeline.mjs` imports `page/data.mjs` and `page/layout-html.mjs`. The folders `source`, `edit`, `layout`, `app`, `server` are not split out. |
 | CD-01, AR-07, DK-08, DM-15 | Split `app.js`: `api`, `session`, `dialogs`, `frame-bridge`, wiring; host interface instead of module lookups; event instead of the 250 ms poll | God-script, invisible state shape | L / medium | `cov-app-*` (5 files) | AR-04 | Done in 2789813: `app.js` is wiring (167 lines, was 522); `api`, `session`, `frame-bridge`, `dialogs`, `dialog-flows`, `edits`, `save`, `messages` in `engine/browser/`. The runtime gets an explicit host object from the bridge; the toolbar state follows frame activity events instead of a poll. `engine/test/browser-modules.test.mjs` covers the new modules. |
 | CD-03 | `core.host` and `core.on/emit` instead of 11 overwritable hooks and the `window.InfraDiagram.*` globals | Second writer silently overwrites the first | M / medium | `cov-ui-*`, `context-menu.test` | none | Done: `ui/core.js` declares ten services (`provide`, one provider each, a second writer throws), the events (`on` / `emit`, error-isolated) and the host (`attachHost`, once); the `window.InfraDiagram.serverEditor` / `noteParser` globals are gone. Tests: `cov-ui-host-events.test.mjs`. |
 | DM-03, DM-04 | Structural server model; card and details markdown become render functions; one documented IR vocabulary | OS is parsed back out of generated markdown | M / medium | card, details, exports tests | AR-01 | Done for the runtime: `node.fields` (os, hardware parts, lists, notes) and `serverSection` renders the details markdown from it, without the OS row (the details panel renders that from the structured `e.os`); the IR table is in [architecture.md](architecture.md#ir-vocabulary). Open: the card strings (`body`, `hw`) are still built in the parser; the Mermaid-shaped names (`nodes`, `body`, `cluster`) are documented, not renamed. |
 | CD-04, CD-06, DK-10 | `kit.boxFor`, one `METRICS`, `keys.mjs` (`nodeKey`, `parseKey`), readable meta field names, in one regeneration window | Metrics in 3 places; `"n:"` built 30 times, parsed 26 | M-L / medium | `region*.test`, `--check` diffs | none | |
-| AR-06, AR-13 | Measure first (300 servers, 600 connections), then page shell plus scene swap, then incremental routing | Every edit reloads about 300 KB and loses zoom and selection | M-L / medium | new perf test | D6 | |
+| AR-06, AR-13 | Measure first (300 servers, 600 connections), then page shell plus scene swap, then incremental routing | Every edit reloads about 300 KB and loses zoom and selection | M-L / medium | new perf test | D6 | Measured ([performance.md](performance.md)): 400 servers and 600 connections cost 7 s in Node (routing is over 85 %, about O(n^2.3)) and about 30 s per edit in the browser (iframe reload about 20 s, zoom and selection lost); `tools/bench.mjs` and `perf.test.mjs` added. Order: route speed-ups and caching first, then scene swap. |
 | BP-14 | Native `<dialog>`, keyboard on server and region nodes, arrow-key nudge | No focus trap; selection looks mouse-only (reported) | M / medium | fake DOM gains `dialog` | CD-01 | Runtime side done: servers and regions are Tab stops (`role=button`, `aria-label`, `aria-pressed`), Enter / Space select, arrow keys nudge in edit mode (Shift x10), focus ring in all skins, ARIA on the toolbar, layout group, status and pen options; tests `cov-ui-a11y`, `cov-canvas-edit-mode`. The fake DOM gained `dialog`, focus events and `:focus-visible`. Done: the page dialogs in `browser/dialogs.mjs` and the shell markup are native `<dialog>` elements opened with `showModal()` (focus trap, Escape and focus return native; test `dialogs.test.mjs`). |
 
 ### Wave 3: nice to have (opportunistic)
@@ -249,10 +249,11 @@ still referred to as D1 to D11.
    Decided: b) keep import-only with a one-off converter to the TOML
    folder, then delete. Ends the double maintenance and the only CDN
    dependency without stranding old folders. Blocks Wave 2.
+   Executed in [ADR-0017](decisions/adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md): the examples are TOML, the legacy path is deleted.
 2. **Format version key** (DM-01). Decided: b) string
    `format_version = "1"`: strict, no parser change. Absent means 1.
 3. **CDN code in `index.html`** (BP-02). Decided: a) pin versions with
-   SRI now as a Wave 0 stopgap; c) drop it with the legacy path (D1).
+   SRI now as a Wave 0 stopgap; c) drop it with the legacy path (D1). Done in ADR-0017.
 4. **CSP and sandbox for the diagram iframe** (BP-01, BP-03). Decided:
    a) CSP meta plus server headers now; b) `sandbox` only after the
    host interface (DM-15) moves to `postMessage`, because `sandbox`
@@ -284,8 +285,9 @@ ADRs written so far: [0014](decisions/adr-0014-format-versioning-and-error-model
 [0015](decisions/adr-0015-shared-helpers-and-server-field-table.md)
 (shared helpers) and
 [0016](decisions/adr-0016-one-render-pipeline-and-split-page-app.md)
-(pipeline and page app). Still to write when they land: legacy fate,
-update model, server API, CI (ADR-0017 and up; ADR-0013 is the roadmap
+(pipeline and page app) and
+[0017](decisions/adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md)
+(legacy pipeline retired). Still to write when they land: update model, server API, CI (ADR-0018 and up; ADR-0013 is the roadmap
 decision).
 
 ## 6. Findings index
@@ -293,21 +295,21 @@ decision).
 | ID | Title | Wave | Status |
 | --- | --- | --- | --- |
 | AR-01 | Two ingestion pipelines duplicate orchestration | 2 | done |
-| AR-02 | Legacy format has no exit decision; shared helpers live in it | 2 | partial: helpers moved to `engine/model/`; exit decision open |
-| AR-03 | Duplicated network model | 2 | partial: `networks.md` tree stays |
+| AR-02 | Legacy format has no exit decision; shared helpers live in it | 2 | done: helpers in `engine/model/`, legacy path deleted (ADR-0017) |
+| AR-03 | Duplicated network model | 2 | done: one networks implementation (ADR-0017) |
 | AR-04 | Hand-rolled regex bundler is load-bearing | 1 | done |
 | AR-05 | Dual module systems and `Function.toString()` kits | 1 | done |
-| AR-06 | Every edit re-renders the whole page into `srcdoc` | 2 | open |
+| AR-06 | Every edit re-renders the whole page into `srcdoc` | 2 | measured: [performance.md](performance.md); fix open |
 | AR-07 | `app.js` is a 536-line non-module script | 2 | done |
 | AR-08 | Layering inversions in `parse/` | 2 | done: `layering.test.mjs` |
 | AR-09 | Storage API thin on integrity; no delete or rename | 3 | open |
 | AR-10 | No format versioning or archive marker | 1 | done |
 | AR-11 | Extensibility by editing source tables | 3 | started: `SERVER_FIELDS` |
 | AR-12 | Committed outputs, stale docs, no CI | 0 | done |
-| AR-13 | Runtime script duplicated into every page and export | 2 | open |
+| AR-13 | Runtime script duplicated into every page and export | 2 | measured: about 170 KB of 1.5 MB per page at 400 servers ([performance.md](performance.md)); fix open |
 | AR-14 | Mini DI through `ctx` and hooks | 3 | open |
 | BP-01 | Same-origin iframe without CSP or sandbox | 0 | done |
-| BP-02 | `index.html` loads unpinned CDN code and raw markdown | 0 | done |
+| BP-02 | `index.html` loads unpinned CDN code and raw markdown | 0 | moot: the file is deleted (ADR-0017) |
 | BP-03 | Missing response headers | 0 | done |
 | BP-04 | Host check only on `/api`; body cap enforced late | 0 | done |
 | BP-05 | Host probe `eval` and unescaped control characters | 0 | done |
@@ -340,7 +342,7 @@ decision).
 | CD-08 | Duplicated DOM helpers; `var` in runtime | 3 | open |
 | CD-09 | Long positional parameter lists | 3 | open |
 | CD-10 | `toml.mjs` mixes validators, parser, model | 2 | open |
-| DK-01 | Legacy path still carried (about 900 lines) | 2 | partial: pipeline shared, legacy path stays |
+| DK-01 | Legacy path still carried (about 900 lines) | 2 | done (ADR-0017) |
 | DK-02 | TOML escaping implemented three ways | 1 | done |
 | DK-03 | Server field list in 4 places | 1 | done |
 | DK-04 | Slug and id sanitising in 5 places | 1 | done |

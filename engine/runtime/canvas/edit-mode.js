@@ -45,7 +45,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     core.clipboard(toJson(state.st), function (ok) { say(ok ? "Copied" : "Copy failed, use Download"); });
   }
   function download() {
-    core.save(new Blob([toJson(state.st)], { type: "application/json" }), "layout.json");
+    core.save(new Blob([toJson(state.st)], { type: "application/json" }), "diagram.layout.json");
   }
   function reset() {
     state.st = model.clone(base);

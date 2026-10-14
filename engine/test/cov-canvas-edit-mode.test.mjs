@@ -301,12 +301,12 @@ test("Copy puts the layout JSON on the clipboard and reports success or failure"
   assert.equal(h.say(), "Copy failed, use Download");
 });
 
-test("Download saves the layout as layout.json", () => {
+test("Download saves the layout as diagram.layout.json", () => {
   const h = setup();
   h.$("te").click();
   h.$("td").click();
   const [blob, name] = h.page.core.saved;
-  assert.equal(name, "layout.json");
+  assert.equal(name, "diagram.layout.json");
   assert.equal(blob.opts.type, "application/json");
   assert.deepEqual(plain(JSON.parse(blob.parts[0])), plain(h.model.state.st));
 });

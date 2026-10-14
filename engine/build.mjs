@@ -1,23 +1,35 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { reader } from "./lib/util.mjs";
 import { runCli } from "./lib/cli.mjs";
-import { fail } from "./parse/errors.mjs";
-import { parseLayout } from "./parse/layout.mjs";
-import { parseNotes } from "./parse/notes.mjs";
-import { parseDocuments } from "./parse/documents.mjs";
-import { edgeKey, parseMmd } from "./parse/mmd.mjs";
-import { parseNetworks } from "./parse/networks.mjs";
-import { geometryKit, geometryMeta } from "./render/geometry.mjs";
-import { parseDetails } from "./parse/details.mjs";
+import { fail } from "./lib/errors.mjs";
+import { SERVER_DIR_NAME, TOPOLOGY_FILE, LEGACY_TOPOLOGY_FILE, LAYOUT_FILE } from "./lib/files.mjs";
+import { decideLayoutLoad } from "./parse/layout-version.mjs";
+import { prepareDiagram } from "./browser/render.mjs";
 import { renderModel } from "./render/pipeline.mjs";
 import { css, script } from "./page/assets.mjs";
-import { renderIndexHtml } from "./page/index-html.mjs";
-import { checkConnections, parseConfig } from "./parse/config.mjs";
-import { autoLayoutKit } from "./render/auto-layout.mjs";
-import { drawKit } from "./render/draw-kit.mjs";
 import { renderExcalidraw } from "./export/excalidraw.mjs";
+
+const LEGACY_FILES = ["diagram.mmd", "diagram.json", "details.md", "notes.md", "documents.md", "networks.md", "layout.json"];
+
+function readFolder(dir) {
+  const files = new Map();
+  const add = (rel) => files.set(rel, readFileSync(join(dir, rel), "utf8"));
+  for (const name of readdirSync(dir)) if (name.endsWith(".toml")) add(name);
+  const servers = join(dir, SERVER_DIR_NAME);
+  if (existsSync(servers)) for (const name of readdirSync(servers)) if (name.endsWith(".toml")) add(`${SERVER_DIR_NAME}/${name}`);
+  return files;
+}
+
+function readSaved(dir) {
+  const file = join(dir, LAYOUT_FILE);
+  if (!existsSync(file)) return null;
+  try {
+    return decideLayoutLoad(JSON.parse(readFileSync(file, "utf8"))).use;
+  } catch (e) {
+    return fail(`${LAYOUT_FILE}: ${e.message}`);
+  }
+}
 
 runCli("build", () => {
   const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -25,36 +37,19 @@ runCli("build", () => {
   const check = args.includes("--check");
   const target = args.find((a) => !a.startsWith("--"));
   if (!target) fail("usage: node engine/build.mjs <diagram-dir> [--check]");
-  const dir = [resolve(target), resolve(ROOT, target)].find((d) => existsSync(join(d, "diagram.mmd")));
-  if (!dir) fail(`no diagram.mmd in "${target}"`);
-  const read = reader(dir);
-
-  const config = parseConfig(read("diagram.json"), dir);
-  const mmd = read("diagram.mmd");
-  const details = read("details.md");
-  const hasLayout = existsSync(join(dir, "layout.json"));
-  const layout = parseLayout(hasLayout ? read("layout.json") : "{}");
-  const drawings = drawKit().validate(layout.drawings);
-  delete layout.drawings;
-  const notes = parseNotes(read("notes.md"));
-  const docs = parseDocuments(read("documents.md"));
-  const model = parseMmd(mmd);
-  checkConnections(config, model.edges.map(edgeKey), model.nodes);
-  const meta = geometryMeta(model, config.groups, config.processes);
-  const kit = geometryKit();
-  if (!hasLayout) autoLayoutKit(kit).fill(layout, meta);
-  const netItems = existsSync(join(dir, "networks.md")) ? parseNetworks(read("networks.md")) : null;
-  const out = renderModel({
-    config, model, layout, meta, kit, sections: parseDetails(details), notes, docs, drawings, validate: true,
-    networks: netItems && { kind: "tree", items: netItems, texts: [details] },
-    assets: { cssSvg: css("svg"), cssPage: css("page"), js: script() },
-  });
-  const { routes, ent, viewBox, edgeKeys } = out;
-
+  const dir = [resolve(target), resolve(ROOT, target)].find((d) => existsSync(d));
+  if (!dir) fail(`no diagram folder "${target}"`);
+  const files = readFolder(dir);
+  if (!files.has(TOPOLOGY_FILE) && !files.has(LEGACY_TOPOLOGY_FILE)) {
+    if (LEGACY_FILES.some((f) => existsSync(join(dir, f)))) fail("legacy Mermaid/Markdown diagrams are no longer supported: convert to TOML, see docs/tech/authoring.md");
+    fail(`no ${TOPOLOGY_FILE} in "${target}"`);
+  }
+  const d = prepareDiagram(files, basename(dir), readSaved(dir));
+  const { config, model, notes, layout, meta, drawings } = d;
+  const out = renderModel({ ...d, assets: { cssSvg: css("svg"), cssPage: css("page"), js: script() }, validate: true });
   const outputs = {
     "layout.html": out.html,
-    "index.html": renderIndexHtml({ title: config.title, mmd, details, notes, edgeKinds: edgeKeys.kinds }),
-    [config.id + ".excalidraw"]: renderExcalidraw({ config, model, layout, meta, routes, ent, notes, edgeLabels: config.edgeLabels, viewBox, drawings }),
+    [config.id + ".excalidraw"]: renderExcalidraw({ config, model, layout, meta, routes: out.routes, ent: out.ent, notes, edgeLabels: config.edgeLabels, viewBox: out.viewBox, drawings }),
   };
   const names = Object.keys(outputs).join(", ");
   if (check) {

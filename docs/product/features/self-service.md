@@ -66,6 +66,6 @@ The folder layout and every key are in
 ## History
 
 The first version of this spec was a task brief for a Mermaid-based
-build (demo diagram, auto-layout, `engine/new.mjs`). Those parts are
-done; the TOML page workflow replaced it as the main path. The
-Mermaid build (`engine/build.mjs`) still works for `examples/demo/`.
+build. It is done and the legacy path is retired
+([ADR-0017](../../tech/decisions/adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md));
+`engine/build.mjs` and `engine/new.mjs` now work on TOML folders.

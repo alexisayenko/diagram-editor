@@ -116,7 +116,7 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons"], function (core, os
     var html = '<button id="pc" type="button" aria-label="Close">Close</button><h1>' + esc(e.title) + link + '</h1><span class="tg" data-ty="' + e.ty + '">' + esc(e.tag) + "</span>";
     if (sec) html += md(cf.sec);
     else {
-      html += '<p class="pm">No section for this entity in details.md; showing diagram data.</p>';
+      html += '<p class="pm">No details section for this entity; showing diagram data.</p>';
       var lines = (e.body || []).concat(e.ip || []);
       if (lines.length) html += "<ul>" + lines.map(function (x) { return "<li>" + inline(x) + "</li>"; }).join("") + "</ul>";
     }

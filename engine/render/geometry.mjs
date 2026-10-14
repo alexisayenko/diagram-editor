@@ -22,8 +22,8 @@ export function displayLabels(names) {
   return Object.fromEntries(Object.keys(names).map((id) => [id, count[short[id]] > 1 ? names[id] : short[id]]));
 }
 
-// Static facts the kit needs besides layout.json geometry; built once, shipped to the runtime as D.meta.
-// Node nb / ni: body and IP line counts, os / ol / oe: 1, the text length and 1 when the OS is end-of-life, for a server with an OS pill row, hw: hardware strip text (own row when not empty) (auto-layout). Edge lv: "process" when an endpoint is a body line (diagram.json processes), else "server".
+// Static facts the kit needs besides the saved layout geometry; built once, shipped to the runtime as D.meta.
+// Node nb / ni: body and IP line counts, os / ol / oe: 1, the text length and 1 when the OS is end-of-life, for a server with an OS pill row, hw: hardware strip text (own row when not empty) (auto-layout). Edge lv: "process" when an endpoint is a body line (topology processes), else "server".
 export function geometryMeta(model, groups, processes) {
   const len = (a) => a.reduce((m, s) => Math.max(m, s.length), 0);
   const labels = displayLabels(Object.fromEntries([...model.nodes.values()].map((n) => [n.id, n.title])));

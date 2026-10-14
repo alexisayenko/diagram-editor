@@ -6,7 +6,7 @@ Commit: 64ff47a (the outputs); 21c15da (the stale-build tests)
 ## Context
 
 `diagram.html` (the standalone page) and the demo outputs
-(`examples/demo/layout.html`, `index.html`, `demo.excalidraw`) are
+(`examples/demo/layout.html`, `demo.excalidraw`) are
 built from engine sources. People open them straight from the repo
 with no build step, and diffs show what an engine change did. The
 risk is a stale output: source changed, output not regenerated.

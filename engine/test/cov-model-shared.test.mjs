@@ -1,13 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { fail, FormatError } from "../lib/errors.mjs";
-import { parseLayout } from "../parse/layout.mjs";
 import { parseNotes } from "../model/notes.mjs";
-import { parseDocuments } from "../parse/documents.mjs";
 import { parseConfig, checkConnections, processAnchors } from "../model/config.mjs";
-import { parseMmd } from "../parse/mmd.mjs";
-import { isDashed, endKey, edgeKey } from "../model/edges.mjs";
-import { parseNetworks, networkMembers, ipNetworks } from "../parse/networks.mjs";
 import { mergeTypes, resolveTypes, RESERVED_TYPES } from "../parse/types.mjs";
 import { validateGeometry } from "../render/validate.mjs";
 
@@ -35,11 +30,6 @@ test("fail throws a FormatError and never exits", () => {
   assert.equal(failure(() => fail("boom")), "boom");
 });
 
-test("parseLayout rejects retired keys and passes the rest", () => {
-  assert.match(failure(() => parseLayout('{"notes":[]}')), /notes live in notes\.md/);
-  assert.match(failure(() => parseLayout('{"legend":{}}')), /legend is a page panel/);
-  assert.deepEqual(pass(() => parseLayout('{"nodes":{}}')), { nodes: {} });
-});
 
 test("parseNotes: sections, dates, paragraphs", () => {
   const notes = pass(() => parseNotes("# Title\n\n## First\n\nDate: 2026-01-01\n\nOne\ntwo\n\nThree\n## Second\nDate:  x y \ntext\n"));
@@ -50,28 +40,13 @@ test("parseNotes: sections, dates, paragraphs", () => {
 });
 
 test("parseNotes: error messages carry the line number", () => {
-  assert.match(failure(() => parseNotes("stray\n## A\n")), /notes\.md:1: text before the first/);
-  assert.match(failure(() => parseNotes("## \nDate: x\ntext\n")), /notes\.md:1: empty note title/);
-  assert.match(failure(() => parseNotes("## A\nnot a date\n")), /notes\.md:2: note "A": first line must be "Date: <stamp>"/);
-  assert.match(failure(() => parseNotes("## A\nDate: x\n# bad\n")), /notes\.md:3: unexpected heading/);
+  assert.match(failure(() => parseNotes("stray\n## A\n")), /line 1: text before the first/);
+  assert.match(failure(() => parseNotes("## \nDate: x\ntext\n")), /line 1: empty note title/);
+  assert.match(failure(() => parseNotes("## A\nnot a date\n")), /line 2: note "A": first line must be "Date: <stamp>"/);
+  assert.match(failure(() => parseNotes("## A\nDate: x\n# bad\n")), /line 3: unexpected heading/);
   assert.match(failure(() => parseNotes("# only a title\n")), /no "## <title>" sections/);
-  assert.match(failure(() => parseNotes("## A\n\n")), /notes\.md:1: note "A" has no "Date/);
-  assert.match(failure(() => parseNotes("## A\nDate: x\n")), /notes\.md:1: note "A" has no text/);
-});
-
-test("parseDocuments: links with and without descriptions", () => {
-  const docs = pass(() => parseDocuments("# Docs\n\n- [A](https://a.example.test/x)\n* [B ](http://b.example.test) — About B\n- [C](https://c.example.test) - dash\n"));
-  assert.deepEqual(docs, [
-    { title: "A", url: "https://a.example.test/x", desc: "" },
-    { title: "B", url: "http://b.example.test", desc: "About B" },
-    { title: "C", url: "https://c.example.test", desc: "dash" },
-  ]);
-});
-
-test("parseDocuments: bad lines and empty files fail", () => {
-  assert.match(failure(() => parseDocuments("- [A](ftp://a.example.test)\n")), /documents\.md:1: expected "- \[title\]/);
-  assert.match(failure(() => parseDocuments("plain text\n")), /documents\.md:1/);
-  assert.match(failure(() => parseDocuments("# Docs\n\n")), /documents\.md: no links/);
+  assert.match(failure(() => parseNotes("## A\n\n")), /line 1: note "A" has no "Date/);
+  assert.match(failure(() => parseNotes("## A\nDate: x\n")), /line 1: note "A" has no text/);
 });
 
 const cfg = (o, dir = "/x/my-diagram") => pass(() => parseConfig(JSON.stringify(o), dir));
@@ -138,9 +113,9 @@ test("parseConfig: process errors", () => {
 test("checkConnections and processAnchors", () => {
   const nodes = new Map([["a", { body: ["Role: web", "Job: x"] }], ["b", { body: ["db"], jn: 1 }]]);
   pass(() => checkConnections({ groups: { g: { edges: ["a>b"] } }, processes: { "a>b": { from: "Role", to: null } } }, ["a>b", "b>a"], nodes));
-  assert.match(failure(() => checkConnections({ groups: { g: { edges: ["x>y"] } }, processes: {} }, ["a>b"], nodes)), /groups\.g: connection "x>y" is not in diagram\.mmd/);
+  assert.match(failure(() => checkConnections({ groups: { g: { edges: ["x>y"] } }, processes: {} }, ["a>b"], nodes)), /groups\.g: connection "x>y" is not a connection of the diagram/);
   assert.match(failure(() => checkConnections({ groups: { g: { edges: ["a>b"] }, h: { edges: ["a>b"] } }, processes: {} }, ["a>b"], nodes)), /in groups "g" and "h"/);
-  assert.match(failure(() => checkConnections({ groups: {}, processes: { "x>y": { from: "q", to: null } } }, ["a>b"], nodes)), /processes: connection "x>y" is not in diagram\.mmd/);
+  assert.match(failure(() => checkConnections({ groups: {}, processes: { "x>y": { from: "q", to: null } } }, ["a>b"], nodes)), /processes: connection "x>y" is not a connection of the diagram/);
   assert.match(failure(() => checkConnections({ groups: {}, processes: { "a>r": { from: null, to: "q" } } }, ["a>r"], nodes)), /processes\.a>r\.to: "r" is a region/);
   assert.match(failure(() => checkConnections({ groups: {}, processes: { "a>b": { from: "Nope", to: null } } }, ["a>b"], nodes)), /processes\.a>b\.from: no body line of "a" starts with "Nope"/);
   assert.match(failure(() => checkConnections({ groups: {}, processes: { "a>b": { from: null, to: "Role" } } }, ["a>b"], nodes)), /no body line of "b" starts with "Role"/);
@@ -151,90 +126,6 @@ test("checkConnections and processAnchors", () => {
   assert.deepEqual(processAnchors(undefined, nodes), {});
 });
 
-const MMD = [
-  "flowchart LR",
-  "%% a comment",
-  'subgraph r1["Region #quot;1#quot; #35;"]',
-  '  a["Server A<br/>role one<br>10.0.0.1/24<br />192.0.2.5/24"]',
-  '  db1[("DB &1")]',
-  "end",
-  'b["Server B"]',
-  'a -->|"call · firewall"| b',
-  "a -.->|plain| db1",
-  "b --> a",
-  "linkStyle 0,1 stroke-dasharray: 3",
-  "classDef web stroke:#112233",
-  "class a,b web",
-  "style a fill:#fff",
-].join("\n");
-
-test("parseMmd: clusters, nodes, edges, styles", () => {
-  const m = parseMmd(MMD);
-  assert.deepEqual([...m.clusters.values()], [{ id: "r1", title: 'Region "1" #' }]);
-  const a = m.nodes.get("a");
-  assert.deepEqual([a.title, a.body, a.ip, a.cluster, a.db], ["Server A", ["role one"], ["10.0.0.1/24", "192.0.2.5/24"], "r1", false]);
-  assert.equal(m.nodes.get("db1").db, true);
-  assert.equal(m.nodes.get("b").cluster, null);
-  assert.deepEqual(m.edges, [
-    { from: "a", to: "b", label: "call", fw: true, dashed: false },
-    { from: "a", to: "db1", label: "plain", fw: false, dashed: true },
-    { from: "b", to: "a", label: "", fw: false, dashed: false },
-  ]);
-  assert.equal(m.classDefs.get("web"), "stroke:#112233");
-  assert.deepEqual(m.classes.get("a"), ["web"]);
-  assert.equal(isDashed(m, 0), true);
-  assert.equal(isDashed(m, 2), false);
-  assert.equal(endKey(m, "a"), "n:a");
-  assert.equal(endKey(m, "r1"), "c:r1");
-  assert.equal(edgeKey(m.edges[0]), "a>b");
-});
-
-test("parseMmd: unknown entity codes stay, unsupported syntax and trailing text fail", () => {
-  assert.equal(parseMmd('a["x #zzz; y"]').nodes.get("a").title, "x #zzz; y");
-  assert.match(failure(() => parseMmd("flowchart LR\nwhat is this")), /diagram\.mmd:2: unsupported syntax: what is this/);
-  assert.match(failure(() => parseMmd('a["T<br/>10.0.0.1/24<br/>late"]')), /diagram\.mmd:1: text line "late" after IP lines in node a/);
-});
-
-const NETS = "# Networks\n\n- `10.0.0.0/16` Corp\n  - `10.0.1.0/24` Servers\n  - Group\n    - `10.0.2.0/24` DMZ\n- `192.0.2.0/24` Lab\n";
-test("parseNetworks: nesting, ranges, groups", () => {
-  const items = pass(() => parseNetworks(NETS));
-  assert.deepEqual(items.map((i) => [i.cidr, i.name, i.depth, i.parent]), [
-    ["10.0.0.0/16", "Corp", 0, -1], ["10.0.1.0/24", "Servers", 1, 0], ["", "Group", 1, 0], ["10.0.2.0/24", "DMZ", 2, 2], ["192.0.2.0/24", "Lab", 0, -1],
-  ]);
-  assert.deepEqual([items[1].lo, items[1].hi], [167772416, 167772671]);
-  assert.equal(pass(() => parseNetworks("- `192.0.2.0/24` A\n\t- `192.0.2.0/25` B\n"))[1].depth, 1);
-});
-
-test("parseNetworks: errors", () => {
-  assert.match(failure(() => parseNetworks("hello")), /networks\.md:1: expected "- `a\.b\.c\.d\/nn` Name"/);
-  assert.match(failure(() => parseNetworks("  - `10.0.0.0/8` X\n")), /networks\.md:1: top-level item must not be indented/);
-  assert.match(failure(() => parseNetworks("- `10.0.0.0/33` X\n")), /invalid CIDR "10\.0\.0\.0\/33"/);
-  assert.match(failure(() => parseNetworks("- `10.0.0.300/24` X\n")), /invalid CIDR/);
-  assert.match(failure(() => parseNetworks("- `10.0.0.5/24` X\n")), /host bits set; network address is 10\.0\.0\.0\/24/);
-  assert.match(failure(() => parseNetworks("- `10.0.0.0/24` X\n  - `10.0.1.0/24` Y\n")), /10\.0\.1\.0\/24 is not inside its parent 10\.0\.0\.0\/24 \(X\)/);
-  assert.match(failure(() => parseNetworks("- `10.0.0.0/24` X\n- `10.0.0.0/24` Y\n")), /networks\.md:2: 10\.0\.0\.0\/24 already listed on line 1/);
-  assert.match(failure(() => parseNetworks("- Empty group\n")), /grouping item "Empty group" has no CIDR and no children/);
-  assert.match(failure(() => parseNetworks("# t\n")), /networks\.md: no networks/);
-});
-
-test("networkMembers and ipNetworks", () => {
-  const items = parseNetworks(NETS);
-  const model = parseMmd('subgraph r["R"]\n  a["A<br/>10.0.1.5/24"]\n  b["B<br/>10.0.2.7/24<br/>192.0.2.9/24"]\nend\nc["C<br/>10.0.9.9/16"]\nh["H<br/>10.0.1.6/24"]');
-  const layout = { nodes: { a: {}, b: {}, c: {}, h: { hidden: true } } };
-  const members = networkMembers(items, model, layout);
-  assert.deepEqual(members.map((m) => [m.name, m.hosts]), [["Corp", 3], ["Servers", 1], ["Group", 1], ["DMZ", 1], ["Lab", 1]]);
-  assert.deepEqual(members[1].m, ["n:a", "c:r"]);
-  assert.deepEqual(members[4].m, ["n:b", "c:r"]);
-
-  const out = ipNetworks(items, ["10.0.1.5 and 10.0.1.5 again 10.0.2.9/24", "10.0.1.0 net 10.0.1.0/24 999.1.1.1 1.2.3.4.5", "198.51.100.1 192.0.2.0 192.0.2.8"]);
-  assert.equal(out["10.0.1.5"], 1);
-  assert.equal(out["10.0.2.9"], 3);
-  assert.equal(out["10.0.1.0"], undefined);
-  assert.equal(out["999.1.1.1"], undefined);
-  assert.equal(out["198.51.100.1"], undefined);
-  assert.equal(out["192.0.2.0"], undefined);
-  assert.equal(out["192.0.2.8"], 4);
-});
 
 test("mergeTypes: built-ins, overrides, new types", () => {
   const t = mergeTypes();
@@ -250,14 +141,24 @@ test("mergeTypes: built-ins, overrides, new types", () => {
   assert.deepEqual(RESERVED_TYPES, ["proposed"]);
 });
 
-const typed = (mmd, types, hidden = {}) => {
-  const model = parseMmd(mmd);
-  return resolveTypes({ ...model, types }, { nodes: Object.fromEntries([...model.nodes.keys()].map((k) => [k, { hidden: !!hidden[k] }])) }, "Next");
-};
-const TMMD = 'subgraph r["R"]\n  a["A<br/>10.0.0.1/24"]\n  b[("B")]\nend\nc["C"]\nclassDef web stroke:#112233\nclassDef oracle stroke:#445566\nclassDef proposed stroke:#000000\nclass r,a web\nclass b oracle\nclass c web\nclass c proposed';
+
+const ir = ({ clusters = [], nodes = [], defs = {}, classes = {} }) => ({
+  clusters: new Map(clusters.map((id) => [id, { id, title: id.toUpperCase() }])),
+  nodes: new Map(nodes.map(([id, o = {}]) => [id, { id, title: id.toUpperCase(), body: [], ip: [], cluster: null, db: false, ...o }])),
+  classDefs: new Map(Object.entries(defs)),
+  classes: new Map(Object.entries(classes)),
+});
+const typed = (model, types, hidden = {}) =>
+  resolveTypes({ ...model, types }, { nodes: Object.fromEntries([...model.nodes.keys()].map((k) => [k, { hidden: !!hidden[k] }])) }, "Next");
+const TYPED = () => ir({
+  clusters: ["r"],
+  nodes: [["a", { cluster: "r", ip: ["10.0.0.1/24"] }], ["b", { cluster: "r", db: true }], ["c"]],
+  defs: { web: "stroke:#112233", oracle: "stroke:#445566", proposed: "stroke:#000000" },
+  classes: { r: ["web"], a: ["web"], b: ["oracle"], c: ["web", "proposed"] },
+});
 
 test("resolveTypes: entities, legend list and css", () => {
-  const r = typed(TMMD);
+  const r = typed(TYPED());
   assert.equal(r.ent["c:r"].tag, "WEB SERVER");
   assert.equal(r.ent["n:a"].ty, "web");
   assert.equal(r.ent["n:b"].db, true);
@@ -274,32 +175,32 @@ test("resolveTypes: entities, legend list and css", () => {
 });
 
 test("resolveTypes: custom types fill missing colours, infra types go last, hidden nodes skipped", () => {
-  const r = typed('a["A"]\nn["N"]\nclassDef web stroke:#112233\nclass a web\nclass n nas', [{ id: "nas", color: "#101010" }]);
+  const r = typed(ir({ nodes: [["a"], ["n"]], defs: { web: "stroke:#112233" }, classes: { a: ["web"], n: ["nas"] } }), [{ id: "nas", color: "#101010" }]);
   assert.equal(r.typeColors.nas, "#101010");
   assert.equal(r.typeColors.cache, "#B8860B");
   assert.deepEqual(r.typeList.map((t) => [t.k, !!t.infra]), [["web", false], ["nas", true]]);
-  const h = typed('a["A"]\nb["B"]\nclassDef web stroke:#112233\nclass a web', undefined, { b: true });
+  const h = typed(ir({ nodes: [["a"], ["b"]], defs: { web: "stroke:#112233" }, classes: { a: ["web"] } }), undefined, { b: true });
   assert.deepEqual(Object.keys(h.ent), ["n:a"]);
 });
 
 test("resolveTypes: problems are reported together", () => {
-  assert.match(failure(() => typed('a["A"]\nclassDef weird stroke:#112233\nclass a weird')), /classDef "weird" is neither a known server type/);
-  assert.match(failure(() => typed('a["A"]\nclassDef web fill:#fff\nclass a web')), /classDef "web" has no stroke:#rrggbb colour/);
-  const msg = failure(() => typed('a["A"]\nb["B"]\nc["C"]\nclassDef web stroke:#112233\nclass a web\nclass b weird\nclass c web\nclass c cache'));
+  assert.match(failure(() => typed(ir({ nodes: [["a"]], defs: { weird: "stroke:#112233" }, classes: { a: ["weird"] } }))), /classDef "weird" is neither a known server type/);
+  assert.match(failure(() => typed(ir({ nodes: [["a"]], defs: { web: "fill:#fff" }, classes: { a: ["web"] } }))), /classDef "web" has no stroke:#rrggbb colour/);
+  const msg = failure(() => typed(ir({ nodes: [["a"], ["b"], ["c"]], defs: { web: "stroke:#112233" }, classes: { a: ["web"], b: ["weird"], c: ["web", "cache"] } })));
   assert.match(msg, /n:b: unknown class weird/);
   assert.match(msg, /n:b: needs exactly one server type class \(.*\), has none/);
   assert.match(msg, /n:c: needs exactly one server type class .*has web,cache/);
-  assert.match(failure(() => typed('a["A"]\nclassDef web stroke:#112233\nclass a cache')), /n:a: server type "cache" has no classDef in diagram\.mmd/);
+  assert.match(failure(() => typed(ir({ nodes: [["a"]], defs: { web: "stroke:#112233" }, classes: { a: ["cache"] } }))), /n:a: server type "cache" has no colour/);
 });
 
-const VMMD = 'subgraph r["R"]\n  a["A<br/>192.0.2.1/24"]\n  b["B"]\nend\na --> b';
+const VMODEL = () => ir({ clusters: ["r"], nodes: [["a", { cluster: "r", ip: ["192.0.2.1/24"] }], ["b", { cluster: "r" }]] });
 const good = () => ({
   layout: {
     clusters: { r: { x: 0, y: 0, w: 600, h: 300, title: [20, 20] } },
     nodes: { a: { x: 40, y: 100, w: 150, h: 60, body: [], ip: [[0, 150]] }, b: { x: 300, y: 100, w: 150, h: 60, body: [], ip: [] } },
     edges: { "a>b": {} },
   },
-  model: parseMmd(VMMD),
+  model: VMODEL(),
 });
 const nm = { tl: 8, bl: 0, il: 0 };
 const meta = () => ({ nodes: { a: { ...nm }, b: { ...nm } } });
@@ -308,37 +209,6 @@ const geomErr = (mut) => {
   mut?.(layout, model);
   return failure(() => validateGeometry(model, layout, meta()));
 };
-
-test("validateGeometry: id mismatches between mmd and layout", () => {
-  const msg = geomErr((l) => { delete l.clusters.r; l.clusters.q = {}; delete l.nodes.b; l.nodes.zz = {}; l.edges["x>y"] = {}; delete l.edges["a>b"]; });
-  assert.match(msg, /cluster "r" is in diagram\.mmd but has no geometry in layout\.json/);
-  assert.match(msg, /cluster "q" is in layout\.json but not in diagram\.mmd/);
-  assert.match(msg, /node "b" is in diagram\.mmd but has no geometry/);
-  assert.match(msg, /node "zz" is in layout\.json but not in diagram\.mmd/);
-  assert.match(msg, /edge "a>b" is in diagram\.mmd but has no geometry/);
-  assert.match(msg, /edge "x>y" is in layout\.json but not in diagram\.mmd/);
-});
-
-test("validateGeometry: body and ip line counts", () => {
-  const msg = geomErr((l, m) => { m.nodes.get("a").body.push("line"); l.nodes.a.ip = []; });
-  assert.match(msg, /node "a": 1 body lines in mmd, 0 positions in layout\.json/);
-  assert.match(msg, /node "a": 1 IP lines in mmd, 0 positions/);
-  const hidden = geomErr((l) => { l.nodes.a.hidden = true; l.nodes.a.ip = [[0, 1], [0, 2]]; l.edges["a>b"] = { path: [] }; });
-  assert.doesNotMatch(hidden, /node "a": .* IP lines/);
-});
-
-test("validateGeometry: edge keys and firewall markers", () => {
-  const edge = (v) => geomErr((l) => { l.edges["a>b"] = v; });
-  assert.match(edge({ path: [] }), /"path" is no longer used/);
-  assert.match(edge({ color: 1 }), /unknown key color \(allowed: via, label, firewall\)/);
-  assert.match(edge({ via: [[1]] }), /"via" must be a list of \[x, y\] waypoints/);
-  assert.match(edge({ via: "x" }), /"via" must be a list/);
-  assert.match(edge({ via: [[1, null]] }), /"via" must be a list/);
-  assert.match(edge({ label: [1] }), /"label" must be \[x, y\]/);
-  assert.match(edge({ firewall: "yes" }), /"firewall" must be true .* got "yes"/);
-  assert.match(geomErr((l, m) => { m.edges[0].fw = true; }), /label ends with "· firewall" but layout\.json has no "firewall": true/);
-  assert.match(edge({ firewall: true }), /has "firewall": true but the diagram\.mmd label does not end/);
-});
 
 test("validateGeometry: header band, title and spacing checks", () => {
   assert.match(geomErr((l) => { l.nodes.a.y = 20; }), /node "a": box top incl\. 20px header .* intrudes into cluster "r" header band; needs >= 40/);
@@ -349,11 +219,14 @@ test("validateGeometry: header band, title and spacing checks", () => {
   assert.match(geomErr((l) => { l.nodes.a.x = 2; }), /node "a": .*px to the left border of cluster "r"/);
 });
 
-test("validateGeometry: a clean layout passes and cluster/node separation is enforced", () => {
+test("validateGeometry: a clean layout passes, hidden servers are skipped and cluster/node separation is enforced", () => {
   const { layout, model } = good();
   pass(() => validateGeometry(model, layout, meta()));
+  layout.nodes.b.hidden = true;
+  layout.nodes.b.x = layout.nodes.a.x;
+  pass(() => validateGeometry(model, layout, meta()));
 
-  const two = parseMmd('subgraph r["R"]\n  a["A"]\nend\nsubgraph s["S"]\n  b["B"]\nend\nc["C"]');
+  const two = ir({ clusters: ["r", "s"], nodes: [["a", { cluster: "r" }], ["b", { cluster: "s" }], ["c"]] });
   const l = {
     clusters: { r: { x: 0, y: 0, w: 300, h: 300, title: [20, 20] }, s: { x: 290, y: 0, w: 300, h: 300, title: [20, 20] } },
     nodes: { a: { x: 40, y: 100, w: 150, h: 60, body: [], ip: [] }, b: { x: 340, y: 100, w: 150, h: 60, body: [], ip: [] }, c: { x: 100, y: 120, w: 100, h: 60, body: [], ip: [] } },

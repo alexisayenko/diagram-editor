@@ -1,8 +1,8 @@
 import { tomlModel } from "../parse/toml.mjs";
 import { NETWORKS_FILE } from "../lib/files.mjs";
 import { assignNetwork, parseNetworksFile, withDerived } from "../parse/shared-networks.mjs";
-import { parseConfig, checkConnections } from "../parse/config.mjs";
-import { edgeKey } from "../parse/mmd.mjs";
+import { parseConfig, checkConnections } from "../model/config.mjs";
+import { edgeKey } from "../model/edges.mjs";
 import { geometryKit, geometryMeta } from "../render/geometry.mjs";
 import { drawKit } from "../render/draw-kit.mjs";
 import { autoLayoutKit } from "../render/auto-layout.mjs";
@@ -90,6 +90,6 @@ export function prepareDiagram(files, folder, saved = null, refit = []) {
 
 export function renderDiagram(files, folder, saved, assets, refit = []) {
   const { config, model, sections, notes, docs, meta, layout, kit, drawings, networks, warnings } = prepareDiagram(files, folder, saved, refit);
-  const { html } = renderModel({ config, model, layout, meta, kit, sections, notes, docs, drawings, assets, networks: networks && { kind: "shared", items: networks } });
+  const { html } = renderModel({ config, model, layout, meta, kit, sections, notes, docs, drawings, assets, networks });
   return { html, layout, id: config.id, notes: notes.map((n) => n.text), problems: Object.keys(kit.problems(layout, meta)).length, warnings };
 }

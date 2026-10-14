@@ -1,65 +1,9 @@
 import { fail } from "../lib/errors.mjs";
-import { edgeKey } from "../model/edges.mjs";
 import { geometryKit, displayLabels, shortTitle } from "./geometry.mjs";
 
 const BAND = 30, BAND_GAP = 10, BOX_HEAD = 20;
 const MIN_GAP = 20, CLUSTER_PAD = 16;
-const EDGE_KEYS = ["via", "label", "firewall"];
 const kit = geometryKit();
-
-const isPt = (p) => Array.isArray(p) && p.length === 2 && p.every((v) => typeof v === "number" && Number.isFinite(v));
-
-const sameIds = (what, mmdIds, jsonIds) => [
-  ...mmdIds.filter((id) => !jsonIds.includes(id)).map((id) => `${what} "${id}" is in diagram.mmd but has no geometry in layout.json`),
-  ...jsonIds.filter((id) => !mmdIds.includes(id)).map((id) => `${what} "${id}" is in layout.json but not in diagram.mmd`),
-];
-
-function idProblems({ clusters, nodes, edges }, layout) {
-  return [
-    ...sameIds("cluster", [...clusters.keys()], Object.keys(layout.clusters)),
-    ...sameIds("node", [...nodes.keys()], Object.keys(layout.nodes)),
-    ...sameIds("edge", edges.map(edgeKey), Object.keys(layout.edges)),
-  ];
-}
-
-function lineCountProblems(nodes, layout) {
-  const problems = [];
-  for (const n of nodes.values()) {
-    const g = layout.nodes[n.id];
-    if (!g || g.hidden) continue;
-    if (g.body.length !== n.body.length) problems.push(`node "${n.id}": ${n.body.length} body lines in mmd, ${g.body.length} positions in layout.json`);
-    if (g.ip.length !== n.ip.length) problems.push(`node "${n.id}": ${n.ip.length} IP lines in mmd, ${g.ip.length} positions in layout.json`);
-  }
-  return problems;
-}
-
-function edgeKeyProblems(k, g) {
-  const problems = [];
-  if ("path" in g) problems.push(`edge "${k}": "path" is no longer used; connections are routed automatically (steer one with "via": [[x, y], ...])`);
-  const bad = Object.keys(g).filter((x) => x !== "path" && !EDGE_KEYS.includes(x));
-  if (bad.length) problems.push(`edge "${k}": unknown key ${bad.join(", ")} (allowed: ${EDGE_KEYS.join(", ")})`);
-  if (g.via !== undefined && !(Array.isArray(g.via) && g.via.every(isPt))) problems.push(`edge "${k}": "via" must be a list of [x, y] waypoints`);
-  if (g.label !== undefined && !isPt(g.label)) problems.push(`edge "${k}": "label" must be [x, y] (omit it for automatic placement)`);
-  return problems;
-}
-
-function firewallProblem(e, g) {
-  const k = edgeKey(e);
-  if (g.firewall !== undefined && g.firewall !== true) return `edge "${k}": "firewall" must be true (the marker is placed automatically), got ${JSON.stringify(g.firewall)}`;
-  if (e.fw && !g.firewall) return `edge "${k}": label ends with "· firewall" but layout.json has no "firewall": true`;
-  if (!e.fw && g.firewall) return `edge "${k}": layout.json has "firewall": true but the diagram.mmd label does not end with "· firewall"`;
-  return null;
-}
-
-function edgeProblems(edges, layout) {
-  const problems = Object.entries(layout.edges).flatMap(([k, g]) => edgeKeyProblems(k, g));
-  for (const e of edges) {
-    const g = layout.edges[edgeKey(e)];
-    const p = g && firewallProblem(e, g);
-    if (p) problems.push(p);
-  }
-  return problems;
-}
 
 function bandProblems(clusters, nodes, layout) {
   const problems = [];
@@ -79,11 +23,9 @@ const failWith = (problems) => {
   if (problems.length) fail("\n  " + problems.join("\n  "));
 };
 
-// Checks ids and keys, then normalises geometry in place (text x, box widths, regions grown around their servers) and checks spacing.
+// Normalises geometry in place (text x, box widths, regions grown around their servers) and checks spacing.
 export function validateGeometry(model, layout, meta) {
-  const { clusters, nodes, edges } = model;
-  failWith([...idProblems(model, layout), ...lineCountProblems(nodes, layout), ...edgeProblems(edges, layout)]);
-
+  const { clusters, nodes } = model;
   for (const n of nodes.values()) if (!layout.nodes[n.id].hidden) kit.fitBox(layout.nodes[n.id], meta.nodes[n.id]);
   for (const id of clusters.keys()) kit.fitRegion(layout, meta, id);
 

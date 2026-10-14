@@ -93,5 +93,5 @@ test("CLI entry points print a FormatError and exit non-zero without a stack", (
   const build = fileURLToPath(new URL("../build.mjs", import.meta.url));
   const r = spawnSync(process.execPath, [build, "no-such-folder-here"], { encoding: "utf8" });
   assert.equal(r.status, 1);
-  assert.match(r.stderr, /^build: no diagram\.mmd in "no-such-folder-here"\n$/);
+  assert.match(r.stderr, /^build: no diagram folder "no-such-folder-here"\n$/);
 });

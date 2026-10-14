@@ -58,3 +58,4 @@ What we did not pick and why.
 | [0014](adr-0014-format-versioning-and-error-model.md) | Format versioning and error model | 2026-10-14 |
 | [0015](adr-0015-shared-helpers-and-server-field-table.md) | Shared helpers and the single server field table | 2026-10-14 |
 | [0016](adr-0016-one-render-pipeline-and-split-page-app.md) | One render pipeline and the split page app | 2026-10-14 |
+| [0017](adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md) | Retire the legacy Mermaid and Markdown pipeline | 2026-10-14 |

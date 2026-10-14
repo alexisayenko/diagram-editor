@@ -14,7 +14,7 @@ export function parseNotes(src) {
     para = [];
   };
   src.split("\n").forEach((raw, i) => {
-    const line = raw.trim(), at = `notes.md:${i + 1}: `;
+    const line = raw.trim(), at = `line ${i + 1}: `;
     const heading = /^## (.*)$/.exec(raw);
     if (heading) {
       if (cur) flush();
@@ -30,10 +30,10 @@ export function parseNotes(src) {
     else para.push(line);
   });
   if (cur) flush();
-  if (!notes.length) fail('notes.md: no "## <title>" sections');
+  if (!notes.length) fail('no "## <title>" sections');
   for (const n of notes) {
-    if (n.date === null) fail(`notes.md:${n.line}: note "${n.title}" has no "Date: <stamp>" line`);
-    if (!n.paras.length) fail(`notes.md:${n.line}: note "${n.title}" has no text`);
+    if (n.date === null) fail(`line ${n.line}: note "${n.title}" has no "Date: <stamp>" line`);
+    if (!n.paras.length) fail(`line ${n.line}: note "${n.title}" has no text`);
   }
   return notes;
 }

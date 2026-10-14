@@ -2,7 +2,7 @@ import { esc } from "../lib/util.mjs";
 import { isDashed } from "../model/edges.mjs";
 import { fwGlyph } from "./firewall.mjs";
 
-// labels: { request, dashed, firewall } from diagram.json edgeLabels. kinds feeds the index.html legend.
+// labels: { request, dashed, firewall } from the edgeLabels of topology.toml.
 // rows (export legend) end with one row per connection group; the page legend shows groups as switches instead (ui/legend).
 export function buildEdgeKey(model, labels, groups) {
   const { edges } = model;
@@ -15,7 +15,7 @@ export function buildEdgeKey(model, labels, groups) {
   const base = keyed.map(([k, s]) => [s, labels[k]]);
   const html = base.map(([s, l]) => `<div class="lkr"><svg class="lks" viewBox="0 0 44 24" width="44" height="24" aria-hidden="true">${s}</svg><span>${esc(l)}</span></div>`).join("");
   const grows = Object.entries(groups).map(([g, d]) => [`<line x1="2" y1="12" x2="40" y2="12" class="r" data-g="${g}" marker-end="url(#ag-${g})"/>`, d.label]);
-  return { rows: [...base, ...grows], html, kinds: keyed.map(([k]) => [k, labels[k]]) };
+  return { rows: [...base, ...grows], html };
 }
 
 // Per-group arrowhead markers and colour variables (--gc; darkColor in the Dark skin).

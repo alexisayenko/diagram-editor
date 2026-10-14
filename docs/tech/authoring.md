@@ -193,6 +193,15 @@ Use a current desktop Edge or Chrome (the tested pair). The page needs regular-e
 
 Run `node engine/browser.mjs` after changing the engine; it regenerates the standalone `diagram.html`. Use `node engine/browser.mjs --check` to check drift and `node --test engine/test/*.test.mjs` for the TOML and browser workflow tests. `package.json` names the same commands: `npm test`, `npm run cover`, `npm run check` (both `--check` runs plus the infrastructure-data scan) and `npm run serve`. Turn on the pre-commit hook once per clone with `git config core.hooksPath tools/hooks`; it blocks staged data that looks like real infrastructure and stale generated outputs ([ci-cd.md](ci-cd.md#local-checks-and-the-pre-commit-hook)).
 
-The existing Mermaid-folder build (`node engine/build.mjs examples/demo`) remains available and reads only `diagram.mmd`, `diagram.json`, `details.md`, `layout.json` and its Markdown companions, never the TOML files; the TOML page is the new authoring workflow. A folder without `layout.json` (such as one made by `engine/new.mjs`, which writes `diagram.mmd`, `diagram.json`, `details.md`, `notes.md`, `documents.md` and `networks.md`) is arranged automatically at build time, in memory; the build does not write `layout.json`, so add one (edit mode: Copy or Download) to pin positions. `node engine/build.mjs <dir> --check` exits 1 and names each output that is out of date.
+`node engine/build.mjs <dir>` builds a TOML diagram folder into `layout.html` and the Excalidraw scene `<id>.excalidraw` next to it (`engine/new.mjs <dir>` scaffolds an empty folder). A folder without `diagram.layout.json` is arranged automatically at build time, in memory; the build does not write it, so Save in the page to pin positions. `node engine/build.mjs <dir> --check` exits 1 and names each output that is out of date.
+
+## Converting a legacy Mermaid/Markdown diagram
+
+Folders made of `diagram.mmd`, `diagram.json`, `details.md`, `notes.md`, `documents.md`, `networks.md` and `layout.json` are no longer supported ([ADR-0017](decisions/adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md)); `build.mjs` stops with "legacy Mermaid/Markdown diagrams are no longer supported: convert to TOML, see docs/tech/authoring.md". Convert by hand:
+
+- `diagram.json` `id` and `title` become the first keys of `topology.toml`; `diagram.mmd` regions become `[[regions]]`, nodes become `servers/<id>.toml` files and edges become `[[connections]]`.
+- `details.md` sections become the structured fields of each server file (`os`, `hardware`, `details`, ...).
+- `notes.md` and `documents.md` become `notes.toml` and `documents.toml`; `networks.md` becomes `networks.toml` (or is dropped: networks are derived from the server IPs).
+- `layout.json` positions are not carried over: open the folder in the page, arrange it and Save, which writes `diagram.layout.json`.
 
 Tests, coverage and the rule for bugs: [ADR-0010](decisions/adr-0010-test-strategy.md). `node --test --experimental-test-coverage engine/test/*.test.mjs` prints coverage.

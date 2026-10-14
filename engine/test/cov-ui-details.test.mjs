@@ -64,7 +64,7 @@ test("renderPanel: no section falls back to diagram data and the cluster section
   const t = loadUi(["ui/details"], f);
   t.modules["ui/details"].renderPanel("n:a");
   const html = t.$("pn").innerHTML;
-  assert.match(html, /No section for this entity in details\.md; showing diagram data\./);
+  assert.match(html, /No details section for this entity; showing diagram data\./);
   assert.match(html, /<li>Line 1<\/li><li>192\.0\.2\.10/);
   assert.match(html, /<hr><p class="pm">Part of Region 1<\/p><p>Region text<\/p>/);
 });
@@ -73,7 +73,7 @@ test("renderPanel: no section and no data lines or cluster shows only the note",
   const { details, $ } = setup();
   details.renderPanel("n:b");
   const html = $("pn").innerHTML;
-  assert.match(html, /No section/);
+  assert.match(html, /No details section/);
   assert.ok(html.includes("<li>192.0.2.20</li>"));
   assert.ok(!html.includes("Part of"));
 });

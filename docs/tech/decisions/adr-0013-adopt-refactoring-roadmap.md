@@ -65,7 +65,8 @@ Work follows the waves; progress is in the
 
 Wave 0 (421b026, fd56c47, c8fba34) and Wave 1 (524d13f) are done. Wave 2
 has its pipeline and `app.js` split (2789813). D1 (legacy pipeline) is
-not started, so its deletions are still ahead. New ADRs:
+executed in [ADR-0017](adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md). New ADRs:
 [0014](adr-0014-format-versioning-and-error-model.md),
 [0015](adr-0015-shared-helpers-and-server-field-table.md),
-[0016](adr-0016-one-render-pipeline-and-split-page-app.md).
+[0016](adr-0016-one-render-pipeline-and-split-page-app.md),
+[0017](adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md).

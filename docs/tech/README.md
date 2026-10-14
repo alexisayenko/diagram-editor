@@ -12,6 +12,9 @@ Don't pre-create — extract on first real entry. See
 
 - **`stack.md`** — the v1 stack: framework, hosting, storage,
   payments, language, etc., with rationale per pick.
+- **[`performance.md`](performance.md)** — measured cost of a build and
+  of an edit at 50 to 400 servers, profile, and the ladder of fixes
+  (`tools/bench.mjs`, `engine/test/perf.test.mjs`).
 - **[`refactoring-recommendations.md`](refactoring-recommendations.md)** —
   reviewed findings merged into a wave roadmap (security, structure,
   formats), with owner decisions.
@@ -52,9 +55,6 @@ workflow is added.
   code smells, analysed at 2789813)
   ([ADR-0011](decisions/adr-0011-static-analysis-sonarcloud.md)).
 - `package.json` sets `engines.node >= 22` only; no `.nvmrc`, no CI.
-- The legacy Mermaid path and its CDN-loading `index.html` are still
-  built (decision D1 in the
-  [recommendations](refactoring-recommendations.md#5-decisions)).
 - Service CNAME is a concept only
   ([`../product/concepts/service-cname.md`](../product/concepts/service-cname.md)).
 

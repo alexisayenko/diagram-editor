@@ -40,8 +40,9 @@ infrastructure model
   `Invalid saved drawing N`.
 - A stroke does not follow a server that moves.
 - Edits to the TOML files never touch drawings.
-- The Mermaid build writes drawings into `layout.html` and the
-  `.excalidraw` scene; the TOML page has no Excalidraw export.
+- `engine/build.mjs` writes drawings from `diagram.layout.json` into
+  `layout.html` and the `.excalidraw` scene; the page has no Excalidraw
+  export.
 
 ## Out of scope
 

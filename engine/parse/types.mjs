@@ -46,7 +46,7 @@ function classProblems(key, cls, TYPES, typeColors) {
     const has = tys.length ? tys.join(",") : "none";
     problems.push(`${key}: needs exactly one server type class (${Object.keys(TYPES).join("/")}), has ${has}`);
   }
-  if (tys[0] && !typeColors[tys[0]]) problems.push(`${key}: server type "${tys[0]}" has no classDef in diagram.mmd`);
+  if (tys[0] && !typeColors[tys[0]]) problems.push(`${key}: server type "${tys[0]}" has no colour`);
   return problems;
 }
 

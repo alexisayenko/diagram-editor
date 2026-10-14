@@ -17,11 +17,10 @@ a 250 ms poll and direct reaches into the iframe's modules.
   meta, kit, sections, notes, docs, drawings, networks, assets,
   validate })` and returns `{ html, routes, nets, ipNet, ent, typeList,
   svgBody, idx, viewBox, groupKit, edgeKeys, dataJson }`. It is pure: no
-  file or DOM access. `networks` is `null`, `{ kind: "shared", items }`
-  (`networks.toml`) or `{ kind: "tree", items, texts }` (legacy
-  `networks.md`); `validate` runs the legacy geometry check.
-- `build.mjs` (legacy folders) and `browser/render.mjs` (TOML folders)
-  are thin loaders: read and parse, then call `renderModel`.
+  file or DOM access. `networks` is `null` or the
+  `networks.toml` rows; `validate` runs the geometry check.
+- `build.mjs` and `browser/render.mjs` are thin loaders: read and
+  parse, then call `renderModel`.
 - `browser/app.js` is wiring only. The rest is in `engine/browser/`:
   `api`, `session`, `frame-bridge`, `dialogs`, `dialog-flows`, `edits`,
   `save`, `messages`. Each takes the DOM and `fetch` as parameters, so
@@ -39,8 +38,7 @@ a 250 ms poll and direct reaches into the iframe's modules.
 - A feature is built once, not in two pipelines; `build --check` and
   `diagram.html --check` protect the output.
 - `app.js` went from 522 to 167 lines; module state is explicit.
-- Deferred: the legacy `networks.md` tree stays a separate parser until
-  the legacy pipeline is removed; the runtime still uses
+- Deferred: the runtime still uses
   `window.InfraDiagram` globals (CD-03), and `sandbox` for the frame
   waits for a `postMessage` host interface
   ([ADR-0013](adr-0013-adopt-refactoring-roadmap.md)).

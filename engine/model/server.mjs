@@ -91,7 +91,7 @@ function networkLabel(nets, ip) {
   return cidr ? name || cidr : "unassigned network";
 }
 
-// The details-panel markdown of a server section (generated text the legacy details.md also uses); `nets` adds the network after each IP.
+// The details-panel markdown of a server section ; `nets` adds the network after each IP.
 export function serverSection(fields, nets = null) {
   const rows = fields.rows.map(([label, value]) => `| ${label} | ${value.replaceAll("|", "/")} |`);
   const ipItems = nets ? fields.ips.map((ip) => `${ip} — ${networkLabel(nets, ip)}`) : fields.ips;

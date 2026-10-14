@@ -14,11 +14,12 @@ One bullet per event: ISO date, an em dash, what happened in a
 sentence or two, and a link to the task or artifact that carries
 the detail. Newest first; several events on one date are fine.
 
+- 2026-10-14 — Legacy Mermaid and Markdown pipeline retired: the examples are TOML only, `build.mjs` and `new.mjs` work on TOML folders and keep the Excalidraw export, `index.html` and the CDN scripts are gone ([ADR-0017](tech/decisions/adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md)).
 - 2026-10-14 — Wave 2, first batch: one render pipeline
   (`render/pipeline.mjs`) and the `app.js` split into eight page modules
   with a host interface and events instead of the 250 ms poll (2789813;
   [ADR-0016](tech/decisions/adr-0016-one-render-pipeline-and-split-page-app.md)).
-  762 tests, 99.78% line coverage. Legacy path removal, layering,
+  762 tests, 99.78% line coverage. Legacy path removal (ADR-0017), layering,
   `core.host`, structural model and update model are still open.
 - 2026-10-14 — Wave 1 done: `format_version` and layout version policy,
   one `FormatError`, shared helpers and the server field table, a

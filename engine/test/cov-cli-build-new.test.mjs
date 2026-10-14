@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,17 +10,15 @@ const ENGINE = fileURLToPath(new URL("..", import.meta.url));
 const run = (script, args) => spawnSync(process.execPath, [join(ENGINE, script), ...args], { encoding: "utf8" });
 const tmp = () => mkdtempSync(join(tmpdir(), "diagram-cli-"));
 
-test("new.mjs scaffolds a diagram folder with every content file", () => {
+test("new.mjs scaffolds a TOML diagram folder with every content file", () => {
   const root = tmp();
   try {
     const dir = join(root, "my-diag");
     const r = run("new.mjs", [dir]);
     assert.equal(r.status, 0, r.stderr);
     assert.match(r.stdout, /new: created .*my-diag/);
-    assert.deepEqual(readdirSync(dir).sort(), ["details.md", "diagram.json", "diagram.mmd", "documents.md", "networks.md", "notes.md"]);
-    assert.deepEqual(JSON.parse(readFileSync(join(dir, "diagram.json"), "utf8")), { title: "my-diag infrastructure", id: "my-diag" });
-    assert.match(readFileSync(join(dir, "notes.md"), "utf8"), /Date: \d{4}-\d{2}-\d{2}/);
-    assert.match(readFileSync(join(dir, "diagram.mmd"), "utf8"), /192\.0\.2\.11/);
+    assert.deepEqual(readdirSync(dir).sort(), ["documents.toml", "networks.toml", "notes.toml", "server-types.toml", "topology.toml"]);
+    assert.match(readFileSync(join(dir, "topology.toml"), "utf8"), /^format_version = "1"\nid = "my-diag"\ntitle = "My diag"\n/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -45,16 +43,18 @@ const DEMO = join(ENGINE, "..", "examples", "demo");
 const demoCopy = (root) => {
   const dir = join(root, "demo");
   cpSync(DEMO, dir, { recursive: true });
-  for (const f of ["layout.html", "index.html", "demo.excalidraw"]) rmSync(join(dir, f), { force: true });
+  for (const f of ["layout.html", "demo.excalidraw"]) rmSync(join(dir, f), { force: true });
   return dir;
 };
 
-test("build.mjs builds a freshly scaffolded diagram, auto-arranging the missing layout.json", () => {
+test("build.mjs builds a freshly scaffolded diagram, auto-arranging the missing layout", () => {
   const root = tmp();
   try {
     const dir = join(root, "my-diag");
     run("new.mjs", [dir]);
-    assert.equal(run("build.mjs", [dir]).status, 0);
+    const r = run("build.mjs", [dir]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /layout\.html, my-diag\.excalidraw written/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -64,12 +64,12 @@ test("build.mjs builds a diagram folder, then --check passes and detects stale o
     const dir = demoCopy(root);
     const built = run("build.mjs", [dir]);
     assert.equal(built.status, 0, built.stderr);
-    assert.match(built.stdout, /layout\.html, index\.html, demo\.excalidraw written/);
+    assert.match(built.stdout, /layout\.html, demo\.excalidraw written/);
     assert.match(readFileSync(join(dir, "layout.html"), "utf8"), /<svg/);
+    assert.equal(existsSync(join(dir, "index.html")), false);
     const scene = JSON.parse(readFileSync(join(dir, "demo.excalidraw"), "utf8"));
     assert.equal(scene.type, "excalidraw");
     assert.ok(scene.elements.length > 0);
-    assert.match(readFileSync(join(dir, "index.html"), "utf8"), /<pre class="mermaid">/);
 
     const ok = run("build.mjs", [dir, "--check"]);
     assert.equal(ok.status, 0, ok.stderr);
@@ -79,7 +79,7 @@ test("build.mjs builds a diagram folder, then --check passes and detects stale o
     const stale = run("build.mjs", [dir, "--check"]);
     assert.equal(stale.status, 1);
     assert.match(stale.stderr, /layout\.html out of date/);
-    assert.doesNotMatch(stale.stderr, /index\.html/);
+    assert.doesNotMatch(stale.stderr, /excalidraw/);
     assert.equal(readFileSync(join(dir, "layout.html"), "utf8"), "stale");
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -89,7 +89,7 @@ test("build.mjs --check reports every missing output as out of date", () => {
   try {
     const r = run("build.mjs", [demoCopy(root), "--check"]);
     assert.equal(r.status, 1);
-    assert.match(r.stderr, /layout\.html, index\.html, demo\.excalidraw out of date/);
+    assert.match(r.stderr, /layout\.html, demo\.excalidraw out of date/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -101,30 +101,49 @@ test("build.mjs usage and missing-folder errors", () => {
     assert.match(r.stderr, /usage: node engine\/build\.mjs/);
     r = run("build.mjs", [join(root, "nope")]);
     assert.equal(r.status, 1);
-    assert.match(r.stderr, /no diagram\.mmd in/);
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-test("build.mjs fails on an invalid layout.json", () => {
-  const root = tmp();
-  try {
-    const dir = demoCopy(root);
-    writeFileSync(join(dir, "layout.json"), "{ not json");
-    const r = run("build.mjs", [dir]);
-    assert.notEqual(r.status, 0);
-    assert.notEqual(r.stderr.trim(), "");
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-test("build.mjs rejects a layout.json that still has the retired notes key", () => {
-  const root = tmp();
-  try {
-    const dir = demoCopy(root);
-    const layout = JSON.parse(readFileSync(join(dir, "layout.json"), "utf8"));
-    layout.notes = [];
-    writeFileSync(join(dir, "layout.json"), JSON.stringify(layout));
-    const r = run("build.mjs", [dir]);
+    assert.match(r.stderr, /no diagram folder/);
+    mkdirSync(join(root, "empty"));
+    r = run("build.mjs", [join(root, "empty")]);
     assert.equal(r.status, 1);
-    assert.match(r.stderr, /notes live in notes\.md/);
+    assert.match(r.stderr, /no topology\.toml in/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("build.mjs points a legacy Mermaid/Markdown folder to the docs", () => {
+  const root = tmp();
+  try {
+    for (const legacy of ["diagram.mmd", "diagram.json", "details.md", "layout.json"]) {
+      const dir = join(root, "old-" + legacy.replace(/\W/g, "-"));
+      mkdirSync(dir);
+      writeFileSync(join(dir, legacy), "x");
+      const r = run("build.mjs", [dir]);
+      assert.equal(r.status, 1);
+      assert.equal(r.stderr, "build: legacy Mermaid/Markdown diagrams are no longer supported: convert to TOML, see docs/tech/authoring.md\n");
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("build.mjs fails on an invalid diagram.layout.json and ignores a newer one", () => {
+  const root = tmp();
+  try {
+    const dir = demoCopy(root);
+    writeFileSync(join(dir, "diagram.layout.json"), "{ not json");
+    const bad = run("build.mjs", [dir]);
+    assert.equal(bad.status, 1);
+    assert.match(bad.stderr, /^build: diagram\.layout\.json: /);
+    writeFileSync(join(dir, "diagram.layout.json"), JSON.stringify({ version: 99, nodes: {} }));
+    assert.equal(run("build.mjs", [dir]).status, 0);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("build.mjs uses the saved layout positions", () => {
+  const root = tmp();
+  try {
+    const dir = demoCopy(root);
+    assert.equal(run("build.mjs", [dir]).status, 0);
+    const before = readFileSync(join(dir, "layout.html"), "utf8");
+    writeFileSync(join(dir, "diagram.layout.json"), JSON.stringify({ version: 1, diagramId: "demo", nodes: { web01: { x: 900, y: 900, w: 200, h: 80, title: [910, 920], body: [], ip: [] } } }));
+    assert.equal(run("build.mjs", [dir]).status, 0);
+    assert.notEqual(readFileSync(join(dir, "layout.html"), "utf8"), before);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

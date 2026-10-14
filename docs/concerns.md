@@ -87,14 +87,12 @@ open, so the concern stays open.
     saves with rollback (524d13f).
   - Host probe: `os-release` read with an allow-list instead of
     `eval`, control characters stripped (421b026).
-  - Legacy `index.html`: `mermaid` and `marked` pinned with SRI,
-    embedded markdown escaped, http(s) links only (c8fba34).
+  - Legacy `index.html` (`mermaid` and `marked` pinned with SRI in c8fba34): deleted with the legacy path
+    ([ADR-0017](tech/decisions/adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md)).
   - The no-infrastructure-data rule is checked by
     `tools/check-no-infra-data.mjs` and the pre-commit hook (524d13f).
   - Tests: `fuzz-security.test.mjs`, `store-staged.test.mjs`.
 - Residual risks (open):
-  - SRI covers only the entry file of each CDN package; its imports are
-    not pinned. The legacy path and its CDN code go with decision D1.
   - The frame is same-origin without a `sandbox` attribute; `sandbox`
     needs the `postMessage` host interface first (D4).
   - CSP allows inline script and style, which the single-file page

@@ -16,7 +16,7 @@ const obj = (v, key) => {
   return v;
 };
 
-// Connection groups: { id: { label, color, darkColor?, edges: ["from>to", ...] } }; ids are checked against diagram.mmd by checkConnections.
+// Connection groups: { id: { label, color, darkColor?, edges: ["from>to", ...] } }; ids are checked against the diagram by checkConnections.
 function parseGroups(g) {
   const out = {};
   for (const [id, d] of Object.entries(obj(g, "groups"))) {
@@ -57,12 +57,12 @@ const lineOf = (node, prefix) => {
 export function checkConnections({ groups, processes }, edgeIds, nodes) {
   const seen = {};
   for (const [id, g] of Object.entries(groups)) for (const k of g.edges) {
-    if (!edgeIds.includes(k)) fail(`diagram.json: groups.${id}: connection "${k}" is not in diagram.mmd (ids are "from>to")`);
+    if (!edgeIds.includes(k)) fail(`diagram.json: groups.${id}: connection "${k}" is not a connection of the diagram (ids are "from>to")`);
     if (seen[k]) fail(`diagram.json: connection "${k}" is in groups "${seen[k]}" and "${id}"; a connection belongs to one group at most`);
     seen[k] = id;
   }
   for (const [k, d] of Object.entries(processes)) {
-    if (!edgeIds.includes(k)) fail(`diagram.json: processes: connection "${k}" is not in diagram.mmd (ids are "from>to")`);
+    if (!edgeIds.includes(k)) fail(`diagram.json: processes: connection "${k}" is not a connection of the diagram (ids are "from>to")`);
     k.split(">").forEach((n, i) => {
       const prefix = i ? d.to : d.from, at = `diagram.json: processes.${k}.${i ? "to" : "from"}: `;
       if (prefix === null) return;

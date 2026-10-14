@@ -1,6 +1,6 @@
 # diagram-editor
 
-Infrastructure diagram editor: an engine (`engine/`) that renders TOML / Mermaid diagram folders into interactive HTML, SVG/PNG and Excalidraw. Run `node engine/serve.mjs` and open its address to start (any modern browser); see [docs/tech/authoring.md](docs/tech/authoring.md) and [docs/tech/architecture.md](docs/tech/architecture.md). Code lives in `engine/`, sample content in `examples/`.
+Infrastructure diagram editor: an engine (`engine/`) that renders TOML diagram folders into interactive HTML, SVG/PNG and Excalidraw. Run `node engine/serve.mjs` and open its address to start (any modern browser); see [docs/tech/authoring.md](docs/tech/authoring.md) and [docs/tech/architecture.md](docs/tech/architecture.md). Code lives in `engine/`, sample content in `examples/`.
 
 ## Never commit infrastructure data (hard rule)
 
@@ -20,8 +20,8 @@ dependencies.
 node engine/serve.mjs                       # serve the page on http://127.0.0.1:8080
 node --test engine/test/*.test.mjs          # run the tests (see Testing); also `npm test`
 node engine/browser.mjs [--check]           # regenerate diagram.html (check for drift)
-node engine/build.mjs examples/demo [--check]   # Mermaid build of the demo folder
-node engine/new.mjs <dir>                   # scaffold a Mermaid-format diagram folder
+node engine/build.mjs examples/demo [--check]   # build layout.html and the Excalidraw scene of a TOML folder
+node engine/new.mjs <dir>                   # scaffold an empty TOML diagram folder
 node tools/check-no-infra-data.mjs --all    # scan tracked files for real infrastructure data
 ```
 

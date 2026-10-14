@@ -92,7 +92,7 @@ const renderEdge = (cx, e, ei) => {
   idx.edges[k] = ie;
 };
 
-// routes: geometry.mjs route() result; groups: diagram.json connection groups.
+// routes: geometry.mjs route() result; groups: topology connection groups.
 export function renderSvg({ model, layout, ent, nets, ipNet, routes, groups, meta }) {
   const { clusters, nodes, edges } = model;
   const gOf = groupOf(groups);

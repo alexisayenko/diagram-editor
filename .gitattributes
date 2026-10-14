@@ -8,5 +8,4 @@
 # Generated outputs: hide from diffs and language stats.
 /diagram.html -diff linguist-generated=true
 /examples/demo/layout.html -diff linguist-generated=true
-/examples/demo/index.html -diff linguist-generated=true
 /examples/demo/demo.excalidraw -diff linguist-generated=true

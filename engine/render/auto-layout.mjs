@@ -1,5 +1,5 @@
-// Auto-layout: geometry for servers, regions and connections missing from layout.json; existing entries always win.
-// Fresh regions are packed in rows (diagram.mmd order), their servers in a grid; standalone servers go in a final row.
+// Auto-layout: geometry for servers, regions and connections missing from the saved layout; existing entries always win.
+// Fresh regions are packed in rows (topology order), their servers in a grid; standalone servers go in a final row.
 // Missing servers of a placed region go below or right of its servers, whichever clashes less; new regions and
 // standalone servers go below the existing content. Deterministic: same layout + meta, same result.
 // Self-contained on purpose: assets.mjs inlines this function's source as the "canvas/auto-layout" runtime module,

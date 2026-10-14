@@ -104,13 +104,12 @@ test("exports carry the strokes: SVG/PNG clone the live SVG, build writes them i
   assert.doesNotMatch(exp, /#dw|remove\(\);\s*\}\);\s*\[\]\.forEach\.call\(c\.querySelectorAll\("\.dwp"\)/);
   const dir = join(mkdtempSync(join(tmpdir(), "draw-")), "draw-test");
   cpSync(new URL("../../examples/demo", import.meta.url), dir, { recursive: true });
-  const layout = JSON.parse(readFileSync(join(dir, "layout.json"), "utf8"));
-  layout.drawings = [stroke("d1", [[100, 100], [140, 120.5], [180, 100]], 4)];
-  writeFileSync(join(dir, "layout.json"), JSON.stringify(layout));
+  const layout = { version: 1, drawings: [stroke("d1", [[100, 100], [140, 120.5], [180, 100]], 4)] };
+  writeFileSync(join(dir, "diagram.layout.json"), JSON.stringify(layout));
   execFileSync(process.execPath, [fileURLToPath(new URL("../build.mjs", import.meta.url)), dir], { stdio: "pipe" });
   const html = readFileSync(join(dir, "layout.html"), "utf8");
   assert.match(html, /<path class="dwp" data-id="d1" d="M100 100L120 110\.3Q140 120\.5/);
-  const free = JSON.parse(readFileSync(join(dir, "draw-test.excalidraw"), "utf8")).elements.filter((e) => e.type === "freedraw");
+  const free = JSON.parse(readFileSync(join(dir, "demo.excalidraw"), "utf8")).elements.filter((e) => e.type === "freedraw");
   assert.equal(free.length, 1);
   assert.deepEqual([free[0].x, free[0].y, free[0].strokeColor, free[0].strokeWidth], [100, 100, "#3b82f6", 4]);
   assert.deepEqual(free[0].points, [[0, 0], [40, 20.5], [80, 0]]);
