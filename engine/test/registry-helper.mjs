@@ -10,7 +10,7 @@ export function loadCore({ errors = [] } = {}) {
   const svg = { children: [{}], querySelectorAll: () => [] };
   const doc = { getElementById: () => ({ textContent: '{"id":"t"}' }), querySelector: () => svg };
   const InfraDiagram = { define: (n, d, f) => { core = f(metrics); } };
-  runInNewContext(SRC, { document: doc, InfraDiagram, localStorage: {}, console: { error: (...a) => errors.push(a) } }, { filename: FILE });
+  runInNewContext(SRC, { document: doc, InfraDiagram, localStorage: {}, console: { error: (...a) => errors.push(a) } }, { filename: FILE }); // NOSONAR: test harness evaluates this repository's own source
   return { core, InfraDiagram };
 }
 
