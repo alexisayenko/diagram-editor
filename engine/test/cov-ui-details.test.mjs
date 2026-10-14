@@ -166,14 +166,17 @@ test("OS row: display name equal to version gets no tooltip; missing OS says TBD
   assert.equal(t.$("pn").querySelector(".po td:last-child").textContent, "TBD");
 });
 
-test("OS row: an existing OS table row is reused instead of adding a second one", () => {
+test("OS row: goes first into the generated Key / Value table instead of a second table", () => {
   const f = fixture();
-  f.D.sections["Service A"] = "| H | H |\n|---|---|\n| OS | Old |";
+  f.D.sections["Service A"] = "| Key | Value |" + String.fromCharCode(10) + "|---|---|" + String.fromCharCode(10) + "| Role | R |";
   const t = loadUi(["ui/details"], f);
   t.modules["ui/details"].renderPanel("n:a");
   assert.ok(t.$("pn").querySelector(".po") === null);
-  const td = t.$("pn").querySelectorAll("td").find((c) => c.textContent.startsWith("Ubuntu"));
-  assert.ok(td);
+  const rows = t.$("pn").querySelectorAll("tbody tr");
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].querySelector("td").textContent, "OS");
+  const td = rows[0].querySelector("td:last-child");
+  assert.ok(td.textContent.startsWith("Ubuntu"));
   assert.equal(td.title, "Ubuntu 24.04");
 });
 

@@ -65,7 +65,7 @@ const normalised = (v, norm) => { const t = text(v); return t === null ? null : 
 
 // The structured facts of one server, built once from a validated servers/<id>.toml table:
 // os (null for none or "TBD"), role, hardware parts normalised for display, the list fields, the free notes text,
-// unitGroups (systemd units split by [[service_groups]]), rows (the Key / Value rows of the details table, stored text).
+// unitGroups (systemd units split by [[service_groups]]), rows (the Key / Value rows of the details table, stored text, without the OS: the page renders that from `os`).
 // Cards and the details markdown are rendered from this; nothing parses them back.
 export function serverFields(s, { ips, dns, services, jobs, rmi, units }, groups) {
   const os = text(s.os)?.replaceAll("|", "/") ?? null;
@@ -80,7 +80,7 @@ export function serverFields(s, { ips, dns, services, jobs, rmi, units }, groups
     ips, dns, services, jobs, rmi, systemd: units,
     unitGroups: groupUnits(units, groups),
     notes: s.details || "",
-    rows: SERVER_ROW_FIELDS.filter((f) => s[f.key]).map((f) => [f.label, s[f.key]]),
+    rows: SERVER_ROW_FIELDS.filter((f) => f.key !== "os" && s[f.key]).map((f) => [f.label, s[f.key]]),
   };
 }
 

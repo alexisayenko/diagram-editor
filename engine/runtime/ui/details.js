@@ -51,15 +51,16 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons"], function (core, os
   }
 
   function osRow(pn, os) {
-    var cell = null;
-    pn.querySelectorAll("td:first-child").forEach(function (td) {
-      if (!cell && td.textContent.trim() === "OS" && td.nextElementSibling) cell = td.nextElementSibling;
-    });
-    if (!cell) {
-      pn.querySelector(".tg").insertAdjacentHTML("afterend", '<table class="po"><tbody><tr><td>OS</td><td>' + esc(os ? (os.d || os.v) : "TBD") + "</td></tr></tbody></table>");
+    var first = pn.querySelector("table"), head = first && first.querySelector("th"), body = head && head.textContent.trim() === "Key" ? first.querySelector("tbody") : null, cell;
+    if (body) {
+      body.insertAdjacentHTML("afterbegin", "<tr><td>OS</td><td></td></tr>");
+      cell = body.querySelector("tr td:last-child");
+    } else {
+      pn.querySelector(".tg").insertAdjacentHTML("afterend", '<table class="po"><tbody><tr><td>OS</td><td></td></tr></tbody></table>');
       cell = pn.querySelector(".po td:last-child");
     }
-    if (os?.d && os.d !== os.v) { cell.textContent = os.d; cell.title = os.v; }
+    cell.textContent = os ? (os.d || os.v) : "TBD";
+    if (os?.d && os.d !== os.v) cell.title = os.v;
     cell.insertAdjacentHTML("afterbegin", osIcons.iconSvg(os ? os.f : "unknown", 14));
     if (os?.eol) cell.insertAdjacentHTML("beforeend", ' <span class="eolb" title="End of standard support: ' + esc(os.eol) + '">EOL</span>');
   }

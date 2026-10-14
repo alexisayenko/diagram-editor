@@ -22,7 +22,7 @@ const isTomlPath = (p) => /\.toml$/i.test(p);
 const api = createApi((path, options) => fetch(path, options));
 const sessions = createSessionHolder();
 const confirmer = createConfirmer((text) => window.confirm(text));
-const dialogs = createDialogs(document);
+const dialogs = createDialogs();
 const render = (files, folder, layout, refit) => renderDiagram(files, folder, layout, ASSETS, refit);
 const noteParser = (text) => { const n = parseNoteText(text, "Note", true); return { title: n.title, date: n.date, paras: n.paras }; };
 const host = { noteParser, get serverEditor() { return edits.serverEditor; } };

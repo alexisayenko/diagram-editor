@@ -148,21 +148,21 @@ test("saving an imported diagram under a new name needs no confirmation and crea
 test("the Host script dialog shows the probe script, copies it, and closes three ways", async () => {
   const h = await boot();
   await h.click("hostscript");
-  assert.equal(h.$("hs").hidden, false);
+  assert.equal(h.$("hs").open, true);
   assert.equal(h.$("hstext").textContent, "#!/bin/sh\necho probe\n");
   assert.equal(h.$("hsd").open, false);
   assert.equal(h.cps[0].focused, 1);
   await h.click("hsclose");
-  assert.equal(h.$("hs").hidden, true);
+  assert.equal(h.$("hs").open, false);
   assert.equal(h.$("hostscript").focused, 1);
   await h.click("hostscript");
   h.$("hs").fire("mousedown", { target: {} });
-  assert.equal(h.$("hs").hidden, false);
+  assert.equal(h.$("hs").open, true);
   h.$("hs").fire("mousedown", { target: h.$("hs") });
-  assert.equal(h.$("hs").hidden, true);
+  assert.equal(h.$("hs").open, false);
   await h.click("hostscript");
-  h.docListeners.keydown.forEach((f) => f({ key: "Escape", preventDefault() {} }));
-  assert.equal(h.$("hs").hidden, true);
+  h.$("hs").pressEscape();
+  assert.equal(h.$("hs").open, false);
 });
 
 test("Copy uses the clipboard, shows Copied and restores the label after a moment", async () => {
@@ -220,7 +220,7 @@ test("Import servers opens the chooser only when a diagram is ready", async () =
 test("the import dialog lists server types and regions, plans each file and shows how many will be added", async () => {
   const h = await boot({ files: demoFiles("demo") });
   await openImport(h, [file("alpha.toml", serverToml("alpha")), file("beta.toml", serverToml("beta"))]);
-  assert.equal(h.$("imp").hidden, false);
+  assert.equal(h.$("imp").open, true);
   assert.ok(h.$("imptype").options.length > 3);
   assert.ok(h.$("imptype").options.some((o) => o.value === "oracle" && o.text === "Oracle Database Server (oracle)"));
   assert.equal(h.$("imptype").value, "web");
@@ -250,7 +250,7 @@ test("unticking a file removes it from the plan; with none left nothing can be c
   assert.equal(h.$("impinfo").textContent, "Nothing selected");
   assert.equal(h.$("impok").disabled, true);
   await h.click("impok");
-  assert.equal(h.$("imp").hidden, false);
+  assert.equal(h.$("imp").open, true);
   assert.equal(h.ctl.loads, 1);
 });
 
@@ -296,7 +296,7 @@ test("confirming an import adds the servers on a free grid, reloads the diagram 
   const h = await boot({ files: demoFiles("demo") });
   await openImport(h, [file("alpha.toml", serverToml("alpha")), file("beta.toml", serverToml("beta")), file("broken.toml", "id = \n")]);
   await h.click("impok");
-  assert.equal(h.$("imp").hidden, true);
+  assert.equal(h.$("imp").open, false);
   assert.equal(h.status(), "2 imported, 0 renamed, 1 skipped (parse errors)");
   assert.ok(h.D.layout.nodes.alpha && h.D.layout.nodes.beta);
   assert.notDeepEqual([h.D.layout.nodes.alpha.x, h.D.layout.nodes.alpha.y], [h.D.layout.nodes.beta.x, h.D.layout.nodes.beta.y]);
@@ -330,14 +330,14 @@ test("an import waits for an unfinished server or note edit and shows why", asyn
   h.ctl.notesOpen = "title is empty";
   await h.click("impok");
   assert.equal(h.$("impinfo").textContent, "Fix the open edit first: title is empty");
-  assert.equal(h.$("imp").hidden, false);
+  assert.equal(h.$("imp").open, true);
   h.ctl.notesOpen = null;
   h.ctl.serverOpen = "bad ip";
   await h.click("impok");
   assert.equal(h.$("impinfo").textContent, "Fix the open edit first: bad ip");
   h.ctl.serverOpen = null;
   await h.click("impok");
-  assert.equal(h.$("imp").hidden, true);
+  assert.equal(h.$("imp").open, false);
 });
 
 test("a failure while applying an import keeps the dialog open with the message", async () => {
@@ -345,7 +345,7 @@ test("a failure while applying an import keeps the dialog open with the message"
   await openImport(h, [file("alpha.toml", serverToml("alpha"))]);
   h.failRender();
   await h.click("impok");
-  assert.equal(h.$("imp").hidden, false);
+  assert.equal(h.$("imp").open, true);
   assert.ok(h.$("impinfo").textContent.length > 0);
 });
 
@@ -353,18 +353,18 @@ test("the import dialog closes with Cancel, Escape or a backdrop click and re-en
   const h = await boot({ files: demoFiles("demo") });
   await openImport(h, [file("alpha.toml", serverToml("alpha"))]);
   await h.click("impcancel");
-  assert.equal(h.$("imp").hidden, true);
+  assert.equal(h.$("imp").open, false);
   assert.ok(h.$("import").focused >= 1);
   await h.tick();
   assert.equal(h.$("import").disabled, false);
   await openImport(h, [file("alpha.toml", serverToml("alpha"))]);
-  h.docListeners.keydown.forEach((f) => f({ key: "Escape", preventDefault() {} }));
-  assert.equal(h.$("imp").hidden, true);
+  h.$("imp").pressEscape();
+  assert.equal(h.$("imp").open, false);
   await openImport(h, [file("alpha.toml", serverToml("alpha"))]);
   h.$("imp").fire("mousedown", { target: {} });
-  assert.equal(h.$("imp").hidden, false);
+  assert.equal(h.$("imp").open, true);
   h.$("imp").fire("mousedown", { target: h.$("imp") });
-  assert.equal(h.$("imp").hidden, true);
+  assert.equal(h.$("imp").open, false);
 });
 
 test("an unreadable chosen file reports Import failed; choosing no files, or choosing before ready, does nothing", async () => {
@@ -376,12 +376,12 @@ test("an unreadable chosen file reports Import failed; choosing no files, or cho
   h.$("impfiles").files = [];
   h.$("impfiles").fire("change");
   await flush();
-  assert.equal(h.$("imp").hidden, true);
+  assert.equal(h.$("imp").open, false);
   const idle = await boot();
   idle.$("impfiles").files = [file("a.toml", "id = \"a\"\n")];
   idle.$("impfiles").fire("change");
   await flush();
-  assert.equal(idle.$("imp").hidden, true);
+  assert.equal(idle.$("imp").open, false);
 });
 
 test("the server editor bridge reads a server with its type choices, and refuses unknown ones", async () => {

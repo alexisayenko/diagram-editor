@@ -49,7 +49,7 @@ test("the discard prompt and the beforeunload guard both use the combined dirty 
   h.$("nwname").fire("input");
   await h.click("nwok");
   assert.deepEqual(h.confirms, ["Discard unsaved changes?"]);
-  assert.equal(h.$("nw").hidden, false);
+  assert.equal(h.$("nw").open, true);
 });
 
 test("drawing changes enable Save and the discard guards", async () => {
@@ -70,22 +70,22 @@ test("Host script panel embeds tools/host-probe.sh byte-for-byte", () => {
   assert.equal(runInNewContext(m[1]), probe);
   assert.ok(!m[1].includes("<"));
   assert.match(html, /id="hostscript"/);
-  assert.match(html, /id="hs" class="dlg" hidden/);
+  assert.match(html, /<dialog id="hs" class="dlg" aria-labelledby="hst">/);
   assert.match(readFileSync(new URL("../browser/dialog-flows.mjs", import.meta.url), "utf8"), /execCommand\("copy"\)/);
 });
 
 test("Host script panel closes on Escape, Close and an outside click", async () => {
   const h = await boot();
-  const escape = () => h.docListeners.keydown.forEach((f) => f({ key: "Escape", preventDefault() {} }));
+  const escape = () => h.$("hs").pressEscape();
   await h.click("hostscript");
   escape();
-  assert.equal(h.$("hs").hidden, true);
+  assert.equal(h.$("hs").open, false);
   await h.click("hostscript");
   h.$("hs").fire("mousedown", { target: h.$("hs") });
-  assert.equal(h.$("hs").hidden, true);
+  assert.equal(h.$("hs").open, false);
   await h.click("hostscript");
   await h.click("hsclose");
-  assert.equal(h.$("hs").hidden, true);
+  assert.equal(h.$("hs").open, false);
 });
 
 test("Import servers is enabled with an open diagram and adds files as unsaved work", async () => {

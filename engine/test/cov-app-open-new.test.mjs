@@ -109,7 +109,7 @@ test("a diagram folder that vanishes between listing and loading reports it", as
 test("the Open dialog lists saved diagrams newest first with server counts, and picking one loads it", async () => {
   const h = await boot({ files: { ...demoFiles("older"), ...demoFiles("newer") }, mtimes: { older: NOW - 60000, newer: NOW } });
   await h.click("open");
-  assert.equal(h.$("op").hidden, false);
+  assert.equal(h.$("op").open, true);
   const rows = h.$("oplist").children;
   assert.equal(rows.length, 2);
   const [first] = rows[0].children[0].children;
@@ -121,7 +121,7 @@ test("the Open dialog lists saved diagrams newest first with server counts, and 
   assert.equal(rows[0].children[0].focused, 1);
   rows[1].children[0].fire("click");
   await flush();
-  assert.equal(h.$("op").hidden, true);
+  assert.equal(h.$("op").open, false);
   assert.match(h.status(), /^older · /);
   assert.equal(h.frame.inert, false);
 });
@@ -171,23 +171,19 @@ test("the singular form is used for a diagram with one server", async () => {
 
 test("the Open dialog closes with its button, Escape or a click on the backdrop, and focus returns to the button", async () => {
   const h = await boot({ files: demoFiles("demo") });
-  const escape = () => h.doc.listeners ? h.docListeners.keydown.forEach((f) => f({ key: "Escape", preventDefault() { h.prevented = true; } })) : null;
   await h.click("open");
   await h.click("opclose");
-  assert.equal(h.$("op").hidden, true);
+  assert.equal(h.$("op").open, false);
   assert.ok(h.$("open").focused >= 1);
   await h.click("open");
-  h.prevented = false;
-  escape();
-  assert.equal(h.$("op").hidden, true);
-  assert.equal(h.prevented, true);
+  h.$("op").pressEscape();
+  assert.equal(h.$("op").open, false);
+  assert.ok(h.$("open").focused >= 2);
   await h.click("open");
   h.$("op").fire("mousedown", { target: {} });
-  assert.equal(h.$("op").hidden, false);
+  assert.equal(h.$("op").open, true);
   h.$("op").fire("mousedown", { target: h.$("op") });
-  assert.equal(h.$("op").hidden, true);
-  h.docListeners.keydown.forEach((f) => f({ key: "Escape", preventDefault() {} }));
-  h.docListeners.keydown.forEach((f) => f({ key: "a", preventDefault() {} }));
+  assert.equal(h.$("op").open, false);
 });
 
 test("picking a diagram while there are unsaved changes asks first; declining keeps the open one", async () => {
@@ -200,7 +196,7 @@ test("picking a diagram while there are unsaved changes asks first; declining ke
   await flush();
   assert.deepEqual(h.confirms, ["Discard unsaved changes?"]);
   assert.equal(h.ctl.loads, load);
-  assert.equal(h.$("op").hidden, false);
+  assert.equal(h.$("op").open, true);
   h.confirmAnswer = true;
   h.$("oplist").children[1].children[0].fire("click");
   await flush();
@@ -221,7 +217,7 @@ test("a diagram that fails to load from the Open dialog shows the error and re-e
 test("New diagram: the dialog suggests a name, lists taken names and validates as you type", async () => {
   const h = await boot({ files: demoFiles("taken-one") });
   await h.click("new");
-  assert.equal(h.$("nw").hidden, false);
+  assert.equal(h.$("nw").open, true);
   assert.equal(h.$("nwname").value, "new-diagram");
   assert.equal(h.$("nwname").focused, 1);
   assert.equal(h.$("nwname").selected, true);
@@ -244,7 +240,7 @@ test("New diagram without a server has no taken list, and creating one tells tha
   assert.equal(h.$("nwtaken").hidden, true);
   assert.equal(h.$("nwok").disabled, false);
   await h.click("nwok");
-  assert.equal(h.$("nw").hidden, true);
+  assert.equal(h.$("nw").open, false);
   assert.equal(h.status(), "new-diagram · New diagram, not saved yet · No local server: Export downloads it");
   assert.equal(h.$("welcome").hidden, true);
   assert.equal(h.frame.hidden, false);
@@ -261,7 +257,7 @@ test("New diagram on a server: creating via the button or Enter opens an empty, 
   await flush();
   assert.equal(enter.defaultPrevented, true);
   assert.equal(h.status(), "fresh-start · New diagram, not saved yet");
-  assert.equal(h.$("nw").hidden, true);
+  assert.equal(h.$("nw").open, false);
   assert.equal(h.D.id, "fresh-start");
   await h.tick();
   assert.equal(h.$("save").disabled, false);
@@ -274,14 +270,14 @@ test("New diagram: other keys, an invalid name and a declined discard do nothing
   h.$("nwname").value = "Bad";
   h.$("nwname").fire("input");
   h.$("nwname").fire("keydown", { key: "Enter" });
-  assert.equal(h.$("nw").hidden, false);
+  assert.equal(h.$("nw").open, true);
   h.$("nwname").value = "good";
   h.$("nwname").fire("input");
   h.ctl.editDirty = true;
   h.confirmAnswer = false;
   const loads = h.ctl.loads;
   await h.click("nwok");
-  assert.equal(h.$("nw").hidden, false);
+  assert.equal(h.$("nw").open, true);
   assert.equal(h.ctl.loads, loads);
   assert.deepEqual(h.confirms, ["Discard unsaved changes?"]);
 });
@@ -290,16 +286,16 @@ test("the New dialog closes with Cancel, Escape and a backdrop click, returning 
   const h = await boot();
   await h.click("new");
   await h.click("nwcancel");
-  assert.equal(h.$("nw").hidden, true);
+  assert.equal(h.$("nw").open, false);
   assert.ok(h.$("new").focused >= 1);
   await h.click("new");
-  h.docListeners.keydown.forEach((f) => f({ key: "Escape", preventDefault() {} }));
-  assert.equal(h.$("nw").hidden, true);
+  h.$("nw").pressEscape();
+  assert.equal(h.$("nw").open, false);
   await h.click("new");
   h.$("nw").fire("mousedown", { target: {} });
-  assert.equal(h.$("nw").hidden, false);
+  assert.equal(h.$("nw").open, true);
   h.$("nw").fire("mousedown", { target: h.$("nw") });
-  assert.equal(h.$("nw").hidden, true);
+  assert.equal(h.$("nw").open, false);
 });
 
 test("a render failure while creating a diagram shows the error instead of opening it", async () => {

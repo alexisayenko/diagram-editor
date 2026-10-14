@@ -2,11 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createApi, FETCH_TIMEOUT_MS } from "../browser/api.mjs";
 import { createSession, createSessionHolder, markNew, markImported, hasUnsaved, notesEdited, recordSaved } from "../browser/session.mjs";
-import { createDialogs, createConfirmer } from "../browser/dialogs.mjs";
+import { createConfirmer } from "../browser/dialogs.mjs";
 import { createFrameBridge } from "../browser/frame-bridge.mjs";
 import { saveMessage, partialSaveMessage, plural } from "../browser/messages.mjs";
 import { guarded, withNotes } from "../browser/edits.mjs";
-import { El } from "./cov-dom.mjs";
 
 const reply = (status, body, statusText = "") => ({ ok: status < 400, status, statusText, json: async () => { if (body instanceof Error) throw body; return body; } });
 
@@ -109,67 +108,6 @@ test("session: unsaved work is a changed file, a carried layout or edited notes"
   recordSaved(s, "topology.toml", "edited");
   assert.equal(hasUnsaved(s, null), false);
   assert.equal(s.source.get("topology.toml"), "edited");
-});
-
-function dialogSet() {
-  const doc = new El("document");
-  const manager = createDialogs(doc);
-  const make = (opts = {}) => {
-    const panel = new El("div", doc), closeButton = new El("button", doc), opener = new El("button", doc);
-    panel.hidden = true;
-    const closed = [];
-    const d = manager.dialog({ panel, closeButton, returnTo: () => opener, onClose: () => closed.push(1), ...opts });
-    return { d, panel, closeButton, opener, closed };
-  };
-  const escape = () => { const e = doc.fire("keydown", { key: "Escape" }); return e.defaultPrevented; };
-  return { doc, make, escape };
-}
-
-test("dialogs: open and hide only toggle the panel, close also runs onClose and returns the focus", () => {
-  const { make } = dialogSet();
-  const a = make();
-  assert.equal(a.d.isOpen(), false);
-  a.d.open();
-  assert.equal(a.d.isOpen(), true);
-  a.d.hide();
-  assert.deepEqual([a.panel.hidden, a.closed.length, a.opener.focused], [true, 0, 0]);
-  a.d.open();
-  a.d.close();
-  assert.deepEqual([a.panel.hidden, a.closed.length, a.opener.focused], [true, 1, 1]);
-});
-
-test("dialogs: the close button and a click on the backdrop close, a click inside does not", () => {
-  const { make } = dialogSet();
-  const a = make();
-  a.d.open();
-  a.panel.fire("mousedown", { target: new El("div") });
-  assert.equal(a.panel.hidden, false);
-  a.panel.fire("mousedown", { target: a.panel });
-  assert.equal(a.panel.hidden, true);
-  a.d.open();
-  a.closeButton.fire("click");
-  assert.deepEqual([a.panel.hidden, a.opener.focused], [true, 2]);
-});
-
-test("dialogs: Escape closes the first open dialog only, and other keys do nothing", () => {
-  const { make, escape, doc } = dialogSet();
-  const a = make(), b = make();
-  assert.equal(escape(), false);
-  a.d.open(); b.d.open();
-  doc.fire("keydown", { key: "a" });
-  assert.deepEqual([a.panel.hidden, b.panel.hidden], [false, false]);
-  assert.equal(escape(), true);
-  assert.deepEqual([a.panel.hidden, b.panel.hidden], [true, false]);
-  escape();
-  assert.equal(b.panel.hidden, true);
-});
-
-test("dialogs: a dialog without a close button or a return target still closes", () => {
-  const { make } = dialogSet();
-  const a = make({ closeButton: undefined, returnTo: () => null });
-  a.d.open();
-  a.d.close();
-  assert.equal(a.panel.hidden, true);
 });
 
 test("dialogs: the confirm prompts use one wording each", () => {

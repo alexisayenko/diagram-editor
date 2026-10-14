@@ -24,6 +24,7 @@ export class El {
     this.innerHTML = "";
     this.isContentEditable = false;
     this.focused = 0;
+    this.open = false;
     this.removed = false;
     this.classes = new Set();
     const set = this.classes;
@@ -61,6 +62,22 @@ export class El {
   contains(t) { return t === this || this.children.some((c) => c.contains?.(t)); }
   focus() { this.focused++; }
   select() { this.selected = true; }
+  showModal() {
+    if (this.tagName !== "DIALOG") throw new Error("showModal needs a dialog");
+    if (this.open) throw new Error("InvalidStateError: already open");
+    this.open = true;
+    this.modal = true;
+  }
+  close(value) {
+    if (!this.open) return;
+    this.open = false;
+    this.modal = false;
+    this.returnValue = value ?? "";
+    this.fire("close");
+  }
+  pressEscape() {
+    if (this.open && !this.fire("cancel").defaultPrevented) this.close();
+  }
   click() { this.fire("click"); }
   closest(sel) { return this.matches?.(sel) ?? null; }
   setPointerCapture(id) { this.captured.push(id); }

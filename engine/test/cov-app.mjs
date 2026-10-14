@@ -40,6 +40,8 @@ const MODS = {
 const IDS = ["new", "open", "importdiag", "diagfile", "save", "export", "import", "status", "view", "welcome", "op", "oplist", "opq", "opnote", "opclose", "nw", "nwname", "nwmsg", "nwlist", "nwok", "nwtaken", "nwcancel",
   "imp", "impfiles", "implist", "imptype", "impregion", "impinfo", "impok", "impcancel", "hs", "hstext", "hsnote", "hostscript", "hsd", "hsclose"];
 
+const DIALOG_IDS = new Set(["op", "nw", "imp", "hs"]);
+
 export const demoFiles = (folder = "demo") => Object.fromEntries([...demo()].map(([p, t]) => [folder + "/" + p, t]));
 export const file = (name, text, size) => ({ name, size: size ?? text.length, text, arrayBuffer: async () => new TextEncoder().encode(text).buffer });
 export const binFile = (name, bytes) => ({ name, size: bytes.length, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) });
@@ -56,7 +58,7 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
   const doc = new El("document");
   doc.body = new El("body", doc);
   const els = {};
-  for (const id of IDS) els[id] = Object.assign(new El(id === "view" ? "iframe" : "div", doc), { id });
+  for (const id of IDS) els[id] = Object.assign(new El(id === "view" ? "iframe" : DIALOG_IDS.has(id) ? "dialog" : "div", doc), { id });
   els.hs.querySelectorAll = (q) => (q === ".cp" ? h.cps : []);
   h.cps = [Object.assign(new El("button", doc), { id: "cp1" }), Object.assign(new El("button", doc), { id: "cp2" })];
   h.cps[0].dataset.copy = "#hstext"; h.cps[1].dataset.copy = "#hsnote"; h.cps.forEach((b) => { b.textContent = "Copy"; });
@@ -64,7 +66,7 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
   els.implist.querySelectorAll = (q) => (q === "input:not(:checked)" ? els.implist.descendants().filter((e) => e.tagName === "INPUT" && !e.checked) : []);
   els.oplist.querySelector = (q) => (q === "button" ? els.oplist.descendants().find((e) => e.tagName === "BUTTON") ?? null : null);
   els.opq.hidden = true;
-  els.nw.hidden = true; els.op.hidden = true; els.imp.hidden = true; els.hs.hidden = true; els.view.hidden = true;
+  els.view.hidden = true;
   doc.querySelector = (sel) => {
     if (sel === "#hs .cp") return h.cps[0];
     return sel.startsWith("#") ? (els[sel.slice(1)] ?? null) : null;

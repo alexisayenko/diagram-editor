@@ -39,10 +39,10 @@ test("the node carries the structured fields next to the card strings", () => {
   assert.deepEqual(n.fields.jobs, ["cron: x", "j"]);
 });
 
-test("serverSection renders the details markdown from the fields only", () => {
+test("serverSection renders the details markdown from the fields only, without the OS row", () => {
   const f = serverFields({ os: "Debian 12", role: "A|B", details: "Notes" }, { ips: ["192.0.2.1/24"], dns: ["h.example.test"], services: [], jobs: [], rmi: ["R"], units: ["a.service"] }, []);
   const md = serverSection(f);
-  assert.equal(md, "| Key | Value |\n|---|---|\n| OS | Debian 12 |\n| Role | A/B |\n\n## IPs\n\n- 192.0.2.1/24\n\n## DNS\n\n- h.example.test\n\n## RMI services\n\n- R\n\n## systemd services\n\n- a.service\n\nNotes");
+  assert.equal(md, "| Key | Value |\n|---|---|\n| Role | A/B |\n\n## IPs\n\n- 192.0.2.1/24\n\n## DNS\n\n- h.example.test\n\n## RMI services\n\n- R\n\n## systemd services\n\n- a.service\n\nNotes");
   const nets = { of: (ip) => (ip === "192.0.2.1/24" ? { name: "Net 1", cidr: "192.0.2.0/24" } : null) };
   assert.match(serverSection(f, nets), /- 192\.0\.2\.1\/24 — Net 1/);
   assert.match(serverSection({ ...f, ips: ["198.51.100.1/24"] }, { of: () => null }), /- 198\.51\.100\.1\/24 — unassigned network/);

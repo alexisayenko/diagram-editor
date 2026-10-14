@@ -1,28 +1,24 @@
-// One builder for the page's dialogs (Open saved, New diagram, Import servers, Host script): the markup stays in the page shell, this adds hide / close / Escape / outside-click / focus return.
-export function createDialogs(doc) {
-  const all = [];
-  doc.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    const open = all.find((d) => d.isOpen());
-    if (!open) return;
-    e.preventDefault();
-    open.close();
-  });
+// One builder for the page's dialogs (Open saved, New diagram, Import servers, Host script): the markup stays in the page shell as native <dialog> elements; showModal gives the backdrop, the focus trap and Escape, this adds outside click, the close hooks and focus return.
+export function createDialogs() {
   /**
-   * @param {{panel: HTMLElement, closeButton?: HTMLElement, returnTo: () => ?HTMLElement, onClose?: () => void}} options
-   * close() hides, runs onClose and focuses returnTo(); hide() / open() only toggle the panel. Escape closes the first open dialog in creation order.
+   * @param {{panel: HTMLDialogElement, closeButton?: HTMLElement, returnTo: () => ?HTMLElement, onClose?: () => void}} options
+   * open() shows modally; close() and hide() both close it, and the native close event (also fired by Escape) runs onClose and focuses returnTo().
    */
   function dialog({ panel, closeButton, returnTo, onClose }) {
     const d = {
       panel,
-      isOpen: () => !panel.hidden,
-      open() { panel.hidden = false; },
-      hide() { panel.hidden = true; },
-      close() { panel.hidden = true; onClose?.(); returnTo()?.focus(); },
+      isOpen: () => panel.open,
+      open() { if (!panel.open) panel.showModal(); },
+      hide() { if (panel.open) panel.close(); },
+      close() { d.hide(); },
     };
+    panel.addEventListener("close", () => {
+      if (panel.open) return;
+      onClose?.();
+      returnTo()?.focus();
+    });
     closeButton?.addEventListener("click", d.close);
     panel.addEventListener("mousedown", (e) => { if (e.target === panel) d.close(); });
-    all.push(d);
     return d;
   }
   return { dialog };

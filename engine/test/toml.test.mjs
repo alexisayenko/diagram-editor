@@ -96,19 +96,16 @@ test("browser app script and built diagram.html scripts are syntactically valid"
   for (const s of scripts) assert.doesNotThrow(() => new Function(s));
   assert.doesNotThrow(() => new Function(readFileSync(new URL("../browser/app.js", import.meta.url), "utf8")));
 });
-test("TOML server OS appears as exactly one row in the details panel", () => {
+test("TOML server OS is not in the generated details markdown; the panel renders it from the structured os", () => {
   const src = readFileSync(new URL("../runtime/ui/details.js", import.meta.url), "utf8");
   let mod;
   runInNewContext(src, { InfraDiagram: { define: (n, d, f) => { mod = f({ D: {}, esc: (x) => String(x), $: () => null }); } } });
   const server = (id, body) => ["servers/" + id + ".toml", `id="${id}"\nserver_type="web"\nname="${id}.test"\n${body}`];
   const { sections } = tomlModel(new Map([["topology.toml", 'title="t"'], server("a", 'os="Ubuntu 24.04"\ndetails="Note."\n'), server("b", 'os="Debian 12"\n'), server("c", 'details="Only note."\n')]), "t");
-  const count = (html) => (html.match(/<t[dh]>OS<\/t[dh]>/g) || []).length;
-  assert.equal(count(mod.md(sections["a.test"])), 1);
-  assert.match(mod.md(sections["a.test"]), /<td>OS<\/td><td>Ubuntu 24\.04<\/td>/);
+  for (const id of ["a", "b", "c"]) assert.ok(!/<t[dh]>OS<\/t[dh]>/.test(mod.md(sections[id + ".test"])));
   assert.match(mod.md(sections["a.test"]), /<p>Note\.<\/p>/);
-  assert.equal(count(mod.md(sections["b.test"])), 1);
-  assert.equal(count(mod.md(sections["c.test"])), 0);
 });
+
 test("TOML notes: string, array, invalid types and rendered cards", () => {
   const notes = (text) => mini('title="t"\n', { "notes.toml": text });
   const one = tomlModel(notes('notes = "First note\\nBody text."'), "t").notes;

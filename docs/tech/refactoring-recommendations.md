@@ -197,10 +197,10 @@ Status: **done** (2026-10-14), all in 524d13f
 | AR-08 | Layered folders (`source`, `edit`, `model`, `layout`, `render`, `page`, `app`, `server`) enforced by an import-direction test | `parse/validate.mjs` imports the render kit | M / low | new `layering.test.mjs` | AR-02 | Done: `layering.test.mjs` with an import-direction table; `parse/validate.mjs` moved to `render/`, `lib/errors.mjs` is the leaf. One allow-listed pair: `render/pipeline.mjs` imports `page/data.mjs` and `page/layout-html.mjs`. The folders `source`, `edit`, `layout`, `app`, `server` are not split out. |
 | CD-01, AR-07, DK-08, DM-15 | Split `app.js`: `api`, `session`, `dialogs`, `frame-bridge`, wiring; host interface instead of module lookups; event instead of the 250 ms poll | God-script, invisible state shape | L / medium | `cov-app-*` (5 files) | AR-04 | Done in 2789813: `app.js` is wiring (167 lines, was 522); `api`, `session`, `frame-bridge`, `dialogs`, `dialog-flows`, `edits`, `save`, `messages` in `engine/browser/`. The runtime gets an explicit host object from the bridge; the toolbar state follows frame activity events instead of a poll. `engine/test/browser-modules.test.mjs` covers the new modules. |
 | CD-03 | `core.host` and `core.on/emit` instead of 11 overwritable hooks and the `window.InfraDiagram.*` globals | Second writer silently overwrites the first | M / medium | `cov-ui-*`, `context-menu.test` | none | Done: `ui/core.js` declares ten services (`provide`, one provider each, a second writer throws), the events (`on` / `emit`, error-isolated) and the host (`attachHost`, once); the `window.InfraDiagram.serverEditor` / `noteParser` globals are gone. Tests: `cov-ui-host-events.test.mjs`. |
-| DM-03, DM-04 | Structural server model; card and details markdown become render functions; one documented IR vocabulary | OS is parsed back out of generated markdown | M / medium | card, details, exports tests | AR-01 | Partly done: `node.fields` (os, hardware parts, lists, notes) and `serverSection` renders the details markdown from it; the IR table is in [architecture.md](architecture.md#ir-vocabulary). Open: the runtime still reads the OS cell out of the markdown (`details.js`); the card strings (`body`, `hw`) are still built in the parser; the Mermaid-shaped names (`nodes`, `body`, `cluster`) are documented, not renamed. |
+| DM-03, DM-04 | Structural server model; card and details markdown become render functions; one documented IR vocabulary | OS is parsed back out of generated markdown | M / medium | card, details, exports tests | AR-01 | Done for the runtime: `node.fields` (os, hardware parts, lists, notes) and `serverSection` renders the details markdown from it, without the OS row (the details panel renders that from the structured `e.os`); the IR table is in [architecture.md](architecture.md#ir-vocabulary). Open: the card strings (`body`, `hw`) are still built in the parser; the Mermaid-shaped names (`nodes`, `body`, `cluster`) are documented, not renamed. |
 | CD-04, CD-06, DK-10 | `kit.boxFor`, one `METRICS`, `keys.mjs` (`nodeKey`, `parseKey`), readable meta field names, in one regeneration window | Metrics in 3 places; `"n:"` built 30 times, parsed 26 | M-L / medium | `region*.test`, `--check` diffs | none | |
 | AR-06, AR-13 | Measure first (300 servers, 600 connections), then page shell plus scene swap, then incremental routing | Every edit reloads about 300 KB and loses zoom and selection | M-L / medium | new perf test | D6 | |
-| BP-14 | Native `<dialog>`, keyboard on server and region nodes, arrow-key nudge | No focus trap; selection looks mouse-only (reported) | M / medium | fake DOM gains `dialog` | CD-01 | Runtime side done: servers and regions are Tab stops (`role=button`, `aria-label`, `aria-pressed`), Enter / Space select, arrow keys nudge in edit mode (Shift x10), focus ring in all skins, ARIA on the toolbar, layout group, status and pen options; tests `cov-ui-a11y`, `cov-canvas-edit-mode`. The fake DOM gained `dialog`, focus events and `:focus-visible`. Still open: the page dialogs in `browser/dialogs.mjs` and the shell markup move to `<dialog>` / `showModal()`. |
+| BP-14 | Native `<dialog>`, keyboard on server and region nodes, arrow-key nudge | No focus trap; selection looks mouse-only (reported) | M / medium | fake DOM gains `dialog` | CD-01 | Runtime side done: servers and regions are Tab stops (`role=button`, `aria-label`, `aria-pressed`), Enter / Space select, arrow keys nudge in edit mode (Shift x10), focus ring in all skins, ARIA on the toolbar, layout group, status and pen options; tests `cov-ui-a11y`, `cov-canvas-edit-mode`. The fake DOM gained `dialog`, focus events and `:focus-visible`. Done: the page dialogs in `browser/dialogs.mjs` and the shell markup are native `<dialog>` elements opened with `showModal()` (focus trap, Escape and focus return native; test `dialogs.test.mjs`). |
 
 ### Wave 3: nice to have (opportunistic)
 
@@ -319,7 +319,7 @@ decision).
 | BP-11 | Fetch has no timeout | 0 | done |
 | BP-12 | Case-insensitive and Windows reserved names | 0 | done |
 | BP-13 | No performance budget test | 3 | open |
-| BP-14 | Keyboard and focus gaps | 2 | partly done (page dialogs open) |
+| BP-14 | Keyboard and focus gaps | 2 | done |
 | BP-15 | Colour contrast and reduced motion | 1 | partial: 3 pairs below 4.5:1 |
 | BP-16 | Tooltip-only information | 3 | open |
 | BP-17 | Browser compatibility undocumented | 0 | done |
@@ -359,7 +359,7 @@ decision).
 | DK-17 | 41 needless `export`s | 0 | done |
 | DM-01 | No format version for folder or archive | 1 | done |
 | DM-02 | Layout version policy loses data | 1 | done |
-| DM-03 | Parse layer builds and re-parses presentation | 2 | partial: `node.fields` and `serverSection`; the runtime still re-parses the OS cell |
+| DM-03 | Parse layer builds and re-parses presentation | 2 | done for the runtime: `node.fields`, `serverSection`, OS row from `e.os` |
 | DM-04 | Mermaid-shaped model, split vocabulary | 2 | partial: IR vocabulary documented |
 | DM-05 | Layout persists derived data | 3 | open |
 | DM-06 | `diagramId` check breaks rename and copy | 0 | done |

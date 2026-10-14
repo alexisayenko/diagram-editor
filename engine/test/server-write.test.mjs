@@ -137,7 +137,8 @@ test("new server keys: types validated, details panel sections built", () => {
   assert.throws(() => tomlModel(one('hardware = ""\n'), "t"), /hardware must be a non-empty string/);
   assert.throws(() => tomlModel(one('dns = ["bad name"]\n'), "t"), /invalid host name/);
   const { sections } = tomlModel(one('os = "Debian 12"\nhardware = "H"\nrole = "R"\nips = ["192.0.2.1/24"]\ndns = ["a.example.test"]\njobs = ["J1"]\nrmi_services = ["S1"]\nsystemd_services = ["u1"]\ndetails = "Free text."\n'), "t");
-  for (const part of ["| OS | Debian 12 |", "| Hardware | H |", "| Role | R |", "## IPs\n\n- 192.0.2.1/24", "## DNS\n\n- a.example.test", "## RMI services\n\n- S1", "## systemd services\n\n- u1", "Free text."]) assert.ok(sections.a.includes(part), part);
+  for (const part of ["| Hardware | H |", "| Role | R |", "## IPs\n\n- 192.0.2.1/24", "## DNS\n\n- a.example.test", "## RMI services\n\n- S1", "## systemd services\n\n- u1", "Free text."]) assert.ok(sections.a.includes(part), part);
+  assert.ok(!sections.a.includes("| OS |"));
 });
 
 function fakeDom() {
