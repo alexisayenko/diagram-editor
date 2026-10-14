@@ -62,3 +62,12 @@ curl -s "https://sonarcloud.io/api/project_analyses/search?project=alexisayenko_
 ```
 
 The last call shows the analysed commit (`revision`).
+
+## Amendment 2026-10-14
+
+Public measures at the analysed revision 2789813 (the current commit):
+3 bugs, 3 vulnerabilities, 158 code smells, 0.0% duplication; the quality
+gate is not passed. The new bugs and vulnerabilities (the status above
+had 0 and 2) have not been triaged. Refactoring follows
+[the recommendations](../refactoring-recommendations.md); a local scan
+with coverage stays deferred ([ci-cd.md](../ci-cd.md#deferred-local-sonarcloud-scan)).

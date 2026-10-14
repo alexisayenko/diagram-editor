@@ -49,3 +49,28 @@ again in 57d6ecb: **Open saved diagram**, **New diagram** and
 A name that collides with an existing file or folder (for example
 `a/b.toml` when `a` is a file) is answered with 400 and a clear
 message. It was an unhandled 500 before 4996b5c.
+
+## Amendment 2026-10-14
+
+Hardening (fd56c47, 421b026, 524d13f); the decision above stands.
+
+- Every response carries `Cache-Control: no-store`, a
+  `Content-Security-Policy` (`default-src 'none'`, `frame-ancestors
+  'none'`, inline script and style, Google Fonts only), `Referrer-Policy:
+  no-referrer`, `X-Content-Type-Options: nosniff` and
+  `Cross-Origin-Resource-Policy: same-origin`.
+- The Host, Origin and `Sec-Fetch-Site` checks run on every request,
+  page GETs included, not only on `/api`.
+- A body over 8 MB is refused with 413 as soon as `Content-Length` says
+  so, and while streaming; slow requests time out (30 s, headers 10 s).
+- The diagram iframe has its own CSP meta with `connect-src 'none'`, so
+  an imported archive cannot reach this API. `sandbox` waits for a
+  `postMessage` host interface ([ADR-0013](adr-0013-adopt-refactoring-roadmap.md)).
+- Names that differ only in case count as duplicates; Windows device
+  names (`con`, `nul`, ...) and names ending in a dot or space are
+  refused.
+- A save is **staged**: every file is written to a fsynced temp file
+  first, then all are renamed; if a rename fails the earlier files are
+  restored and the error names any file that could not be restored.
+  Leftover `.<hex>.tmp` files are swept at start and before each save.
+  This replaces "a failure returns the names already saved".

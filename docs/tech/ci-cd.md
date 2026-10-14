@@ -30,7 +30,8 @@ scripts that are read as text, never imported.
 
 The hook is `tools/hooks/pre-commit` (read-only; it fixes nothing). Turn
 it on once per clone: `git config core.hooksPath tools/hooks`. On
-Linux or macOS the file needs its executable bit. It runs:
+Linux or macOS the file needs its executable bit (git stores it without
+one: run `chmod +x tools/hooks/pre-commit`). It runs:
 
 1. `node tools/check-no-infra-data.mjs --staged`: staged files are
    scanned for addresses outside the RFC 5737 ranges, real-looking host
@@ -43,7 +44,7 @@ Linux or macOS the file needs its executable bit. It runs:
 2. `node engine/browser.mjs --check` and `node engine/build.mjs examples/demo --check`.
 
 Skip once with `git commit --no-verify`. The tests do not run in the hook
-(about two minutes).
+(about two to three minutes).
 
 ### Proposal: one minimal workflow (not created)
 

@@ -37,3 +37,9 @@ the browser with no install step. The engine has no `package.json`.
 - XML: verbose to write and read.
 - A TOML library: adds a dependency and a build step, and gives no
   source positions for surgical edits.
+
+## Amendment 2026-10-14
+
+The engine now has a `package.json`, but it only names scripts and
+`engines.node`; there are still no dependencies and no install step
+(524d13f, [ci-cd.md](../ci-cd.md#local-checks-and-the-pre-commit-hook)).

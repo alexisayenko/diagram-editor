@@ -28,7 +28,7 @@ Diagram editor for infrastructure diagrams: a shared engine renders a folder of 
 
 ## Tech stack
 
-Plain Node.js ESM (`engine/`, no package manifest or dependencies) for parsing, layout and rendering; browser runtime in `engine/runtime/` (vanilla JS modules inlined into one script) and CSS in `engine/css/`. Run Node through WSL: `node engine/build.mjs <dir> [--check]` builds a diagram folder, `node engine/browser.mjs [--check]` regenerates the standalone `diagram.html`, `node engine/serve.mjs` serves it on localhost, `node --test engine/test/*.test.mjs` runs tests. No deploy target yet. Status: all 635 tests pass (99.73% line coverage), `diagram.html` and the `examples/demo` outputs are up to date (`--check` passes).
+Plain Node.js ESM (`engine/`, no dependencies; `package.json` only names scripts) for parsing, layout and rendering; browser runtime in `engine/runtime/` (vanilla JS modules inlined into one script), the page app in `engine/browser/` and CSS in `engine/css/`. Run Node through WSL: `node engine/build.mjs <dir> [--check]` builds a legacy diagram folder, `node engine/browser.mjs [--check]` regenerates the standalone `diagram.html`, `node engine/serve.mjs` serves it on localhost, `node --test engine/test/*.test.mjs` runs tests. No deploy target and no CI yet. Status (2026-10-14, 2789813): all 762 tests pass (99.78% lines, 97.02% branches), `diagram.html` and the `examples/demo` outputs are up to date (`--check` passes). Refactoring roadmap: Wave 0 and Wave 1 done, Wave 2 pipeline and `app.js` split done, legacy Mermaid path still present ([recommendations](docs/tech/refactoring-recommendations.md)).
 
 ## Testing
 
@@ -39,7 +39,11 @@ node --test engine/test/*.test.mjs                                  # all tests
 node --test --experimental-test-coverage engine/test/*.test.mjs     # with coverage
 node engine/browser.mjs --check                                     # diagram.html is current
 node engine/build.mjs examples/demo --check                         # demo outputs are current
+node tools/check-no-infra-data.mjs --all                            # no real infrastructure data
 ```
+
+- Shortcuts (`package.json`): `npm test`, `npm run cover`, `npm run check` (both `--check` runs and the data check), `npm run serve`.
+- Pre-commit hook, once per clone: `git config core.hooksPath tools/hooks`. It blocks a commit that stages infrastructure-looking data or leaves `diagram.html` or the demo outputs stale; it does not run the tests. Skip once with `--no-verify`.
 
 - Files: `<topic>.test.mjs` and `cov-<area>-<topic>.test.mjs`;
   `helpers.mjs` and `cov-*.mjs` (no `.test`) are shared helpers.
@@ -48,6 +52,19 @@ node engine/build.mjs examples/demo --check                         # demo outpu
 - Rule: a bug found gets a skipped test first, then a fix that
   un-skips it.
 - Details: [ADR-0010](docs/tech/decisions/adr-0010-test-strategy.md).
+
+## Module map
+
+Full map: [architecture.md](docs/tech/architecture.md#module-map).
+
+- `engine/parse/` - TOML subset parser, folder loader, surgical writers, `FormatError` (`errors.mjs`), format and layout versions (`toml.mjs`, `layout-version.mjs`).
+- `engine/render/` - `pipeline.mjs` (`renderModel`, the one render pipeline), geometry and routing, SVG, `server-fields.mjs` (the one server key table).
+- `engine/page/` - page shell, `bundle.mjs` (module bundler), `kits.mjs` (kit registry), `assets.mjs`.
+- `engine/browser/` - page app: `app.js` wiring plus `api`, `session`, `frame-bridge`, `dialogs`, `dialog-flows`, `edits`, `save`, `messages`, `render`.
+- `engine/lib/` - shared helpers: `files`, `ids`, `net`, `text`, `names`, `zip`, `store`, `diagrams`, `cli`.
+- `engine/runtime/` - code that runs inside the diagram frame (`InfraDiagram.define` modules).
+- `engine/serve.mjs` - loopback server (CSP and security headers, Origin check on every request, staged saves via `lib/store.mjs`).
+- `tools/` - `host-probe.sh`, `check-no-infra-data.mjs` (allow-list `infra-data-allow.txt`, optional private `local/deny-words.txt`), `hooks/pre-commit`.
 
 ## Working in a shared checkout
 
@@ -85,6 +102,9 @@ Auth notes if any (HTTPS, fine-grained PAT, etc.).]
 - [ADR-0011](docs/tech/decisions/adr-0011-static-analysis-sonarcloud.md) — SonarCloud
 - [ADR-0012](docs/tech/decisions/adr-0012-generated-outputs-committed.md) — generated outputs are committed and checked
 - [ADR-0013](docs/tech/decisions/adr-0013-adopt-refactoring-roadmap.md) — refactoring roadmap and its eleven decisions
+- [ADR-0014](docs/tech/decisions/adr-0014-format-versioning-and-error-model.md) — format versioning and `FormatError`
+- [ADR-0015](docs/tech/decisions/adr-0015-shared-helpers-and-server-field-table.md) — shared helpers and `SERVER_FIELDS`
+- [ADR-0016](docs/tech/decisions/adr-0016-one-render-pipeline-and-split-page-app.md) — one render pipeline and the split page app
 - [docs/product/concepts/terminology.md](docs/product/concepts/terminology.md) — agreed vocabulary
 - [docs/product/features/](docs/product/features/README.md) — feature specs (start with self-service)
 - [examples/demo/](examples/demo/) — sample diagram in every format

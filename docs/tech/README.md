@@ -37,8 +37,10 @@ Don't pre-create — extract on first real entry. See
 ## Deploy and CI
 
 No deploy target and no CI workflows yet; the engine runs locally.
-Tests: `node --test engine/test/*.test.mjs` (WSL, 628 tests; see
-[ADR-0010](decisions/adr-0010-test-strategy.md)). SonarCloud analyses
+Tests: `node --test engine/test/*.test.mjs` (WSL, 762 tests; see
+[ADR-0010](decisions/adr-0010-test-strategy.md)). Checks before a commit
+(`package.json` scripts, `tools/hooks/pre-commit`):
+[ci-cd.md](ci-cd.md#local-checks-and-the-pre-commit-hook). SonarCloud analyses
 every push ([ADR-0011](decisions/adr-0011-static-analysis-sonarcloud.md)).
 [`ci-cd.md`](ci-cd.md) is the scaffolded playbook and holds a proposed
 minimal workflow; its `[TODO: ...]` placeholders apply only if a
@@ -46,10 +48,13 @@ workflow is added.
 
 ## Known gaps
 
-- SonarCloud: a failing quality gate (0 bugs, 2 vulnerabilities, 119
-  code smells at the last analysed push)
+- SonarCloud: a failing quality gate (3 bugs, 3 vulnerabilities, 158
+  code smells, analysed at 2789813)
   ([ADR-0011](decisions/adr-0011-static-analysis-sonarcloud.md)).
-- The engine has no `package.json`; Node versions are not pinned.
+- `package.json` sets `engines.node >= 22` only; no `.nvmrc`, no CI.
+- The legacy Mermaid path and its CDN-loading `index.html` are still
+  built (decision D1 in the
+  [recommendations](refactoring-recommendations.md#5-decisions)).
 - Service CNAME is a concept only
   ([`../product/concepts/service-cname.md`](../product/concepts/service-cname.md)).
 
@@ -57,5 +62,3 @@ workflow is added.
 
 - How to show a service CNAME on the diagram (card label or movable
   panel); see the concept.
-- Whether to enforce [ADR-0001](decisions/adr-0001-no-infra-data-in-repo.md)
-  mechanically (a check script).

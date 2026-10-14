@@ -1,8 +1,9 @@
 # Refactoring recommendations
 
-Status: accepted plan, Wave 0 not started · 2026-10-14 · baseline commit
-fdbd033. The owner decided all eleven items of section 5 on 2026-10-14
-([ADR-0013](decisions/adr-0013-adopt-refactoring-roadmap.md)).
+Status: Wave 0 and Wave 1 done, Wave 2 started (pipeline and `app.js`
+split done) · 2026-10-14 · plan written at commit fdbd033, numbers
+re-measured at 2789813. The owner decided all eleven items of section 5
+on 2026-10-14 ([ADR-0013](decisions/adr-0013-adopt-refactoring-roadmap.md)).
 
 ## 1. Purpose and how to read it
 
@@ -17,25 +18,34 @@ How to read: start with section 2 (themes), pick work from section 3
 (waves), read section 5 (decisions, settled), look up any ID in
 section 6.
 
-Baseline numbers (2026-10-14):
+Numbers now (2026-10-14, commit 2789813, measured in WSL):
 
-- 628 tests, all green on the reviewed commit; 99.8% lines and 96.8%
-  branches covered ([ADR-0010](decisions/adr-0010-test-strategy.md)).
+- 762 tests, 0 failed, 0 skipped. Coverage of all files: 99.78% lines,
+  97.02% branches, 97.43% functions
+  ([ADR-0010](decisions/adr-0010-test-strategy.md)).
   `node engine/browser.mjs --check` and
   `node engine/build.mjs examples/demo --check` both pass.
-- SonarCloud: about 172 open issues, many intentionally left
+- SonarCloud (public measures, analysed revision 2789813, the current
+  commit): 3 bugs, 3 vulnerabilities, 158 code smells, 0.0% duplication,
+  quality gate failed
   ([ADR-0011](decisions/adr-0011-static-analysis-sonarcloud.md)). The
-  DK review counted 113 through the API with a narrower filter; the
-  mix is mostly S7721 (move function to outer scope) and S7761 (use
-  `dataset`).
+  new bugs and vulnerabilities have not been triaged yet.
 - No CI yet; a local SonarCloud scan is deferred
-  ([ci-cd.md](ci-cd.md#deferred-local-sonarcloud-scan)).
-- Size: about 6.8k engine lines in 61 files, 9.1k test lines in 45
-  files, of which 29 are `cov-*` coverage suites.
+  ([ci-cd.md](ci-cd.md#deferred-local-sonarcloud-scan)). A pre-commit
+  hook and `package.json` scripts exist
+  ([ci-cd.md](ci-cd.md#local-checks-and-the-pre-commit-hook)).
+- Size: about 7.3k lines of `.mjs` and `.js` in 82 engine files (7.7k
+  lines in 101 files with CSS and HTML), 10.8k test lines in 70 files
+  (63 test files, 7 helpers; 27 are `cov-*.test.mjs` coverage suites).
 
-Verification: the top findings were re-checked against the code on this
-date (file and line evidence below is confirmed unless marked
-"reported"). Corrections made to the reviews:
+At review (commit fdbd033): 628 tests, 99.8% lines, 96.8% branches;
+SonarCloud about 172 open issues (the DK review counted 113 through the
+API with a narrower filter; mostly S7721 and S7761); about 6.8k engine
+lines in 61 files and 9.1k test lines in 45 files.
+
+Verification at review time: the top findings were re-checked against
+the code on that date (file and line evidence below is confirmed unless
+marked "reported"). Corrections made to the reviews:
 
 - BP review said 669 tests; the real count is 628.
 - BP-04: the 8 MB request cap is at `engine/serve.mjs:18`
@@ -56,7 +66,9 @@ date (file and line evidence below is confirmed unless marked
 Overall: a small, careful, zero-dependency engine with unusually good
 tests. The weak spots are structural (two render pipelines, one
 536-line page script), defensive (no CSP, unpinned CDN code in the
-legacy output) and evolutionary (no format version). Seven themes:
+legacy output) and evolutionary (no format version). This section
+describes the state at review; section 6 has the status of each finding.
+Seven themes:
 
 1. **One render pipeline instead of two** (AR-01, CD-02, DK-01, AR-03,
    DK-09). `engine/build.mjs:34-80` and `engine/browser/render.mjs:60-109`
@@ -131,6 +143,19 @@ stay byte-identical unless the item says otherwise.
 | AR-12, DK-16, BP-24, DM-20 | Fix stale claims (CLAUDE.md "one test fails", "627 tests", demo `layout.html` stale, `AUTHORING.md` name); `.gitattributes` `-diff` for generated files | Doc rot, review noise | S / none | `--check` runs | none |
 | DM-06 | Layout `diagramId` mismatch becomes a warning (`render.mjs:22`) | Folder rename or import under another name breaks opening | S / low | `cov-app-render` | none |
 
+Status: **done** (2026-10-14). Evidence per item:
+
+| IDs | Commit | Result |
+| --- | --- | --- |
+| BP-05, BP-12 | 421b026 | Probe reads `/etc/os-release` with an allow-list instead of `eval` and strips control characters; names that differ only in case are duplicates; Windows device names and trailing dot or space are refused (`lib/names.mjs`, store and zip) |
+| BP-01, BP-03, BP-04, BP-10, BP-11, DM-06, BP-17 | fd56c47 | CSP meta in the frame; response headers, Host and Origin check on every request, early 413, request timeouts; API fetch timeout, `unhandledrejection` handler, HTTP status in errors; layout `diagramId` mismatch is a warning; browser versions in [authoring.md](authoring.md#browser-support) |
+| BP-02, DK-13, DK-17 | c8fba34 | `mermaid` and `marked` pinned with SRI, embedded markdown escaped, http(s) links only; dead exports, `LAYOUT` and the `legacyId` chain removed; empty diagram gets a default view box |
+| BP-06, AR-12, DK-16, BP-24, DM-20 | b1bbb42 and the doc passes after it | `/.tmp*/` git-ignored; generated files marked `-diff`; stale claims in CLAUDE.md, AGENTS.md and the docs fixed |
+
+Not changed: the page shell text still names `AUTHORING.md` (the file is
+`docs/tech/authoring.md`); it lives in `engine/page/shell.html`, so fixing it
+regenerates `diagram.html`.
+
 ### Wave 1: foundations (enable the later waves)
 
 | IDs | What | Why | Effort / risk | Protected by | Needs |
@@ -146,14 +171,31 @@ stay byte-identical unless the item says otherwise.
 | BP-08 | Staged multi-file save (write and fsync all temps, then rename; rollback on failure; sweep leftovers) | `store.mjs:87-97` leaves TOML and layout inconsistent on a mid-way error | M / low-medium | `store.test` with injected fs failure | none |
 | BP-21 | Server security tests (Host and Origin variants, body cap +1), zip bomb and mutation fuzz, `parseToml` round-trip | Pins the hardening before refactors | M / none | new tests | none |
 
+Status: **done** (2026-10-14), all in 524d13f
+([ADR-0014](decisions/adr-0014-format-versioning-and-error-model.md),
+[ADR-0015](decisions/adr-0015-shared-helpers-and-server-field-table.md)).
+
+| IDs | Result | Deferred |
+| --- | --- | --- |
+| DM-01, AR-10 | `format_version` string in `topology.toml`, absent = 1, newer value gives "needs a newer engine"; New diagram writes it; the archive carries it through that file | none |
+| DM-02 | Layout `version` always written; a newer layout opens with auto layout and Save does not write it (D5, option a) | none |
+| CD-05, DM-07, DM-08 | One `FormatError {file, line, path, message}` in `parse/errors.mjs`; libraries throw, `runCli` (`lib/cli.mjs`) prints and sets the exit code | `browser.mjs` and `serve.mjs` do not catch `FormatError` yet; `tomlModel` errors for server files still lack file names |
+| DK-02, DK-04, DK-05, DM-11, DM-12 | `parse/toml-escape.mjs`, `lib/ids.mjs`, `lib/files.mjs`, `lib/net.mjs` | file-name literals in `serve.mjs` and `store.mjs`; `DIAGRAM_ID` copies in `new.mjs` and `parse/config.mjs` |
+| DK-03, DM-20, AR-11 (start) | `render/server-fields.mjs` (`SERVER_FIELDS`) feeds parser, writer, form and details table; `server-fields.test.mjs` fails on docs drift | generating the docs table from `SERVER_FIELDS` |
+| DK-06 | `guarded()` in `browser/edits.mjs` | none |
+| AR-04, CD-07, AR-05 | `page/bundle.mjs` derives the entry list and follows multi-line imports; `lib/text.mjs` is Node-free; shell markup in `page/shell.html` and `shell.css`; `page/kits.mjs` registry plus `kits.test.mjs` purity scan | the `lib/util.mjs` to `lib/text.mjs` alias can go once every browser module imports `text.mjs` |
+| BP-22, BP-23, BP-15 | `package.json` scripts, `tools/hooks/pre-commit`, `tools/check-no-infra-data.mjs`, `contrast.test.mjs` | pairs below 4.5:1 (below): EOL orange on the card in Sketch and Clean (3.19), muted text in Swiss (3.45); none below 3:1 |
+| BP-08 | Staged multi-file save with rollback and leftover sweep in `lib/store.mjs` | none |
+| BP-21 | `fuzz-security.test.mjs` (Host, Origin and `Sec-Fetch-Site` variants, body cap and one byte more, zip bomb, archive and TOML mutation fuzz, round trips) and `store-staged.test.mjs` (injected fs failures) | none |
+
 ### Wave 2: structural refactors (after D1 and D6)
 
 | IDs | What | Why | Effort / risk | Protected by | Needs | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| AR-01, CD-02, DK-01 (pipeline), AR-03, DK-09 | `renderModel(...)` in one pipeline module; `build.mjs` and `render.mjs` become loaders; one networks implementation | Every feature otherwise built twice | L / medium | `build --check`, `diagram.html --check`, `cov-app-render` | Wave 1 bundler, D1 | Done: `render/pipeline.mjs` (`renderModel`); `build.mjs` and `browser/render.mjs` are loaders. The `networks.md` tree stays a separate parser (different nesting and host-count rules); CIDR parsing is shared (`lib/net.mjs`). |
+| AR-01, CD-02, DK-01 (pipeline), AR-03, DK-09 | `renderModel(...)` in one pipeline module; `build.mjs` and `render.mjs` become loaders; one networks implementation | Every feature otherwise built twice | L / medium | `build --check`, `diagram.html --check`, `cov-app-render` | Wave 1 bundler, D1 | Done in 2789813 ([ADR-0016](decisions/adr-0016-one-render-pipeline-and-split-page-app.md)): `render/pipeline.mjs` (`renderModel`); `build.mjs` and `browser/render.mjs` are loaders. Deferred: the legacy `networks.md` tree stays a separate parser (different nesting and host-count rules) until the legacy pipeline is removed (D1); CIDR parsing is shared (`lib/net.mjs`). |
 | AR-02, DK-01 (legacy) | Move `edgeKey`, config normalise, OS, notes text into a model layer; then convert-and-delete or keep import-only | Legacy modules are load-bearing utilities | M then L / low then medium | `cov-parse-legacy`, `cov-cli-build-new` | D1 | |
 | AR-08 | Layered folders (`source`, `edit`, `model`, `layout`, `render`, `page`, `app`, `server`) enforced by an import-direction test | `parse/validate.mjs` imports the render kit | M / low | new `layering.test.mjs` | AR-02 | |
-| CD-01, AR-07, DK-08, DM-15 | Split `app.js`: `api`, `session`, `dialogs`, `frame-bridge`, wiring; host interface instead of module lookups; event instead of the 250 ms poll | God-script, invisible state shape | L / medium | `cov-app-*` (5 files) | AR-04 | Done: `app.js` is wiring (about 170 lines, was 522); `api`, `session`, `frame-bridge`, `dialogs`, `dialog-flows`, `edits`, `save`, `messages` in `engine/browser/`. The runtime gets an explicit host object from the bridge; the toolbar state follows frame activity events instead of a poll. `engine/test/browser-modules.test.mjs` covers the new modules. |
+| CD-01, AR-07, DK-08, DM-15 | Split `app.js`: `api`, `session`, `dialogs`, `frame-bridge`, wiring; host interface instead of module lookups; event instead of the 250 ms poll | God-script, invisible state shape | L / medium | `cov-app-*` (5 files) | AR-04 | Done in 2789813: `app.js` is wiring (167 lines, was 522); `api`, `session`, `frame-bridge`, `dialogs`, `dialog-flows`, `edits`, `save`, `messages` in `engine/browser/`. The runtime gets an explicit host object from the bridge; the toolbar state follows frame activity events instead of a poll. `engine/test/browser-modules.test.mjs` covers the new modules. |
 | CD-03 | `core.host` and `core.on/emit` instead of 11 overwritable hooks and the `window.InfraDiagram.*` globals | Second writer silently overwrites the first | M / medium | `cov-ui-*`, `context-menu.test` | none | |
 | DM-03, DM-04 | Structural server model; card and details markdown become render functions; one documented IR vocabulary | OS is parsed back out of generated markdown | M / medium | card, details, exports tests | AR-01 | |
 | CD-04, CD-06, DK-10 | `kit.boxFor`, one `METRICS`, `keys.mjs` (`nodeKey`, `parseKey`), readable meta field names, in one regeneration window | Metrics in 3 places; `"n:"` built 30 times, parsed 26 | M-L / medium | `region*.test`, `--check` diffs | none | |
@@ -237,100 +279,105 @@ still referred to as D1 to D11.
     and a headless smoke test, then merge the harnesses and rename by
     area, after Wave 2; amend ADR-0010 when done.
 
-Wave 2 needs ADRs for: one pipeline and model, legacy fate, bundling,
-update model, format versioning, server API, CI (ADR-0014 and up;
-ADR-0013 is the roadmap decision).
+ADRs written so far: [0014](decisions/adr-0014-format-versioning-and-error-model.md)
+(format versioning and errors),
+[0015](decisions/adr-0015-shared-helpers-and-server-field-table.md)
+(shared helpers) and
+[0016](decisions/adr-0016-one-render-pipeline-and-split-page-app.md)
+(pipeline and page app). Still to write when they land: legacy fate,
+update model, server API, CI (ADR-0017 and up; ADR-0013 is the roadmap
+decision).
 
 ## 6. Findings index
 
-| ID | Title | Wave |
-| --- | --- | --- |
-| AR-01 | Two ingestion pipelines duplicate orchestration | 2 |
-| AR-02 | Legacy format has no exit decision; shared helpers live in it | 2 |
-| AR-03 | Duplicated network model | 2 |
-| AR-04 | Hand-rolled regex bundler is load-bearing | 1 |
-| AR-05 | Dual module systems and `Function.toString()` kits | 1 |
-| AR-06 | Every edit re-renders the whole page into `srcdoc` | 2 |
-| AR-07 | `app.js` is a 536-line non-module script | 2 |
-| AR-08 | Layering inversions in `parse/` | 2 |
-| AR-09 | Storage API thin on integrity; no delete or rename | 3 |
-| AR-10 | No format versioning or archive marker | 1 |
-| AR-11 | Extensibility by editing source tables | 3 |
-| AR-12 | Committed outputs, stale docs, no CI | 0 |
-| AR-13 | Runtime script duplicated into every page and export | 2 |
-| AR-14 | Mini DI through `ctx` and hooks | 3 |
-| BP-01 | Same-origin iframe without CSP or sandbox | 0 |
-| BP-02 | `index.html` loads unpinned CDN code and raw markdown | 0 |
-| BP-03 | Missing response headers | 0 |
-| BP-04 | Host check only on `/api`; body cap enforced late | 0 |
-| BP-05 | Host probe `eval` and unescaped control characters | 0 |
-| BP-06 | `.tmp-old/` untracked and not ignored | 0 |
-| BP-07 | Zip reader nits (local vs central name, bomb test) | 3 |
-| BP-08 | Multi-file save not transactional | 1 |
-| BP-09 | Two-tab conflicts are safe but silent | 3 |
-| BP-10 | 250 ms poll and swallowed errors | 0 |
-| BP-11 | Fetch has no timeout | 0 |
-| BP-12 | Case-insensitive and Windows reserved names | 0 |
-| BP-13 | No performance budget test | 3 |
-| BP-14 | Keyboard and focus gaps | 2 |
-| BP-15 | Colour contrast and reduced motion | 1 |
-| BP-16 | Tooltip-only information | 3 |
-| BP-17 | Browser compatibility undocumented | 0 |
-| BP-18 | Five duplicated fake-DOM harnesses | 3 |
-| BP-19 | Coverage-driven tests miss real-browser behaviour | 3 |
-| BP-20 | Flakiness risks (timers, temp dirs) | 3 |
-| BP-21 | Missing fuzz and server security tests | 1 |
-| BP-22 | No `package.json`, lint, hooks, CI, version | 1 |
-| BP-23 | Infra-data rule not enforced mechanically | 1 |
-| BP-24 | Generated outputs can drift unchecked | 0 |
-| CD-01 | `app.js` god-script with ad-hoc session | 2 |
-| CD-02 | Two build pipelines diverge | 2 |
-| CD-03 | Hidden runtime dependencies and shared mutable state | 2 |
-| CD-04 | Kits duplicate constants and formulas | 2 |
-| CD-05 | Inconsistent error-handling contract | 1 |
-| CD-06 | Stringly-typed keys, cryptic meta fields | 2 |
-| CD-07 | Bundler forks `util`; shell markup in a template | 1 |
-| CD-08 | Duplicated DOM helpers; `var` in runtime | 3 |
-| CD-09 | Long positional parameter lists | 3 |
-| CD-10 | `toml.mjs` mixes validators, parser, model | 2 |
-| DK-01 | Legacy path still carried (about 900 lines) | 2 |
-| DK-02 | TOML escaping implemented three ways | 1 |
-| DK-03 | Server field list in 4 places | 1 |
-| DK-04 | Slug and id sanitising in 5 places | 1 |
-| DK-05 | File-name constants declared 3 to 4 times | 1 |
-| DK-06 | `TOML: ` strip and try/catch wrapper repeated | 1 |
-| DK-07 | DOM helper, clipboard, download duplicates | 3 |
-| DK-08 | Four dialogs with duplicated plumbing | 2 |
-| DK-09 | Two CIDR parsers | 2 |
-| DK-10 | Char-width and rounding constants duplicated | 2 |
-| DK-11 | Two TOML edit helper styles | 3 |
-| DK-12 | OS-name logic spread over four files | 3 |
-| DK-13 | Speculative config (`legacyId`, `proposedLabel`, constants) | 0 |
-| DK-14 | Remaining Sonar smells by rule | 3 |
-| DK-15 | Complexity hot spots and flag parameters | 3 |
-| DK-16 | Comment and doc rot | 0 |
-| DK-17 | 41 needless `export`s | 0 |
-| DM-01 | No format version for folder or archive | 1 |
-| DM-02 | Layout version policy loses data | 1 |
-| DM-03 | Parse layer builds and re-parses presentation | 2 |
-| DM-04 | Mermaid-shaped model, split vocabulary | 2 |
-| DM-05 | Layout persists derived data | 3 |
-| DM-06 | `diagramId` check breaks rename and copy | 0 |
-| DM-07 | Error quality and location | 1 |
-| DM-08 | `fail` exits or throws; mixed conventions | 1 |
-| DM-09 | Key naming inconsistencies | 3 |
-| DM-10 | Units as free strings, silent fallback | 3 |
-| DM-11 | Id grammars duplicated and inconsistent | 1 |
-| DM-12 | Three IP/CIDR parsers | 1 |
-| DM-13 | API replay not idempotent, errors not machine-readable | 3 |
-| DM-14 | No executable probe contract | 3 |
-| DM-15 | Coupling through globals and the iframe | 2 |
-| DM-16 | Inconsistent module API style | 3 |
-| DM-17 | No warnings channel; illegal states representable | 3 |
-| DM-18 | Archive contract gaps | 3 |
-| DM-19 | Service CNAME fit and naming | 3 |
-| DM-20 | Doc, code and test drift | 0 and 1 |
-| DM-21 | Smaller items (duplicate row-height constants, notes round trip) | 3 |
+| ID | Title | Wave | Status |
+| --- | --- | --- | --- |
+| AR-01 | Two ingestion pipelines duplicate orchestration | 2 | done |
+| AR-02 | Legacy format has no exit decision; shared helpers live in it | 2 | open |
+| AR-03 | Duplicated network model | 2 | partial: `networks.md` tree stays |
+| AR-04 | Hand-rolled regex bundler is load-bearing | 1 | done |
+| AR-05 | Dual module systems and `Function.toString()` kits | 1 | done |
+| AR-06 | Every edit re-renders the whole page into `srcdoc` | 2 | open |
+| AR-07 | `app.js` is a 536-line non-module script | 2 | done |
+| AR-08 | Layering inversions in `parse/` | 2 | open |
+| AR-09 | Storage API thin on integrity; no delete or rename | 3 | open |
+| AR-10 | No format versioning or archive marker | 1 | done |
+| AR-11 | Extensibility by editing source tables | 3 | started: `SERVER_FIELDS` |
+| AR-12 | Committed outputs, stale docs, no CI | 0 | done |
+| AR-13 | Runtime script duplicated into every page and export | 2 | open |
+| AR-14 | Mini DI through `ctx` and hooks | 3 | open |
+| BP-01 | Same-origin iframe without CSP or sandbox | 0 | done |
+| BP-02 | `index.html` loads unpinned CDN code and raw markdown | 0 | done |
+| BP-03 | Missing response headers | 0 | done |
+| BP-04 | Host check only on `/api`; body cap enforced late | 0 | done |
+| BP-05 | Host probe `eval` and unescaped control characters | 0 | done |
+| BP-06 | `.tmp-old/` untracked and not ignored | 0 | done |
+| BP-07 | Zip reader nits (local vs central name, bomb test) | 3 | open |
+| BP-08 | Multi-file save not transactional | 1 | done |
+| BP-09 | Two-tab conflicts are safe but silent | 3 | open |
+| BP-10 | 250 ms poll and swallowed errors | 0 | done |
+| BP-11 | Fetch has no timeout | 0 | done |
+| BP-12 | Case-insensitive and Windows reserved names | 0 | done |
+| BP-13 | No performance budget test | 3 | open |
+| BP-14 | Keyboard and focus gaps | 2 | open |
+| BP-15 | Colour contrast and reduced motion | 1 | partial: 3 pairs below 4.5:1 |
+| BP-16 | Tooltip-only information | 3 | open |
+| BP-17 | Browser compatibility undocumented | 0 | done |
+| BP-18 | Five duplicated fake-DOM harnesses | 3 | open |
+| BP-19 | Coverage-driven tests miss real-browser behaviour | 3 | open |
+| BP-20 | Flakiness risks (timers, temp dirs) | 3 | open |
+| BP-21 | Missing fuzz and server security tests | 1 | done |
+| BP-22 | No `package.json`, lint, hooks, CI, version | 1 | done |
+| BP-23 | Infra-data rule not enforced mechanically | 1 | done |
+| BP-24 | Generated outputs can drift unchecked | 0 | done |
+| CD-01 | `app.js` god-script with ad-hoc session | 2 | done |
+| CD-02 | Two build pipelines diverge | 2 | done |
+| CD-03 | Hidden runtime dependencies and shared mutable state | 2 | open |
+| CD-04 | Kits duplicate constants and formulas | 2 | open |
+| CD-05 | Inconsistent error-handling contract | 1 | partial: `browser.mjs`, `serve.mjs` do not catch `FormatError` |
+| CD-06 | Stringly-typed keys, cryptic meta fields | 2 | open |
+| CD-07 | Bundler forks `util`; shell markup in a template | 1 | done |
+| CD-08 | Duplicated DOM helpers; `var` in runtime | 3 | open |
+| CD-09 | Long positional parameter lists | 3 | open |
+| CD-10 | `toml.mjs` mixes validators, parser, model | 2 | open |
+| DK-01 | Legacy path still carried (about 900 lines) | 2 | partial: pipeline shared, legacy path stays |
+| DK-02 | TOML escaping implemented three ways | 1 | done |
+| DK-03 | Server field list in 4 places | 1 | done |
+| DK-04 | Slug and id sanitising in 5 places | 1 | done |
+| DK-05 | File-name constants declared 3 to 4 times | 1 | partial: `serve.mjs`, `store.mjs` literals |
+| DK-06 | `TOML: ` strip and try/catch wrapper repeated | 1 | done |
+| DK-07 | DOM helper, clipboard, download duplicates | 3 | open |
+| DK-08 | Four dialogs with duplicated plumbing | 2 | done |
+| DK-09 | Two CIDR parsers | 2 | done |
+| DK-10 | Char-width and rounding constants duplicated | 2 | open |
+| DK-11 | Two TOML edit helper styles | 3 | open |
+| DK-12 | OS-name logic spread over four files | 3 | open |
+| DK-13 | Speculative config (`legacyId`, `proposedLabel`, constants) | 0 | done |
+| DK-14 | Remaining Sonar smells by rule | 3 | open |
+| DK-15 | Complexity hot spots and flag parameters | 3 | open |
+| DK-16 | Comment and doc rot | 0 | done |
+| DK-17 | 41 needless `export`s | 0 | done |
+| DM-01 | No format version for folder or archive | 1 | done |
+| DM-02 | Layout version policy loses data | 1 | done |
+| DM-03 | Parse layer builds and re-parses presentation | 2 | open |
+| DM-04 | Mermaid-shaped model, split vocabulary | 2 | open |
+| DM-05 | Layout persists derived data | 3 | open |
+| DM-06 | `diagramId` check breaks rename and copy | 0 | done |
+| DM-07 | Error quality and location | 1 | partial: server errors lack file names |
+| DM-08 | `fail` exits or throws; mixed conventions | 1 | done |
+| DM-09 | Key naming inconsistencies | 3 | open |
+| DM-10 | Units as free strings, silent fallback | 3 | open |
+| DM-11 | Id grammars duplicated and inconsistent | 1 | partial: `DIAGRAM_ID` in `new.mjs`, `config.mjs` |
+| DM-12 | Three IP/CIDR parsers | 1 | done |
+| DM-13 | API replay not idempotent, errors not machine-readable | 3 | open |
+| DM-14 | No executable probe contract | 3 | open |
+| DM-15 | Coupling through globals and the iframe | 2 | partial: host object done, globals stay |
+| DM-16 | Inconsistent module API style | 3 | open |
+| DM-17 | No warnings channel; illegal states representable | 3 | open |
+| DM-18 | Archive contract gaps | 3 | open |
+| DM-19 | Service CNAME fit and naming | 3 | open |
+| DM-20 | Doc, code and test drift | 0 and 1 | done |
+| DM-21 | Smaller items (duplicate row-height constants, notes round trip) | 3 | open |
 
 ## 7. What is good and must be kept
 
@@ -353,5 +400,5 @@ ADR-0013 is the roadmap decision).
   tests on port 0.
 - Escaped embedded JSON (`<`), http(s)-only links with
   `rel="noopener"`, read-only bounded host probe.
-- 628 fast tests at high coverage, the bug-first skipped-test rule, and
+- 762 fast tests at high coverage, the bug-first skipped-test rule, and
   the ADR trail.

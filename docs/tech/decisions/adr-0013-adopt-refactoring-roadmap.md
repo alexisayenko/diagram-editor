@@ -1,7 +1,7 @@
 # ADR-0013: Adopt the refactoring roadmap and its eleven decisions
 
 Status: Accepted · 2026-10-14
-Commit: not yet committed (docs only; Wave 0 not started)
+Commit: e72b972 (docs only)
 
 ## Context
 
@@ -31,7 +31,8 @@ recommended option of each.
 11. D11 tests (BP-18, BP-19): add SVG goldens and a smoke test, then
     merge the harnesses.
 
-Work follows the waves; Wave 0 has not started.
+Work follows the waves; progress is in the
+[recommendations](../refactoring-recommendations.md) and the amendment below.
 
 ## Consequences
 
@@ -59,3 +60,12 @@ Work follows the waves; Wave 0 has not started.
 - Build outputs in CI only: `serve.mjs` serves them from disk.
 - Keep `cnames`: names a record type, not a neutral list.
 - Keep `cov-*` suites and the 100% target: coverage-driven, overlapping.
+
+## Amendment 2026-10-14
+
+Wave 0 (421b026, fd56c47, c8fba34) and Wave 1 (524d13f) are done. Wave 2
+has its pipeline and `app.js` split (2789813). D1 (legacy pipeline) is
+not started, so its deletions are still ahead. New ADRs:
+[0014](adr-0014-format-versioning-and-error-model.md),
+[0015](adr-0015-shared-helpers-and-server-field-table.md),
+[0016](adr-0016-one-render-pipeline-and-split-page-app.md).

@@ -75,3 +75,25 @@ there and bugs hid in the page code.
 - Playwright end-to-end tests: real browser, but heavy and slow;
   not ruled out for a later UI layer.
 - Testing only Node code: leaves most of the page logic untested.
+
+## Amendment 2026-10-14
+
+Measured at 2789813 in WSL: 762 tests, 0 failed, 0 skipped; all files
+99.78% lines, 97.02% branches, 97.43% functions. `package.json` now has
+`npm test` and `npm run cover`; "no `package.json`" above is history.
+Added since: `format-version`, `fuzz-security` (Host, Origin, body cap,
+zip bomb, mutation fuzz, round trips), `store-staged` (injected fs
+failures), `contrast` (WCAG pairs of the four skins; three known pairs
+below 4.5:1), `kits` (purity scan), `bundle`, `pipeline`,
+`browser-modules`, `infra-data` and the small shared-helper tests.
+
+| Area | Lines | Branches |
+| --- | --- | --- |
+| `lib/`, `page/`, `new.mjs` | 100% | 100% (`page/assets.mjs` 77.8%, `lib/net.mjs` 97.3%) |
+| `parse/` | 99.4-100% | 92.9-100% |
+| `render/`, `export/` | 97.8-100% | 88.4-100% |
+| `browser/` | 100% | 91.7-100% |
+| `runtime/` | 100% | 95.2-100% |
+| `build.mjs`, `browser.mjs` | 100% | 87.5%, 66.7% |
+| `serve.mjs` | 92.3% (the listen block) | 95.8% |
+| `tools/check-no-infra-data.mjs` | 98.3% | 92.1% |

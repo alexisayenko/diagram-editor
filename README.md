@@ -22,6 +22,7 @@ node --test engine/test/*.test.mjs          # run the tests (see Testing); also 
 node engine/browser.mjs [--check]           # regenerate diagram.html (check for drift)
 node engine/build.mjs examples/demo [--check]   # Mermaid build of the demo folder
 node engine/new.mjs <dir>                   # scaffold a Mermaid-format diagram folder
+node tools/check-no-infra-data.mjs --all    # scan tracked files for real infrastructure data
 ```
 
 Open the printed address, then **New diagram**, **Open saved diagram**
@@ -39,11 +40,13 @@ node engine/browser.mjs --check                                  # diagram.html 
 node engine/build.mjs examples/demo --check                      # demo outputs are current
 ```
 
-- Shortcuts (`package.json`, no dependencies): `npm test`, `npm run cover`, `npm run check`, `npm run serve`.
+- Shortcuts (`package.json`, no dependencies): `npm test`, `npm run cover`, `npm run check` (both `--check` runs and `tools/check-no-infra-data.mjs --all`), `npm run serve`.
 - Pre-commit hook (once per clone): `git config core.hooksPath tools/hooks`. It blocks a commit that stages
   infrastructure-looking data (`node tools/check-no-infra-data.mjs`) or leaves `diagram.html` or the demo outputs stale.
+  Safe documentation values go in `tools/infra-data-allow.txt`; your own private words can go in the git-ignored
+  `local/deny-words.txt` (one per line). The hook does not run the tests.
   Details: [ci-cd.md](docs/tech/ci-cd.md#local-checks-and-the-pre-commit-hook).
-- 635 tests, 99.73% line coverage, no dependencies (`node:test`).
+- 762 tests, 99.78% line and 97.02% branch coverage (2026-10-14), no dependencies (`node:test`).
 - Files: `<topic>.test.mjs` and `cov-<area>-<topic>.test.mjs`;
   `helpers.mjs` and `cov-*.mjs` are shared helpers, not tests.
 - Rule: a bug found gets a skipped test first, then a fix that
@@ -58,7 +61,7 @@ node engine/build.mjs examples/demo --check                      # demo outputs 
 ```text
 diagram-editor/
 ├── docs/            # strategy, specs, ADRs, tech reference
-├── engine/          # parsers, layout, renderers, browser runtime, server, tests
+├── engine/          # parse/, render/, page/, browser/ (page app), lib/, runtime/, server, tests
 ├── examples/demo/   # synthetic sample diagram in every format
 ├── local/           # YOUR diagrams (git-ignored, never committed)
 ├── tools/           # host-probe.sh, check-no-infra-data.mjs, hooks/pre-commit

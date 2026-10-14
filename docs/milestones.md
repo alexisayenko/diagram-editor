@@ -14,16 +14,33 @@ One bullet per event: ISO date, an em dash, what happened in a
 sentence or two, and a link to the task or artifact that carries
 the detail. Newest first; several events on one date are fine.
 
+- 2026-10-14 — Wave 2, first batch: one render pipeline
+  (`render/pipeline.mjs`) and the `app.js` split into eight page modules
+  with a host interface and events instead of the 250 ms poll (2789813;
+  [ADR-0016](tech/decisions/adr-0016-one-render-pipeline-and-split-page-app.md)).
+  762 tests, 99.78% line coverage. Legacy path removal, layering,
+  `core.host`, structural model and update model are still open.
+- 2026-10-14 — Wave 1 done: `format_version` and layout version policy,
+  one `FormatError`, shared helpers and the server field table, a
+  sturdier bundler, staged saves, `package.json`, pre-commit hook and the
+  infrastructure-data check, contrast, fuzz and security tests (524d13f;
+  [ADR-0014](tech/decisions/adr-0014-format-versioning-and-error-model.md),
+  [ADR-0015](tech/decisions/adr-0015-shared-helpers-and-server-field-table.md)).
+- 2026-10-14 — Wave 0 done: probe without `eval` and case and
+  Windows-name checks (421b026); frame CSP, server headers, Origin check
+  on every request, size limits and timeouts (fd56c47); pinned CDN
+  scripts, dead code removed (c8fba34).
 - 2026-10-14 — Refactoring roadmap in four waves, from five reviews,
-  accepted with all eleven owner decisions; Wave 0 not started
+  accepted with all eleven owner decisions
   ([ADR-0013](tech/decisions/adr-0013-adopt-refactoring-roadmap.md),
   [recommendations](tech/refactoring-recommendations.md#3-prioritised-roadmap)).
-  - Wave 0: planned (accepted): iframe CSP, server headers, CDN
+  - Wave 0: done (2026-10-14): iframe CSP, server headers, CDN
     pinning, probe `eval`, stale docs.
-  - Wave 1: planned (accepted): `format_version`, typed errors, shared
-    helpers, honest bundler, tooling, transactional save.
-  - Wave 2: planned (accepted): one render pipeline, legacy path
-    removal, `app.js` split, layering, update model.
+  - Wave 1: done (2026-10-14): `format_version`, typed errors, shared
+    helpers, honest bundler, tooling, staged save.
+  - Wave 2: in progress (started 2026-10-14): pipeline and `app.js` split
+    done; legacy path removal, layering, `core.host`, structural model,
+    update model, accessibility open.
   - Wave 3: planned (accepted): layout v2, units, warnings channel,
     aliases, API polish, harness merge.
 - 2026-10-14 — Tests, refactor and static analysis: 635 tests with 99.73%

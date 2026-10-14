@@ -55,3 +55,6 @@ What we did not pick and why.
 | [0011](adr-0011-static-analysis-sonarcloud.md) | Static analysis with SonarCloud | 2026-10-14 |
 | [0012](adr-0012-generated-outputs-committed.md) | Generated outputs are committed and checked | 2026-10-07 |
 | [0013](adr-0013-adopt-refactoring-roadmap.md) | Adopt the refactoring roadmap and its eleven decisions | 2026-10-14 |
+| [0014](adr-0014-format-versioning-and-error-model.md) | Format versioning and error model | 2026-10-14 |
+| [0015](adr-0015-shared-helpers-and-server-field-table.md) | Shared helpers and the single server field table | 2026-10-14 |
+| [0016](adr-0016-one-render-pipeline-and-split-page-app.md) | One render pipeline and the split page app | 2026-10-14 |

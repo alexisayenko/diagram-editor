@@ -38,3 +38,15 @@ which part changed, and made merges and reviews noisy.
   formatting, huge diffs.
 - Single file with an in-place patcher: still one hot file for every
   edit.
+
+## Amendment 2026-10-14
+
+- `topology.toml` may start with `format_version` (a string, absent
+  means `"1"`); the loader checks it before any other file
+  ([ADR-0014](adr-0014-format-versioning-and-error-model.md), 524d13f).
+- Load errors are one `FormatError` that names the file and line, for
+  example `servers/web01.toml:3: ...`. The writers' round-trip check
+  throws the same type.
+- The allowed keys of `servers/<id>.toml` come from one table,
+  `SERVER_FIELDS`
+  ([ADR-0015](adr-0015-shared-helpers-and-server-field-table.md)).
