@@ -3,7 +3,7 @@ import { renderDiagram } from "../browser/render.mjs";
 import { geometryKit } from "../render/geometry.mjs";
 import { drawKit } from "../render/draw-kit.mjs";
 import { demo } from "./helpers.mjs";
-import { El, define, clone } from "./cov-dom.mjs";
+import { El, define } from "./cov-dom.mjs";
 
 export const dataOf = (html) => JSON.parse(html.match(/id="layout-data">([\s\S]*?)<\/script>/)[1]);
 export const demoData = (saved = null) => dataOf(renderDiagram(demo(), "demo", saved, { cssSvg: "", cssPage: "", js: "" }, []).html);
@@ -29,7 +29,10 @@ export function makeSvg() {
   svg.ctm = { a: 1, e: 0, f: 0 };
   svg.bbox = { x: 0, y: 0, width: 1000, height: 800 };
   svg.rect = { width: 1000, height: 800 };
-  svg.getBBox = () => { if (!svg.bbox) throw new Error("not rendered"); return svg.bbox; };
+  svg.getBBox = () => {
+    if (!svg.bbox) throw new Error("not rendered");
+    return svg.bbox;
+  };
   svg.getBoundingClientRect = () => svg.rect;
   svg.getScreenCTM = () => {
     const c = svg.ctm;
@@ -43,7 +46,10 @@ export function makePage({ saved = null, sys = true } = {}) {
   const D = demoData(saved);
   const svg = makeSvg(), doc = makeDocument(), els = [];
   let max = 0;
-  JSON.stringify(D.idx, (k, v) => { if (typeof v === "number") max = Math.max(max, v); return v; });
+  JSON.stringify(D.idx, (k, v) => {
+    if (typeof v === "number") max = Math.max(max, v);
+    return v;
+  });
   for (let i = 0; i <= max; i++) els.push(new El("g", doc));
   for (const e of Object.values(D.idx.edges)) if (e.fw !== undefined) {
     const fg = els[e.fw], text = new El("text", doc), paths = [new El("path", doc), new El("path", doc)];
@@ -59,7 +65,10 @@ export function makePage({ saved = null, sys = true } = {}) {
   const skins = { widths: () => ({}), labelWidths: () => ({}), sync: (s) => { skins.synced = s; } };
   const g = { document: doc, location: { search: "" }, requestAnimationFrame: (f) => { g.frames.push(f); return g.frames.length; }, setTimeout: (f, ms) => { g.timers.push([f, ms]); return g.timers.length; }, frames: [], timers: [], innerHeight: 600, innerWidth: 800, structuredClone, Date, clearTimeout, console };
   g.window = g; g.winListeners = {};
-  g.addEventListener = (t, f) => (g.winListeners[t] ||= []).push(f);
+  g.addEventListener = (t, f) => {
+    g.winListeners[t] ||= [];
+    return g.winListeners[t].push(f);
+  };
   g.InfraDiagram = {};
   return { D, svg, doc, els, core, skins, ctx, hooks, g, store };
 }
@@ -73,11 +82,18 @@ export function loadZoomPan(page, model) {
 export function loadDraw(page, model) {
   return define("runtime/canvas/draw.js", page.g, [page.core, kit, model]);
 }
-export function loadEdit(page, model, zoomPan, init = { init(o) { init.opts = o; }, editChanged(f) { init.flag = f; } }) {
+function makeInit() {
+  const self = { init(o) { self.opts = o; }, editChanged(f) { self.flag = f; } };
+  return self;
+}
+
+export function loadEdit(page, model, zoomPan, init = makeInit()) {
   const mod = define("runtime/canvas/edit-mode.js", page.g, [page.core, init, model, zoomPan]);
   return { mod, init };
 }
-export function loadMenu(page, model, networks = { editName: () => {} }) {
+const makeNetworks = () => ({ editName: () => {} });
+
+export function loadMenu(page, model, networks = makeNetworks()) {
   return define("runtime/canvas/context-menu.js", page.g, [page.core, model, networks]);
 }
-export { clone, El };
+export { clone, El } from "./cov-dom.mjs";

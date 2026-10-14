@@ -13,13 +13,13 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels"], func
       if (k.startsWith("c")) (D.kids[k.slice(2)] || []).forEach(function (n) { B["n:" + n] = 1; });
     });
     Object.keys(B).forEach(function (k) {
-      if (k.charAt(0) === "n" && D.ent[k]?.cl) B["c:" + D.ent[k].cl] = 1;
+      if (k.startsWith("n") && D.ent[k]?.cl) B["c:" + D.ent[k].cl] = 1;
     });
     return B;
   }
 
   function select(key) {
-    if (core.hooks.beforeSelect && core.hooks.beforeSelect(key) === false) return;
+    if (core.hooks.beforeSelect?.(key) === false) return;
     ctx.sel = key;
     var B = key ? related(key) : null;
     core.ents.forEach(function (el) {

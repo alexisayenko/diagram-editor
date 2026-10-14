@@ -52,15 +52,25 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
   els.oplist.querySelector = (q) => (q === "button" ? els.oplist.descendants().find((e) => e.tagName === "BUTTON") ?? null : null);
   els.opq.hidden = true;
   els.nw.hidden = true; els.op.hidden = true; els.imp.hidden = true; els.hs.hidden = true; els.view.hidden = true;
-  doc.querySelector = (sel) => (sel === "#hs .cp" ? h.cps[0] : sel.startsWith("#") ? (els[sel.slice(1)] ?? null) : null);
+  doc.querySelector = (sel) => {
+    if (sel === "#hs .cp") return h.cps[0];
+    return sel.startsWith("#") ? (els[sel.slice(1)] ?? null) : null;
+  };
   doc.getElementById = (id) => els[id] ?? null;
-  doc.addEventListener = (t, f) => (h.docListeners[t] ||= []).push(f);
+  doc.addEventListener = (t, f) => {
+    h.docListeners[t] ||= [];
+    return h.docListeners[t].push(f);
+  };
   doc.createElement = (t) => {
     const e = new El(t, doc);
     if (t === "a") e.click = () => { h.downloads.push({ name: e.download, href: e.href, blob: e.blob }); };
     return e;
   };
-  doc.execCommand = (c) => { h.execCalls = (h.execCalls || 0) + 1; if (h.execThrows) throw new Error("denied"); return h.execOk ?? true; };
+  doc.execCommand = (c) => {
+    h.execCalls = (h.execCalls || 0) + 1;
+    if (h.execThrows) throw new Error("denied");
+    return h.execOk ?? true;
+  };
 
   const frame = els.view;
   frame.inert = false;
@@ -94,7 +104,10 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
   h.doc = doc;
   const win = {};
   win.window = win;
-  win.addEventListener = (t, f) => (h.listeners[t] ||= []).push(f);
+  win.addEventListener = (t, f) => {
+    h.listeners[t] ||= [];
+    return h.listeners[t].push(f);
+  };
   win.confirm = (m) => { h.confirms.push(m); return h.confirmAnswer; };
   const apiFetch = async (path, options = {}) => {
     h.requests.push([options.method || "GET", path, options.body]);
@@ -104,11 +117,17 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
     return { ok: r.status < 400, status: r.status, json: async () => r.body };
   };
   Object.assign(win, {
-    document: doc, fetch: apiFetch, navigator: { clipboard: { writeText: async (t) => { if (h.clipDenied) throw new Error("denied"); h.copied.push(t); } } },
+    document: doc, fetch: apiFetch, navigator: { clipboard: { writeText: async (t) => {
+      if (h.clipDenied) throw new Error("denied");
+      h.copied.push(t);
+    } } },
     TextDecoder, TextEncoder, Uint8Array, Map, Set, Blob: class { constructor(parts, o) { this.parts = parts; this.type = o?.type; } },
     URL: { createObjectURL: (b) => { h.lastBlob = b; return "blob:" + h.downloads.length; }, revokeObjectURL: (u) => { h.revoked = u; } },
     setTimeout: (f, ms) => { h.timers.push([f, ms]); return h.timers.length; }, clearTimeout: () => {}, setInterval: (f, ms) => { h.intervals.push([f, ms]); return 1; },
-    require: (id) => { if (!MODS[id]) throw new Error("no module " + id); return MODS[id]; },
+    require: (id) => {
+      if (!MODS[id]) throw new Error("no module " + id);
+      return MODS[id];
+    },
     ASSETS: { cssSvg: "", cssPage: "", js: "" }, HOST_SCRIPT: "#!/bin/sh\necho probe\n", Option: class { constructor(text, value) { this.text = text; this.value = value; } }, structuredClone,
   });
   h.win = win;
@@ -117,7 +136,17 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
   h.statusError = () => els.status.classes.has("error");
   h.click = async (id) => { els[id].fire("click"); await flush(); };
   h.settle = () => flush();
-  h.until = async (cond, ms = 4000) => { const t = Date.now(); while (!cond()) { if (Date.now() - t > ms) throw new Error("timed out"); await new Promise((r) => setTimeout(r, 3)); } await flush(); };
+  h.until = async (cond, ms = 4000) => {
+    const t = Date.now();
+    const wait = async () => {
+      if (cond()) return;
+      if (Date.now() - t > ms) throw new Error("timed out");
+      await new Promise((r) => setTimeout(r, 3));
+      await wait();
+    };
+    await wait();
+    await flush();
+  };
   h.act = async (fn) => { els.status.textContent = "…pending"; await fn(); await h.until(() => els.status.textContent !== "…pending"); };
   h.clickAct = (id) => h.act(() => els[id].fire("click"));
   h.start = async () => { run("browser/app.js", win); await flush(); };

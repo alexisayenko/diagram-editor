@@ -47,19 +47,24 @@ function restoreNodes(model, saved, layout, refit) {
   }
 }
 
+function savedEdgeGeometry(old, k) {
+  const g = {};
+  if (old?.via !== undefined) {
+    if (!Array.isArray(old.via) || !old.via.every(point)) throw new Error(`Invalid connection waypoints: ${k}`);
+    g.via = old.via.map((p) => p.slice());
+  }
+  if (old?.label !== undefined) {
+    if (!point(old.label)) throw new Error(`Invalid connection label position: ${k}`);
+    g.label = old.label.slice();
+  }
+  return g;
+}
+
 function restoreEdges(model, saved, layout) {
   for (const e of model.edges) {
     const k = edgeKey(e), old = saved?.edges?.[k];
     if (old && !plainObject(old)) throw new Error(`Invalid saved connection: ${k}`);
-    const g = {};
-    if (old?.via !== undefined) {
-      if (!Array.isArray(old.via) || !old.via.every(point)) throw new Error(`Invalid connection waypoints: ${k}`);
-      g.via = old.via.map((p) => p.slice());
-    }
-    if (old?.label !== undefined) {
-      if (!point(old.label)) throw new Error(`Invalid connection label position: ${k}`);
-      g.label = old.label.slice();
-    }
+    const g = savedEdgeGeometry(old, k);
     if (e.fw) g.firewall = true;
     layout.edges[k] = g;
   }

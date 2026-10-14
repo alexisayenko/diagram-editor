@@ -60,9 +60,10 @@ export function resolveTypes({ clusters, nodes, classDefs, classes, types }, lay
   const addEnt = (key, id, base) => {
     const cls = classes.get(id) || [];
     typeProblems.push(...classProblems(key, cls, TYPES, typeColors));
-    const ty = cls.filter((c) => TYPES[c])[0];
+    const ty = cls.find((c) => TYPES[c]);
     const prop = cls.includes("proposed");
-    const tag = ty ? TYPES[ty].tag + (prop ? " · PROPOSED" : "") : "";
+    const suffix = prop ? " · PROPOSED" : "";
+    const tag = ty ? TYPES[ty].tag + suffix : "";
     ent[key] = { ...base, ty, prop, tk: prop ? "proposed" : ty, tag };
   };
   for (const c of clusters.values()) addEnt("c:" + c.id, c.id, { title: c.title, cl: null, db: false });

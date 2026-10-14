@@ -571,3 +571,10 @@ test("a pending layout change stays pending across a server change so Save still
   await h.tick();
   assert.equal(h.$("save").disabled, true);
 });
+
+test("an unreadable dropped or chosen file reports the failure in the message area instead of rejecting", async () => {
+  const h = await boot();
+  const broken = { get name() { throw new Error("file vanished"); } };
+  await h.act(async () => h.listeners.drop.forEach((f) => f({ dataTransfer: { files: [broken] }, preventDefault() {} })));
+  assert.equal(h.status(), "file vanished");
+});

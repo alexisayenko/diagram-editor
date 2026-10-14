@@ -29,7 +29,12 @@ export class El {
     const set = this.classes;
     this.classList = {
       add: (c) => set.add(c), remove: (c) => set.delete(c), contains: (c) => set.has(c),
-      toggle: (c, f) => { const on = f === undefined ? !set.has(c) : !!f; if (on) set.add(c); else set.delete(c); return on; },
+      toggle: (c, f) => {
+        const on = f === undefined ? !set.has(c) : !!f;
+        if (on) set.add(c);
+        else set.delete(c);
+        return on;
+      },
     };
     this.offsetWidth = 100;
     this.offsetHeight = 30;
@@ -40,12 +45,19 @@ export class El {
   setAttribute(k, v) { this.attrs[k] = String(v); if (k === "id") this.id = String(v); }
   getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
   removeAttribute(k) { delete this.attrs[k]; }
-  addEventListener(t, f, o) { (this.listeners[t] ||= []).push(f); }
+  addEventListener(t, f, o) {
+    this.listeners[t] ||= [];
+    this.listeners[t].push(f);
+  }
   appendChild(c) { c.parent = this; this.children.push(c); return c; }
   append(...cs) { cs.forEach((c) => this.appendChild(typeof c === "string" ? Object.assign(new El("#text"), { textContent: c }) : c)); }
   add(o) { this.options.push(o); }
   descendants() { return this.children.flatMap((c) => [c, ...(c.descendants ? c.descendants() : [])]); }
-  remove() { this.removed = true; if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this); this.parent = null; }
+  remove() {
+    this.removed = true;
+    if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this);
+    this.parent = null;
+  }
   contains(t) { return t === this || this.children.some((c) => c.contains?.(t)); }
   focus() { this.focused++; }
   select() { this.selected = true; }
@@ -62,7 +74,11 @@ export class El {
   querySelectorAll() { return []; }
 }
 
-export const flush = async (n = 8) => { for (let i = 0; i < n; i++) await new Promise((r) => setImmediate(r)); };
+export const flush = async (n = 8) => {
+  let p = Promise.resolve();
+  for (let i = 0; i < n; i++) p = p.then(() => new Promise((r) => setImmediate(r)));
+  await p;
+};
 
 export function run(rel, globals, base = ENGINE) {
   const file = base + rel;

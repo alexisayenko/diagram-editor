@@ -34,7 +34,7 @@ InfraDiagram.define("ui/core", [], function () {
       document.body.appendChild(ta);
       ta.select();
       var ok = false;
-      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      try { ok = document.execCommand("copy"); /* NOSONAR: legacy fallback when the clipboard API is unavailable */ } catch (e) { ok = false; }
       ta.remove();
       done(ok);
     }

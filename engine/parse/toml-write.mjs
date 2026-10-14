@@ -64,7 +64,8 @@ const replaceValueEdit = (doc, cur, text) => ({ from: doc.at(cur.valueStart), to
 function appendLinesEdit(doc, lines, eol, closeEof) {
   const { flat, spans, at } = doc, last = lastKeyOf(spans);
   const end = last ? keyLineEnd(doc, last) : flat.length, atEof = end >= flat.length && flat.length > 0 && !flat.endsWith("\n"), block = lines.join(eol);
-  return { from: at(end), to: at(end), text: atEof ? eol + block + (closeEof ? eol : "") : block + eol };
+  const tail = closeEof ? eol : "";
+  return { from: at(end), to: at(end), text: atEof ? eol + block + tail : block + eol };
 }
 
 function replaceNotesKey(src, doc, key, texts, eol) {

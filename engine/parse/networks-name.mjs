@@ -52,7 +52,8 @@ function findEntry(lines, cidr) {
 }
 
 function appendEntry(text, nl, cidr, n) {
-  const head = text.trim() ? (text.endsWith("\n") ? text : text + nl) + nl : text;
+  const body = text.endsWith("\n") ? text : text + nl;
+  const head = text.trim() ? body + nl : text;
   return head + "[[networks]]" + nl + 'cidr = "' + cidr + '"' + nl + "name = " + quote(n) + nl;
 }
 

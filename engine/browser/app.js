@@ -184,18 +184,18 @@ async function importArchive(file) {
   } catch (e) { message(e.message, true); }
   finally { busy = false; controls(); }
 }
-const openArchive = (file) => importArchive(file).catch((e) => message(e.message, true));
+const reportError = (e) => message(e.message, true);
 diagButton.addEventListener("click", () => diagFile.click());
 diagFile.addEventListener("change", () => {
   const f = diagFile.files[0];
   diagFile.value = "";
-  if (f) openArchive(f);
+  if (f) importArchive(f).catch(reportError);
 });
 window.addEventListener("dragover", (e) => { if (e.dataTransfer?.types?.includes("Files")) e.preventDefault(); });
 window.addEventListener("drop", (e) => {
   if (!e.dataTransfer?.files?.length) return;
   e.preventDefault();
-  if (!busy) openArchive(e.dataTransfer.files[0]);
+  if (!busy) importArchive(e.dataTransfer.files[0]).catch(reportError);
 });
 const serverPath = (id) => `servers/${id}.toml`;
 function serverSource(id) {
@@ -498,7 +498,7 @@ async function copyText(text) {
   document.body.appendChild(t); t.select();
   let ok = false;
   try {
-    ok = document.execCommand("copy");
+    ok = document.execCommand("copy"); // NOSONAR: legacy fallback when the clipboard API is unavailable
   } catch (_) {
     ok = false;
   }
@@ -518,7 +518,7 @@ hostPanel.querySelectorAll(".cp").forEach((btn) => btn.addEventListener("click",
 document.querySelector("#hsclose").addEventListener("click", hostClose);
 hostPanel.addEventListener("mousedown", (e) => { if (e.target === hostPanel) hostClose(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !opPanel.hidden) { e.preventDefault(); opClose(); } else if (e.key === "Escape" && !nwPanel.hidden) { e.preventDefault(); nwClose(); } else if (e.key === "Escape" && !impPanel.hidden) { e.preventDefault(); impClose(); } else if (e.key === "Escape" && !hostPanel.hidden) { e.preventDefault(); hostClose(); } });
-window.addEventListener("beforeunload", (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("beforeunload", (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; /* NOSONAR: required by browsers to show the unload prompt */ } });
 setInterval(() => { if (!busy) controls(); }, 250);
 (async () => {
   try {

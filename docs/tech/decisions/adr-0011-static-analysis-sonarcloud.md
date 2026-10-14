@@ -31,7 +31,7 @@ so small, plain functions matter.
     fallback where the Clipboard API is missing (page opened from
     disk).
   - **S1523** on `new vm.Script` in the two test loaders: the code
-    run is the repo's own source.
+    run is the repo's own source; `.sonarcloud.properties` ignores this rule for `engine/test/cov-*.mjs` only.
 - Status at the last analysis (4996b5c, 2026-10-14): 2 bugs
   (S9383, promises not awaited in `engine/browser/app.js`), 2
   vulnerabilities (the S1523 test loaders), 168 code smells, 0

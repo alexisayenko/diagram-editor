@@ -4,9 +4,14 @@ import { fileURLToPath } from "node:url";
 
 const VOID = new Set(["input", "br", "hr", "img", "meta", "link"]);
 const ENT = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
-const unesc = (s) => s.replace(/&(#x?[0-9a-f]+|\w+);/gi, (m, e) => e[0] === "#" ? String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : +e.slice(1)) : (ENT[e] ?? m));
-const escText = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const escAttr = (s) => escText(s).replace(/"/g, "&quot;");
+const entity = (m, e) => {
+  if (e[0] !== "#") return ENT[e] ?? m;
+  const hex = e[1].toLowerCase() === "x";
+  return String.fromCodePoint(hex ? Number.parseInt(e.slice(2), 16) : +e.slice(1));
+};
+const unesc = (s) => s.replaceAll(/&(#x?[0-9a-f]+|\w+);/gi, entity);
+const escText = (s) => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+const escAttr = (s) => escText(s).replaceAll('"', "&quot;");
 
 function parseSelector(sel) {
   return sel.split(",").map((s) => s.trim()).filter(Boolean).map((part) => {
@@ -33,25 +38,35 @@ function matchCompound(el, c) {
   if (!c.attrs.every(([n, v]) => el.attrs.has(n) && (v === undefined || el.attrs.get(n) === v))) return false;
   return c.pseudo.every((p) => {
     const sib = el.parentNode ? el.parentNode.children : [];
-    return p === "first-child" ? sib[0] === el : p === "last-child" ? sib[sib.length - 1] === el : false;
+    if (p === "first-child") return sib[0] === el;
+    if (p === "last-child") return sib.at(-1) === el;
+    return false;
   });
 }
 function matchAt(el, comps, i) {
   if (!matchCompound(el, comps[i])) return false;
   if (i === 0) return true;
   if (comps[i].comb === ">") return el.parentNode?.nodeType === 1 && matchAt(el.parentNode, comps, i - 1);
-  for (let p = el.parentNode; p && p.nodeType === 1; p = p.parentNode) if (matchAt(p, comps, i - 1)) return true;
+  for (let p = el.parentNode; p?.nodeType === 1; p = p.parentNode) if (matchAt(p, comps, i - 1)) return true;
   return false;
 }
 
+function detach(n) {
+  const i = n.parentNode ? n.parentNode.childNodes.indexOf(n) : -1;
+  if (i >= 0) n.parentNode.childNodes.splice(i, 1);
+  n.parentNode = null;
+}
+
 export class TextNode {
-  constructor(t) { this.nodeType = 3; this.nodeValue = t; this.parentNode = null; }
+  nodeType = 3;
+  parentNode = null;
+  constructor(t) { this.nodeValue = t; }
   [Symbol.for("nodejs.util.inspect.custom")]() { return "#text(" + this.nodeValue + ")"; }
   get textContent() { return this.nodeValue; }
   set textContent(v) { this.nodeValue = v; }
   get outerHTML() { return escText(this.nodeValue); }
   cloneNode() { return new TextNode(this.nodeValue); }
-  remove() { this.parentNode?.removeChild(this); }
+  remove() { detach(this); }
 }
 
 export class Element {
@@ -73,29 +88,38 @@ export class Element {
   get className() { return this.attrs.get("class") || ""; }
   set className(v) { this.attrs.set("class", String(v)); }
   get classList() {
-    const el = this, arr = () => el.className.split(/\s+/).filter(Boolean);
-    const set = (a) => { if (a.length) el.attrs.set("class", a.join(" ")); else el.attrs.delete("class"); };
-    return {
+    const arr = () => this.className.split(/\s+/).filter(Boolean);
+    const set = (a) => { if (a.length) this.attrs.set("class", a.join(" ")); else this.attrs.delete("class"); };
+    const api = {
       add(...c) { const a = arr(); c.forEach((x) => { if (!a.includes(x)) a.push(x); }); set(a); },
       remove(...c) { set(arr().filter((x) => !c.includes(x))); },
       contains: (c) => arr().includes(c),
-      toggle(c, f) { const on = f === undefined ? !arr().includes(c) : !!f; if (on) this.add(c); else this.remove(c); return on; },
+      toggle(c, f) {
+        const on = f === undefined ? !arr().includes(c) : !!f;
+        if (on) api.add(c);
+        else api.remove(c);
+        return on;
+      },
     };
+    return api;
   }
   get dataset() {
-    const el = this, key = (k) => "data-" + k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
+    const key = (k) => "data-" + k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
     return new Proxy({}, {
-      get: (_, k) => typeof k === "string" && el.attrs.has(key(k)) ? el.attrs.get(key(k)) : undefined,
-      set: (_, k, v) => { el.attrs.set(key(k), String(v)); return true; },
-      deleteProperty: (_, k) => { el.attrs.delete(key(k)); return true; },
-      has: (_, k) => el.attrs.has(key(k)),
+      get: (_, k) => typeof k === "string" && this.attrs.has(key(k)) ? this.attrs.get(key(k)) : undefined,
+      set: (_, k, v) => { this.attrs.set(key(k), String(v)); return true; },
+      deleteProperty: (_, k) => { this.attrs.delete(key(k)); return true; },
+      has: (_, k) => this.attrs.has(key(k)),
     });
   }
   setAttribute(k, v) { this.attrs.set(k, String(v)); }
   getAttribute(k) { return this.attrs.has(k) ? this.attrs.get(k) : null; }
   removeAttribute(k) { this.attrs.delete(k); }
   hasAttribute(k) { return this.attrs.has(k); }
-  _adopt(n) { if (n.parentNode) n.parentNode.removeChild(n); n.parentNode = this; }
+  _adopt(n) {
+    n.remove();
+    n.parentNode = this;
+  }
   appendChild(n) {
     if (n.nodeType === 11) { [...n.childNodes].forEach((c) => this.appendChild(c)); return n; }
     this._adopt(n);
@@ -115,24 +139,29 @@ export class Element {
     n.parentNode = null;
     return n;
   }
-  replaceChild(n, old) { this.insertBefore(n, old); this.removeChild(old); return old; }
-  replaceChildren(...nodes) { [...this.childNodes].forEach((c) => this.removeChild(c)); nodes.forEach((n) => this.appendChild(n)); }
-  remove() { this.parentNode?.removeChild(this); }
+  replaceChild(n, old) { this.insertBefore(n, old); old.remove(); return old; }
+  replaceChildren(...nodes) { [...this.childNodes].forEach((c) => c.remove()); nodes.forEach((n) => this.appendChild(n)); }
+  remove() { detach(this); }
   get children() { return this.childNodes.filter((n) => n.nodeType === 1); }
   get firstChild() { return this.childNodes[0] || null; }
-  get lastChild() { return this.childNodes[this.childNodes.length - 1] || null; }
+  get lastChild() { return this.childNodes.at(-1) || null; }
   get firstElementChild() { return this.children[0] || null; }
   get nextSibling() { const s = this.parentNode?.childNodes; return s ? s[s.indexOf(this) + 1] || null : null; }
   get previousElementSibling() { const s = this.parentNode?.children; return s ? s[s.indexOf(this) - 1] || null : null; }
   get nextElementSibling() { const s = this.parentNode?.children; return s ? s[s.indexOf(this) + 1] || null : null; }
-  contains(n) { for (; n; n = n.parentNode) if (n === this) return true; return false; }
+  contains(n) {
+    for (; n; n = n.parentNode) {
+      if (n === this) return true;
+    }
+    return false;
+  }
   get textContent() { return this.childNodes.map((c) => c.textContent).join(""); }
   set textContent(v) {
-    [...this.childNodes].forEach((c) => this.removeChild(c));
+    [...this.childNodes].forEach((c) => c.remove());
     if (v !== "" && v !== null && v !== undefined) this.appendChild(new TextNode(String(v)));
   }
   get innerHTML() { return this.childNodes.map((c) => c.outerHTML).join(""); }
-  set innerHTML(h) { [...this.childNodes].forEach((c) => this.removeChild(c)); parseInto(this, String(h), this.ownerDocument); }
+  set innerHTML(h) { [...this.childNodes].forEach((c) => c.remove()); parseInto(this, String(h), this.ownerDocument); }
   get outerHTML() {
     const a = [...this.attrs].map(([k, v]) => " " + k + '="' + escAttr(v) + '"').join("");
     const t = this.tagName.toLowerCase();
@@ -156,12 +185,19 @@ export class Element {
   querySelectorAll(sel) { const s = parseSelector(sel); return this._all().filter((e) => s.some((c) => matchAt(e, c, c.length - 1))); }
   querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
   matches(sel) { return parseSelector(sel).some((c) => matchAt(this, c, c.length - 1)); }
-  closest(sel) { for (let n = this; n && n.nodeType === 1; n = n.parentNode) if (n.matches(sel)) return n; return null; }
-  addEventListener(t, f) { (this.listeners[t] ||= []).push(f); }
+  closest(sel) {
+    if (this.matches(sel)) return this;
+    return this.parentNode?.nodeType === 1 ? this.parentNode.closest(sel) : null;
+  }
+  addEventListener(t, f) {
+    this.listeners[t] ||= [];
+    this.listeners[t].push(f);
+  }
   removeEventListener(t, f) { this.listeners[t] = (this.listeners[t] || []).filter((x) => x !== f); }
   dispatchEvent(ev) {
     ev.target ||= this;
-    for (let n = this; n && !ev.cancelBubble; n = n.parentNode) {
+    for (const n of ancestors(this)) {
+      if (ev.cancelBubble) break;
       ev.currentTarget = n;
       (n.listeners?.[ev.type] || []).slice().forEach((f) => f.call(n, ev));
       if (ev.bubbles === false) break;
@@ -213,11 +249,15 @@ class Document extends Element {
   execCommand() { return true; }
 }
 
+function* ancestors(start) {
+  for (let n = start; n; n = n.parentNode) yield n;
+}
+
 function parseInto(parent, html, doc) {
   const re = /<!--[\s\S]*?-->|<\/([\w-]+)\s*>|<([\w-]+)((?:\s+[\w:-]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?)*)\s*(\/?)>|([^<]+)/g;
   const stack = [parent];
   for (const m of html.matchAll(re)) {
-    const top = stack[stack.length - 1];
+    const top = stack.at(-1);
     if (m[5] !== undefined) top.appendChild(new TextNode(unesc(m[5])));
     else if (m[1]) {
       const i = stack.map((e) => e.tagName?.toLowerCase()).lastIndexOf(m[1].toLowerCase());
@@ -270,7 +310,7 @@ export function loadUi(names, { D, html, storage, stubs = {}, globals = {}, conf
     URL: Object.assign(function URL() {}, { createObjectURL: (b) => { urls.push(b); return "blob:test/" + urls.length; }, revokeObjectURL() {} }),
     setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; },
     clearTimeout: (id) => { if (timers[id - 1]) timers[id - 1].f = null; },
-    addEventListener: (t, f) => { (winListeners[t] ||= []).push(f); },
+    addEventListener: (t, f) => { winListeners[t] ||= []; winListeners[t].push(f); },
     getSelection: () => null, confirm: (m) => { sandbox.confirmed.push(m); return confirm(m); }, confirmed: [],
     location: { search: "", href: "http://localhost/diagram.html" },
     ...globals,
