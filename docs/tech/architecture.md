@@ -200,7 +200,7 @@ Run through WSL; no install step. Details and targets:
 - With coverage: `node --test --experimental-test-coverage engine/test/*.test.mjs` (also `npm test`, `npm run cover`).
 - Generated outputs and the infrastructure-data scan together: `npm run check` (the pre-commit hook runs the same checks on staged files; it does not run the tests).
 - Generated outputs: `node engine/browser.mjs --check` and `node engine/build.mjs examples/demo --check` ([ADR-0012](decisions/adr-0012-generated-outputs-committed.md)).
-- Browser-side modules run in a `node:vm` context with fake DOM objects (`cov-dom.mjs`, `cov-ui-env.mjs`, `cov-canvas.mjs`, `cov-app.mjs`), so layout and CSS are not tested; check those by hand in Edge or Chrome.
+- Browser-side modules run in a `node:vm` context with fake DOM objects (`cov-dom.mjs`, `cov-ui-env.mjs`, `cov-canvas.mjs`, `cov-app.mjs`), whose `dataset` is the live view from `dataset-stub.mjs`, so layout and CSS are not tested; check those by hand in Edge or Chrome.
 
 ## Storage and security
 

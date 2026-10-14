@@ -58,7 +58,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   function mark(flag) {
     model.each(function (key, idxs) {
       idxs.forEach(function (i) {
-        if (flag) els[i].setAttribute("data-e", key); else els[i].removeAttribute("data-e");
+        if (flag) els[i].dataset.e = key; else delete els[i].dataset.e;
       });
     });
   }
@@ -69,7 +69,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
       return;
     }
     state.on = flag;
-    $("ta").setAttribute("data-on", flag ? "1" : "0");
+    $("ta").dataset.on = flag ? "1" : "0";
     $("te").setAttribute("aria-pressed", flag ? "true" : "false");
     $("tx").hidden = !flag;
     svg.classList.toggle("edit", flag);
@@ -93,7 +93,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     if (!t && !h) return;
     e.preventDefault();
     var p = model.point(e);
-    drag = { key: h ? keys.nodeKey("region", h.getAttribute("data-rc")) : t.getAttribute("data-e"), side: h ? h.getAttribute("data-rs") : null, x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
+    drag = { key: h ? keys.nodeKey("region", h.dataset.rc) : t.dataset.e, side: h ? h.dataset.rs : null, x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
     try { svg.setPointerCapture(e.pointerId); } catch (error_) { /* capture is optional */ }
   });
 

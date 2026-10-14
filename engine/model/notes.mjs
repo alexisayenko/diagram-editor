@@ -37,8 +37,19 @@ export function parseNotes(src) {
   }
   return notes;
 }
-// One note card from its TOML string: first line title, optional "Date:" line, rest body.
+export function hasHashLine(body) {
+  let lineStart = true;
+  for (const c of body) {
+    if (c === "#") {
+      if (lineStart) return true;
+      lineStart = false;
+    } else if (c === "\n" || c === "\r" || c === " " || c === " ") lineStart = true;
+    else if (!/\s/.test(c)) lineStart = false;
+  }
+  return false;
+}
 
+// One note card from its TOML string: first line title, optional "Date:" line, rest body.
 export function parseNoteText(text, at = "note", strict = false) {
   const fail = (m) => { throw new FormatError(m, { path: at }); };
   if (strict && text.trim() && !text.split("\n")[0].trim()) fail("the first line is the title and cannot be empty");

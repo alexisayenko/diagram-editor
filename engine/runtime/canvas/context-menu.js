@@ -25,7 +25,7 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
   }
 
   function serverAt(target) {
-    var el = target?.closest?.("[data-ent]"), k = el?.getAttribute("data-ent");
+    var el = target?.closest?.("[data-ent]"), k = el?.dataset.ent;
     var p = k ? keys.parseKey(k) : null;
     return p?.kind === "server" ? p.id : null;
   }
@@ -61,7 +61,7 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
   function networkAt(target) {
     var b = target?.closest?.("#wl .nw");
     if (!b) return null;
-    var i = +b.getAttribute("data-n"), net = core.D?.nets?.[i];
+    var i = +b.dataset.n, net = core.D?.nets?.[i];
     return net?.cidr ? { i: i, net: net } : null;
   }
 

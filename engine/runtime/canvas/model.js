@@ -52,7 +52,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "
         handles[id] = SIDES.map(function (side) {
           var r = document.createElementNS(NS, side.length === 2 ? "path" : "rect");
           r.setAttribute("class", "rh rh-" + side);
-          r.setAttribute("data-rc", id); r.setAttribute("data-rs", side);
+          r.dataset.rc = id; r.dataset.rs = side;
           layer.appendChild(r);
           return r;
         });

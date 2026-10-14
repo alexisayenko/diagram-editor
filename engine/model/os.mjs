@@ -1,5 +1,36 @@
 // Display form of a stored OS string (card pill, details panel); the stored text, the tooltip and EOL detection keep the original.
 const NOISE = /^(?:Core|Final)$/i;
+const WS = /s/;
+
+function mapParens(s, fn) {
+  let out = "", from = 0, open = s.indexOf("(");
+  while (open >= 0) {
+    let start = open;
+    while (start > from && WS.test(s[start - 1])) start--;
+    let close = open + 1;
+    while (close < s.length && s[close] !== "(" && s[close] !== ")") close++;
+    if (s[close] === ")") {
+      out += s.slice(from, start) + fn(s.slice(open + 1, close));
+      from = close + 1;
+      open = s.indexOf("(", from);
+    } else open = s.indexOf("(", open + 1);
+  }
+  return out + s.slice(from);
+}
+
+function dropLinuxWord(s) {
+  let e = 0;
+  while (e < s.length && !WS.test(s[e])) e++;
+  if (!e) return s;
+  while (s[e] === " ") {
+    let f = e + 1;
+    while (f < s.length && !WS.test(s[f])) f++;
+    if (f === e + 1) return s;
+    if (/^linux$/i.test(s.slice(e + 1, f)) && (f === s.length || (s[f] === " " && s[f + 1] >= "0" && s[f + 1] <= "9"))) return s.slice(0, e) + s.slice(f);
+    e = f;
+  }
+  return s;
+}
 
 export function displayOs(os) {
   if (typeof os !== "string") return os;

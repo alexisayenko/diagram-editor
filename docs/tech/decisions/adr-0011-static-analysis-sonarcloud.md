@@ -20,13 +20,12 @@ so small, plain functions matter.
   from duplication checks (`sonar.cpd.exclusions`).
 - Fix what the tool reports in hand-written code: long functions
   split into named helpers (4ed04a7, 4996b5c), nested ternaries,
-  dead code, redundant escapes.
+  dead code, redundant escapes, `data-*` access through `dataset`
+  (the test fakes share `engine/test/dataset-stub.mjs`).
 - Intentionally left, with a reason:
   - **S7721** (move a function to an outer scope): runtime modules
     are concatenated into one script, so a hoisted name would be
     shared between modules.
-  - **S7761** (use `dataset`): the fake DOM in the tests stubs
-    attributes, not `dataset`.
   - **S1874** on `document.execCommand("copy")`: kept as the
     fallback where the Clipboard API is missing (page opened from
     disk).

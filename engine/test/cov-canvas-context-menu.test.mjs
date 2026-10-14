@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { dataEl } from "./dataset-stub.mjs";
 import { makePage, loadModel, loadMenu, El } from "./cov-canvas.mjs";
 
 function setup({ on = true, bridge, nets } = {}) {
@@ -20,8 +21,8 @@ function setup({ on = true, bridge, nets } = {}) {
   const menu = loadMenu(page, model, { editName: (i) => edited.push(i) });
   const show = (target, x = 5, y = 5) => page.doc.fire("contextmenu", { target, clientX: x, clientY: y });
   const current = () => page.doc.body.children.find((c) => !c.removed);
-  const onServer = (id) => ({ closest: (q) => (q === "[data-ent]" ? { getAttribute: () => "n:" + id } : null) });
-  const onNet = (n) => ({ closest: (q) => (q === "#wl .nw" ? { getAttribute: () => String(n) } : null) });
+  const onServer = (id) => ({ closest: (q) => (q === "[data-ent]" ? dataEl({ ent: "n:" + id }) : null) });
+  const onNet = (n) => ({ closest: (q) => (q === "#wl .nw" ? dataEl({ n: String(n) }) : null) });
   const empty = { closest: () => null };
   return { page, model, menu, calls, edited, show, current, onServer, onNet, empty };
 }

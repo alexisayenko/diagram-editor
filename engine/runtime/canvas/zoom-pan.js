@@ -30,7 +30,7 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
         Z.cy = clampAxis(Z.cy, rc.height / k, b[1] + PAD, b[1] + b[3] - PAD, k);
       }
     }
-    svg.setAttribute("data-fit", b.join(" "));
+    svg.dataset.fit = b.join(" ");
     svg.setAttribute("viewBox", [r(Z.cx - w / 2), r(Z.cy - h / 2), r(w), r(h)].join(" "));
     svg.classList.toggle("zoomed", Z.z > 1);
   }

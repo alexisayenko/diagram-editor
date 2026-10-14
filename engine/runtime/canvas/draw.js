@@ -39,7 +39,7 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     tool = t;
     svg.classList.toggle("draw-pencil", t === "pencil");
     svg.classList.toggle("draw-eraser", t === "eraser");
-    document.querySelectorAll("#dtl [data-t]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-t") === t)); });
+    document.querySelectorAll("#dtl [data-t]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.t === t)); });
     $("dpo").hidden = t !== "pencil";
     clearHot();
   }
@@ -49,8 +49,8 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     paintPen();
   }
   function paintPen() {
-    document.querySelectorAll("#dpo [data-c]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-c") === pen.color)); });
-    document.querySelectorAll("#dpo [data-w]").forEach(function (b) { b.setAttribute("aria-pressed", String(+b.getAttribute("data-w") === pen.width)); });
+    document.querySelectorAll("#dpo [data-c]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.c === pen.color)); });
+    document.querySelectorAll("#dpo [data-w]").forEach(function (b) { b.setAttribute("aria-pressed", String(+b.dataset.w === pen.width)); });
   }
 
   function undo() { if (hist.canUndo()) show(hist.undo()); }
@@ -163,13 +163,13 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     if (!b) return;
     if (b.id === "dtu") undo();
     else if (b.id === "dtr") redo();
-    else if (b.getAttribute("data-t")) setTool(b.getAttribute("data-t"));
+    else if (b.dataset.t) setTool(b.dataset.t);
   });
   $("dpo").addEventListener("click", function (e) {
     var b = e.target.closest?.("button");
     if (!b) return;
-    if (b.getAttribute("data-c")) setPen(b.getAttribute("data-c"), pen.width);
-    else if (b.getAttribute("data-w")) setPen(pen.color, +b.getAttribute("data-w"));
+    if (b.dataset.c) setPen(b.dataset.c, pen.width);
+    else if (b.dataset.w) setPen(pen.color, +b.dataset.w);
   });
 
   paintPen();

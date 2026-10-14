@@ -5,6 +5,7 @@ import { osIconKit } from "../render/os-icons.mjs";
 import { serverFieldsKit } from "../model/server-fields.mjs";
 import { Script, createContext } from "node:vm";
 import { fileURLToPath } from "node:url";
+import { datasetOf } from "./dataset-stub.mjs";
 
 const VOID = new Set(["input", "br", "hr", "img", "meta", "link"]);
 const ENT = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
@@ -112,13 +113,7 @@ export class Element {
     return api;
   }
   get dataset() {
-    const key = (k) => "data-" + k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
-    return new Proxy({}, {
-      get: (_, k) => typeof k === "string" && this.attrs.has(key(k)) ? this.attrs.get(key(k)) : undefined,
-      set: (_, k, v) => { this.attrs.set(key(k), String(v)); return true; },
-      deleteProperty: (_, k) => { this.attrs.delete(key(k)); return true; },
-      has: (_, k) => this.attrs.has(key(k)),
-    });
+    return datasetOf(this.attrs);
   }
   setAttribute(k, v) { this.attrs.set(k, String(v)); }
   getAttribute(k) { return this.attrs.has(k) ? this.attrs.get(k) : null; }

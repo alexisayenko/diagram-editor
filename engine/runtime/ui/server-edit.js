@@ -74,12 +74,12 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
       var b = button(t.label.toUpperCase(), "tg", function (e) {
         e.stopPropagation();
         edit.type = t.id;
-        tg.setAttribute("data-ty", t.id);
-        pn.setAttribute("data-ty", t.id);
+        tg.dataset.ty = t.id;
+        pn.dataset.ty = t.id;
         tg.textContent = t.label.toUpperCase() + edit.suffix;
         pick.hidden = true;
       });
-      b.setAttribute("data-ty", t.id);
+      b.dataset.ty = t.id;
       pick.appendChild(b);
     });
     return pick;

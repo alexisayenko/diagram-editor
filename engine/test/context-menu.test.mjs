@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { dataEl, datasetOf } from "./dataset-stub.mjs";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { mergeFolder, tomlModel } from "../parse/toml.mjs";
@@ -22,7 +23,8 @@ const regionAt = new Function("return " + readFileSync(new URL("../runtime/canva
 
 function harness({ on = true, add = () => null, duplicate, regions, nets, rename } = {}) {
   const make = () => {
-    const e = { children: [], attrs: {}, listeners: {}, style: {}, offsetWidth: 100, offsetHeight: 30, removed: false, focus() {}, setAttribute(k, v) { e.attrs[k] = v; },
+    const attrs = {};
+    const e = { children: [], attrs, listeners: {}, style: {}, offsetWidth: 100, offsetHeight: 30, removed: false, focus() {}, setAttribute(k, v) { e.attrs[k] = v; }, dataset: datasetOf(attrs),
       addEventListener(t, f) { (e.listeners[t] ||= []).push(f); }, appendChild(c) { e.children.push(c); return c; }, remove() { e.removed = true; }, contains: (t) => t === e || e.children.includes(t) };
     return e;
   };
@@ -88,14 +90,14 @@ test("context menu: also opens from panels and the toolbar, but not over text fi
 
 test("context menu: right-click on a server offers Duplicate server for that server", () => {
   const h = harness({ duplicate: () => "Fix the open edit first: bad" });
-  const onServer = target({ closest: () => ({ getAttribute: () => "n:web01" }) });
+  const onServer = target({ closest: () => dataEl({ ent: "n:web01" }) });
   h.fire(h.doc, "contextmenu", { target: onServer, clientX: 150, clientY: 150 });
   const items = h.menu().children;
   assert.deepEqual(items.map((i) => i.textContent), ["Duplicate server"]);
   items[0].listeners.click[0]();
   assert.deepEqual(h.calls, [["dup", "web01"]]);
   assert.equal(h.tm.textContent, "Fix the open edit first: bad");
-  const onRegion = target({ closest: () => ({ getAttribute: () => "c:web" }) });
+  const onRegion = target({ closest: () => dataEl({ ent: "c:web" }) });
   h.fire(h.doc, "contextmenu", { target: onRegion, clientX: 150, clientY: 150 });
   assert.equal(h.menu().children[0].textContent, "Add Server");
 });
@@ -142,7 +144,7 @@ test("context menu: Add Region is disabled with a message when every type has a 
   const some = harness({ regions: [{ id: "batch", label: "Batch Server" }], duplicate: () => null });
   some.fire(some.doc, "contextmenu", { clientX: 150, clientY: 150 });
   assert.deepEqual(some.menu().children.map((c) => c.textContent), ["Add Server"]);
-  const server = { tagName: "g", closest: () => ({ getAttribute: () => "n:app01" }) };
+  const server = { tagName: "g", closest: () => dataEl({ ent: "n:app01" }) };
   some.fire(some.doc, "contextmenu", { target: server, clientX: 900, clientY: 900 });
   assert.deepEqual(some.menu().children.map((c) => c.textContent), ["Duplicate server"]);
   const plain = harness();
@@ -150,7 +152,7 @@ test("context menu: Add Region is disabled with a message when every type has a 
   assert.deepEqual(plain.menu().children.map((c) => c.textContent), ["Add Server"]);
 });
 
-const netTarget = (i) => target({ closest: (sel) => (sel === "#wl .nw" ? { getAttribute: () => String(i) } : null) });
+const netTarget = (i) => target({ closest: (sel) => (sel === "#wl .nw" ? dataEl({ n: String(i) }) : null) });
 const nets = [{ cidr: "192.0.2.0/24", name: "" }, { cidr: "198.51.100.0/24", name: "Net B" }, { cidr: "", name: "Unassigned network" }];
 
 test("context menu: a network entry offers Add name or Edit name and starts the inline editor", () => {

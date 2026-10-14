@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { dataEl } from "./dataset-stub.mjs";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { geometryKit } from "../render/geometry.mjs";
@@ -79,7 +80,7 @@ test("the page ships the resize kit and styles", () => {
 });
 
 function harness() {
-  const el = () => ({ listeners: {}, hidden: false, checked: false, textContent: "", classList: { toggle() {} }, setAttribute() {}, addEventListener(t, f) { (this.listeners[t] ||= []).push(f); } });
+  const el = () => ({ ...dataEl(), listeners: {}, hidden: false, checked: false, textContent: "", classList: { toggle() {} }, addEventListener(t, f) { (this.listeners[t] ||= []).push(f); } });
   const svg = el(), nodes = {}, calls = [], rendered = [], apis = [];
   svg.setPointerCapture = () => {};
   const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -92,7 +93,7 @@ function harness() {
     window: { InfraDiagramFileBacked: true, InfraDiagram: {} }, location: { search: "" }, requestAnimationFrame: (f) => f(), setTimeout() {},
     InfraDiagram: { define: (n, d, f) => f({ svg, els: [], $, D: { meta: { nodes: {} } }, host: {}, lsGet() {}, lsSet() {}, lsDel() {} }, { init() {}, editChanged() {} }, model, { fit: () => fits.push(1) }, keys) },
   });
-  const handle = (id, side) => ({ closest: (q) => (q === "[data-rc]" ? { getAttribute: (k) => (k === "data-rc" ? id : side) } : null) });
+  const handle = (id, side) => ({ closest: (q) => (q === "[data-rc]" ? dataEl({ rc: id, rs: side }) : null) });
   const fire = (t, ev) => (svg.listeners[t] || []).forEach((f) => f({ button: 0, pointerId: 1, type: t, preventDefault() {}, ...ev }));
   return { fire, handle, state, apis, rendered, fits, $ };
 }

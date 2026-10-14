@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { Script, createContext } from "node:vm";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { datasetOf } from "./dataset-stub.mjs";
 
 const ENGINE = fileURLToPath(new URL("..", import.meta.url));
 
@@ -16,7 +17,7 @@ export class El {
     this.text = "";
     this.parent = null;
     this.style = {};
-    this.dataset = {};
+    this.dataset = datasetOf(this.attrs);
     this.hidden = false;
     this.disabled = false;
     this.checked = false;

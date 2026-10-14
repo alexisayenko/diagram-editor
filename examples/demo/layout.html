@@ -1911,12 +1911,12 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
       var b = button(t.label.toUpperCase(), "tg", function (e) {
         e.stopPropagation();
         edit.type = t.id;
-        tg.setAttribute("data-ty", t.id);
-        pn.setAttribute("data-ty", t.id);
+        tg.dataset.ty = t.id;
+        pn.dataset.ty = t.id;
         tg.textContent = t.label.toUpperCase() + edit.suffix;
         pick.hidden = true;
       });
-      b.setAttribute("data-ty", t.id);
+      b.dataset.ty = t.id;
       pick.appendChild(b);
     });
     return pick;
@@ -2920,7 +2920,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "
         handles[id] = SIDES.map(function (side) {
           var r = document.createElementNS(NS, side.length === 2 ? "path" : "rect");
           r.setAttribute("class", "rh rh-" + side);
-          r.setAttribute("data-rc", id); r.setAttribute("data-rs", side);
+          r.dataset.rc = id; r.dataset.rs = side;
           layer.appendChild(r);
           return r;
         });
@@ -3079,7 +3079,7 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
         Z.cy = clampAxis(Z.cy, rc.height / k, b[1] + PAD, b[1] + b[3] - PAD, k);
       }
     }
-    svg.setAttribute("data-fit", b.join(" "));
+    svg.dataset.fit = b.join(" ");
     svg.setAttribute("viewBox", [r(Z.cx - w / 2), r(Z.cy - h / 2), r(w), r(h)].join(" "));
     svg.classList.toggle("zoomed", Z.z > 1);
   }
@@ -3187,7 +3187,7 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     tool = t;
     svg.classList.toggle("draw-pencil", t === "pencil");
     svg.classList.toggle("draw-eraser", t === "eraser");
-    document.querySelectorAll("#dtl [data-t]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-t") === t)); });
+    document.querySelectorAll("#dtl [data-t]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.t === t)); });
     $("dpo").hidden = t !== "pencil";
     clearHot();
   }
@@ -3197,8 +3197,8 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     paintPen();
   }
   function paintPen() {
-    document.querySelectorAll("#dpo [data-c]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-c") === pen.color)); });
-    document.querySelectorAll("#dpo [data-w]").forEach(function (b) { b.setAttribute("aria-pressed", String(+b.getAttribute("data-w") === pen.width)); });
+    document.querySelectorAll("#dpo [data-c]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.c === pen.color)); });
+    document.querySelectorAll("#dpo [data-w]").forEach(function (b) { b.setAttribute("aria-pressed", String(+b.dataset.w === pen.width)); });
   }
 
   function undo() { if (hist.canUndo()) show(hist.undo()); }
@@ -3311,13 +3311,13 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     if (!b) return;
     if (b.id === "dtu") undo();
     else if (b.id === "dtr") redo();
-    else if (b.getAttribute("data-t")) setTool(b.getAttribute("data-t"));
+    else if (b.dataset.t) setTool(b.dataset.t);
   });
   $("dpo").addEventListener("click", function (e) {
     var b = e.target.closest?.("button");
     if (!b) return;
-    if (b.getAttribute("data-c")) setPen(b.getAttribute("data-c"), pen.width);
-    else if (b.getAttribute("data-w")) setPen(pen.color, +b.getAttribute("data-w"));
+    if (b.dataset.c) setPen(b.dataset.c, pen.width);
+    else if (b.dataset.w) setPen(pen.color, +b.dataset.w);
   });
 
   paintPen();
@@ -3386,7 +3386,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   function mark(flag) {
     model.each(function (key, idxs) {
       idxs.forEach(function (i) {
-        if (flag) els[i].setAttribute("data-e", key); else els[i].removeAttribute("data-e");
+        if (flag) els[i].dataset.e = key; else delete els[i].dataset.e;
       });
     });
   }
@@ -3397,7 +3397,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
       return;
     }
     state.on = flag;
-    $("ta").setAttribute("data-on", flag ? "1" : "0");
+    $("ta").dataset.on = flag ? "1" : "0";
     $("te").setAttribute("aria-pressed", flag ? "true" : "false");
     $("tx").hidden = !flag;
     svg.classList.toggle("edit", flag);
@@ -3421,7 +3421,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     if (!t && !h) return;
     e.preventDefault();
     var p = model.point(e);
-    drag = { key: h ? keys.nodeKey("region", h.getAttribute("data-rc")) : t.getAttribute("data-e"), side: h ? h.getAttribute("data-rs") : null, x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
+    drag = { key: h ? keys.nodeKey("region", h.dataset.rc) : t.dataset.e, side: h ? h.dataset.rs : null, x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
     try { svg.setPointerCapture(e.pointerId); } catch (error_) { /* capture is optional */ }
   });
 
@@ -3533,7 +3533,7 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
   }
 
   function serverAt(target) {
-    var el = target?.closest?.("[data-ent]"), k = el?.getAttribute("data-ent");
+    var el = target?.closest?.("[data-ent]"), k = el?.dataset.ent;
     var p = k ? keys.parseKey(k) : null;
     return p?.kind === "server" ? p.id : null;
   }
@@ -3569,7 +3569,7 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
   function networkAt(target) {
     var b = target?.closest?.("#wl .nw");
     if (!b) return null;
-    var i = +b.getAttribute("data-n"), net = core.D?.nets?.[i];
+    var i = +b.dataset.n, net = core.D?.nets?.[i];
     return net?.cidr ? { i: i, net: net } : null;
   }
 

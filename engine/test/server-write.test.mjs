@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { datasetOf } from "./dataset-stub.mjs";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { parseToml, tomlModel, mergeFolder } from "../parse/toml.mjs";
@@ -146,9 +147,10 @@ function fakeDom() {
   const all = (e) => e.children.flatMap((c) => [c, ...all(c)]);
   const matches = (e, s) => (s === "input" ? e.tag === "input" : s.startsWith("#") ? e.id === s.slice(1) : s.startsWith(".") ? e.className.split(" ").includes(s.slice(1)) || e.classes.has(s.slice(1)) : e.tag === s);
   return (tag) => {
-    const e = { tag, tagName: tag.toUpperCase(), children: [], attrs: {}, listeners: {}, value: "", hidden: false, textContent: "", className: "", classes: new Set(),
+    const attrs = {};
+    const e = { tag, tagName: tag.toUpperCase(), children: [], attrs, dataset: datasetOf(attrs), listeners: {}, value: "", hidden: false, textContent: "", className: "", classes: new Set(),
       classList: { add: (c) => e.classes.add(c), contains: (c) => e.classes.has(c), toggle() {} },
-      setAttribute(k, v) { e.attrs[k] = String(v); }, getAttribute: (k) => e.attrs[k] ?? null, addEventListener(t, f) { (e.listeners[t] ||= []).push(f); },
+      setAttribute(k, v) { e.attrs[k] = String(v); }, getAttribute: (k) => e.attrs[k] ?? null, removeAttribute(k) { delete e.attrs[k]; }, addEventListener(t, f) { (e.listeners[t] ||= []).push(f); },
       appendChild(c) { e.children.push(c); c.parent = e; return c; }, replaceChildren(...c) { e.children = c; c.forEach((x) => { x.parent = e; }); },
       insertBefore(c, ref) { e.children.splice(Math.max(0, e.children.indexOf(ref)), 0, c); return c; }, remove() { if (e.parent) e.parent.children = e.parent.children.filter((x) => x !== e); },
       focus() {}, closest: (s) => (matches(e, s) ? e : null), querySelector: (s) => all(e).find((x) => matches(x, s)) || null,

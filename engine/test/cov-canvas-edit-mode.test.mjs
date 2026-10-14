@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { dataEl } from "./dataset-stub.mjs";
 import { makePage, loadModel, loadEdit } from "./cov-canvas.mjs";
 import { plain } from "./cov-dom.mjs";
 
@@ -14,8 +15,8 @@ function setup({ fileBacked = false, search = "", store, bridge } = {}) {
   const model = loadModel(page), fits = [];
   const { mod, init } = loadEdit(page, model, { fit: () => fits.push(1) });
   const $ = page.core.$;
-  const closestKey = (key) => ({ closest: (q) => (q === "[data-e]" ? { getAttribute: () => key } : null) });
-  const closestHandle = (id, side) => ({ closest: (q) => (q === "[data-rc]" ? { getAttribute: (k) => (k === "data-rc" ? id : side) } : null) });
+  const closestKey = (key) => ({ closest: (q) => (q === "[data-e]" ? dataEl({ e: key }) : null) });
+  const closestHandle = (id, side) => ({ closest: (q) => (q === "[data-rc]" ? dataEl({ rc: id, rs: side }) : null) });
   const fire = (t, ev = {}) => page.svg.fire(t, { button: 0, pointerId: 1, clientX: 0, clientY: 0, ...ev });
   const frame = () => page.g.frames.splice(0).forEach((f) => f());
   const draftKey = () => [...page.store.keys()].find((k) => k.startsWith("layout-draft:"));

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { dataEl } from "./dataset-stub.mjs";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { keys } from "./runtime-kits.mjs";
@@ -7,7 +8,7 @@ import { keys } from "./runtime-kits.mjs";
 const regionAt = new Function("return " + readFileSync(new URL("../runtime/canvas/model.js", import.meta.url), "utf8").match(/function regionAt[\s\S]*?\n  }\n/)[0])();
 
 function harness({ move, cl = "a" } = {}) {
-  const el = () => ({ listeners: {}, hidden: false, checked: false, textContent: "", classList: { toggle() {} }, setAttribute() {}, addEventListener(t, f) { (this.listeners[t] ||= []).push(f); } });
+  const el = () => ({ ...dataEl(), listeners: {}, hidden: false, checked: false, textContent: "", classList: { toggle() {} }, addEventListener(t, f) { (this.listeners[t] ||= []).push(f); } });
   const svg = el(), nodes = {}, calls = [], rendered = [];
   svg.setPointerCapture = () => {};
   const layout = () => ({ nodes: { s1: { x: 10, y: 10 } }, clusters: { a: { x: 0, y: 0, w: 100, h: 100 }, b: { x: 200, y: 0, w: 100, h: 100 } }, edges: {} });
@@ -21,7 +22,7 @@ function harness({ move, cl = "a" } = {}) {
     window: win, location: { search: "" }, requestAnimationFrame: (f) => f(), setTimeout() {},
     InfraDiagram: { define: (n, d, f) => { mod = f({ svg, els: [], $, D: { meta: { nodes: { s1: { cl } } } }, host, lsGet() {}, lsSet() {}, lsDel() {} }, { init() {}, editChanged() {} }, model, { fit: () => fits.push(1) }, keys); } },
   });
-  const target = (key) => ({ closest: () => ({ getAttribute: () => key }) });
+  const target = (key) => ({ closest: () => dataEl({ e: key }) });
   const fire = (t, ev) => (svg.listeners[t] || []).forEach((f) => f({ button: 0, pointerId: 1, type: t, preventDefault() {}, ...ev }));
   return { fire, target, calls, state, rendered, fits, mod };
 }
