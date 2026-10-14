@@ -105,17 +105,18 @@ os_name() {
   text=$(cmd_os_release)
   [[ -n "$text" ]] || return 0
   (
-    local ID='' VERSION_ID='' VERSION_CODENAME='' VERSION='' NAME='' PRETTY_NAME='' line key val
+    local osr_id='' osr_version_id='' osr_version_codename='' osr_version='' osr_name='' osr_pretty_name='' line key val lower id ver code full lts cap short
     while IFS= read -r line; do
       line=${line%$'\r'}
       key=${line%%=*}
       [[ "$line" == *=* && " $OS_KEYS " == *" $key "* ]] || continue
       val=$(os_release_value "${line#*=}")
-      printf -v "$key" '%s' "$val"
+      lower=$(printf '%s' "$key" | tr 'A-Z' 'a-z')
+      printf -v "osr_$lower" '%s' "$val"
     done <<<"$text"
-    id=${ID:-}
-    ver=${VERSION_ID:-}
-    code=${VERSION_CODENAME:-}
+    id=$osr_id
+    ver=$osr_version_id
+    code=$osr_version_codename
     case "$id" in
       debian)
         # The Debian version file holds the full point release ("11.11"); testing/sid hold words such as "bookworm/sid".
@@ -125,22 +126,22 @@ os_name() {
           [0-9]*) ;;
           *) ver= ;;
         esac
-        [[ -n "$code" ]] || code=$(printf '%s' "${VERSION:-}" | sed -n 's/.*(\(.*\)).*/\1/p')
+        [[ -n "$code" ]] || code=$(printf '%s' "$osr_version" | sed -n 's/.*(\(.*\)).*/\1/p')
         printf '%s' "Debian${ver:+ $ver}${code:+ $code}"
         ;;
       ubuntu)
         lts=
-        case "${VERSION:-} ${PRETTY_NAME:-}" in *LTS*) lts=" LTS" ;; *) ;; esac
+        case "$osr_version $osr_pretty_name" in *LTS*) lts=" LTS" ;; *) ;; esac
         # Capitalise the first letter of the codename ("xenial" -> "Xenial").
         cap=$(printf '%s' "$code" | sed 's/^./\U&/')
         printf '%s' "Ubuntu${ver:+ $ver}$lts${cap:+ $cap}"
         ;;
       *)
-        if [[ -n "$ver" && -n "${NAME:-}" ]]; then
-          short=$(printf '%s' "$NAME" | sed 's/ GNU\/Linux//; s/ Server$//; s/ Linux Server$/ Linux/')
+        if [[ -n "$ver" && -n "$osr_name" ]]; then
+          short=$(printf '%s' "$osr_name" | sed 's/ GNU\/Linux//; s/ Server$//; s/ Linux Server$/ Linux/')
           printf '%s' "$short $ver${code:+ $code}"
-        elif [[ -n "${PRETTY_NAME:-}" ]]; then
-          printf '%s' "$PRETTY_NAME"
+        elif [[ -n "$osr_pretty_name" ]]; then
+          printf '%s' "$osr_pretty_name"
         else
           # Old RHEL-likes without VERSION_ID: "CentOS release 6.10 (Final)".
           cmd_redhat_release | head -n 1

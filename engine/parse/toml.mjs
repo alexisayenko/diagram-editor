@@ -57,10 +57,19 @@ export function parseToml(src, spans = null) {
     return error("unsupported string escape");
   }
   const badChar = (c, multi) => (c === "\n" ? !multi : c.codePointAt(0) < 32 && !(multi && c === "\t"));
+  function skipOpening() {
+    p += 2;
+    if (src[p] === "\n") p++;
+  }
+  function stringPiece(c, quote, multi) {
+    if (c !== "\\" || quote === "'") return c;
+    if (multi && /[ \t\n]/.test(src[p])) { skipLineContinuation(); return ""; }
+    return escape();
+  }
   function string() {
     const quote = src[p++], multi = src.startsWith(quote + quote, p);
     let out = "";
-    if (multi) { p += 2; if (src[p] === "\n") p++; }
+    if (multi) skipOpening();
     while (p < src.length) {
       const c = src[p++];
       if (c === quote) {
@@ -71,9 +80,7 @@ export function parseToml(src, spans = null) {
         continue;
       }
       if (badChar(c, multi)) error(String.raw`strings must be on one line; use \n or a multi-line string`);
-      if (c !== "\\" || quote === "'") out += c;
-      else if (multi && /[ \t\n]/.test(src[p])) skipLineContinuation();
-      else out += escape();
+      out += stringPiece(c, quote, multi);
     }
     return error("unterminated string");
   }
@@ -165,8 +172,20 @@ function parseFile(name, text) {
 
 export function checkFormatVersion(v, file = TOPOLOGY_FILE) {
   if (v === undefined || v === FORMAT_VERSION) return;
-  if (typeof v === "string" && /^[1-9][0-9]{0,8}$/.test(v) && +v > +FORMAT_VERSION) throw new FormatError(`This diagram needs a newer engine (format_version ${v}, this engine supports ${FORMAT_VERSION})`, { file });
+  if (typeof v === "string" && /^[1-9]\d{0,8}$/.test(v) && +v > +FORMAT_VERSION) throw new FormatError(`This diagram needs a newer engine (format_version ${v}, this engine supports ${FORMAT_VERSION})`, { file });
   throw new FormatError(`format_version must be the string "${FORMAT_VERSION}" (got ${typeof v === "string" ? JSON.stringify(v) : "a non-string value"})`, { file });
+}
+
+function serverFile(name, text, stem, fail) {
+  const part = parseFile(name, text);
+  if (part.id !== undefined && part.id !== stem) fail(`id '${part.id}' must equal the file name '${stem}'`, name);
+  return { ...part, id: stem };
+}
+
+function folderFile(name, text, fail) {
+  const part = parseFile(name, text), unknown = Object.keys(part).filter((k) => !FOLDER_FILES[name].includes(k));
+  if (unknown.length) fail(`unknown key ${unknown.join(", ")}; it may hold only ${FOLDER_FILES[name].join(", ")}`, name);
+  return part;
 }
 
 // Merge the folder's files into one root object shaped like the former single-file document.
@@ -179,15 +198,9 @@ export function mergeFolder(input) {
   for (const name of [...files.keys()].sort((a, b) => (a < b ? -1 : Number(a > b)))) {
     const text = files.get(name), server = name.startsWith(SERVER_DIR) && name.slice(SERVER_DIR.length).match(/^([^/]+)\.toml$/);
     if (name === NETWORKS_FILE) continue;
-    if (server) {
-      const part = parseFile(name, text), stem = server[1];
-      if (part.id !== undefined && part.id !== stem) fail(`id '${part.id}' must equal the file name '${stem}'`, name);
-      servers.push({ ...part, id: stem });
-    } else if (Object.hasOwn(FOLDER_FILES, name)) {
-      const part = parseFile(name, text), unknown = Object.keys(part).filter((k) => !FOLDER_FILES[name].includes(k));
-      if (unknown.length) fail(`unknown key ${unknown.join(", ")}; it may hold only ${FOLDER_FILES[name].join(", ")}`, name);
-      Object.assign(root, part);
-    } else if (name.endsWith(".toml")) fail(`unexpected file ${name}; use topology.toml, server-types.toml, notes.toml, documents.toml, networks.toml and servers/<id>.toml`);
+    if (server) servers.push(serverFile(name, text, server[1], fail));
+    else if (Object.hasOwn(FOLDER_FILES, name)) Object.assign(root, folderFile(name, text, fail));
+    else if (name.endsWith(".toml")) fail(`unexpected file ${name}; use topology.toml, server-types.toml, notes.toml, documents.toml, networks.toml and servers/<id>.toml`);
   }
   if (servers.length) root.servers = servers;
   return root;
@@ -306,32 +319,42 @@ function serverNode(ctx, eid, cluster, ty, title, fields, lists) {
   return { id: eid, title, cluster, db: !!ctx.TYPES[ty].db, body, jn: capLines(jobs).length, svc: lists.services.length, hw: fields.hardware.strip, hwc: fields.hardware.cells, ip: lists.ips, os: fields.os, fields };
 }
 
-function addServers(ctx) {
-  const { t, model, groups, nets, sections } = ctx;
-  const names = new Set();
-  for (const s of t.servers || []) {
-    checkKeys(s, SERVER_KEYS, "server");
-    const eid = ctx.entity(s, "server"), cluster = s.region ?? null;
-    if (cluster !== null && !model.clusters.has(cluster)) failToml(`${eid}: unknown region '${cluster}'`);
-    const ty = ctx.type(s.server_type ?? (cluster && (t.regions || []).find((r) => r.id === cluster).server_type), eid);
-    const ips = list(s.ips, eid + ".ips");
-    checkIps(eid, ips);
-    const title = str(s.name ?? eid, eid + ".name");
-    if (names.has(title)) failToml(`${eid}: duplicate server name '${title}'`);
-    names.add(title);
-    const lists = serverLists(s, eid, ips);
-    ctx.setType(eid, ty, bool(s.proposed, eid + ".proposed"));
-    for (const k of SERVER_TEXT_KEYS) if (s[k] !== undefined) str(s[k], eid + "." + k);
-    if (s.details !== undefined && typeof s.details !== "string") failToml(`${eid}.details must be a string`);
-    const dns = list(s.dns, eid + ".dns");
-    for (const name of dns) {
-      const problem = dnsProblem(name);
-      if (problem) failToml(`${eid}: ${problem}`);
-    }
-    const fields = serverFields(s, { ...lists, dns }, groups);
-    model.nodes.set(eid, serverNode(ctx, eid, cluster, ty, title, fields, lists));
-    sections[title] = serverSection(fields, nets);
+function checkDns(eid, dns) {
+  for (const name of dns) {
+    const problem = dnsProblem(name);
+    if (problem) failToml(`${eid}: ${problem}`);
   }
+}
+
+function checkServerTexts(s, eid) {
+  for (const k of SERVER_TEXT_KEYS) if (s[k] !== undefined) str(s[k], eid + "." + k);
+  if (s.details !== undefined && typeof s.details !== "string") failToml(`${eid}.details must be a string`);
+}
+
+function addServer(ctx, s, names) {
+  const { t, model, groups, nets, sections } = ctx;
+  checkKeys(s, SERVER_KEYS, "server");
+  const eid = ctx.entity(s, "server"), cluster = s.region ?? null;
+  if (cluster !== null && !model.clusters.has(cluster)) failToml(`${eid}: unknown region '${cluster}'`);
+  const ty = ctx.type(s.server_type ?? (cluster && (t.regions || []).find((r) => r.id === cluster).server_type), eid);
+  const ips = list(s.ips, eid + ".ips");
+  checkIps(eid, ips);
+  const title = str(s.name ?? eid, eid + ".name");
+  if (names.has(title)) failToml(`${eid}: duplicate server name '${title}'`);
+  names.add(title);
+  const lists = serverLists(s, eid, ips);
+  ctx.setType(eid, ty, bool(s.proposed, eid + ".proposed"));
+  checkServerTexts(s, eid);
+  const dns = list(s.dns, eid + ".dns");
+  checkDns(eid, dns);
+  const fields = serverFields(s, { ...lists, dns }, groups);
+  model.nodes.set(eid, serverNode(ctx, eid, cluster, ty, title, fields, lists));
+  sections[title] = serverSection(fields, nets);
+}
+
+function addServers(ctx) {
+  const names = new Set();
+  for (const s of ctx.t.servers || []) addServer(ctx, s, names);
 }
 
 function checkServiceEnds(model, k, from, to, e) {

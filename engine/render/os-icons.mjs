@@ -1,6 +1,6 @@
 // Original monochrome OS glyphs on a 14x14 grid: s = outline path, f = filled shapes. Shared by the card, the details panel (runtime module "ui/os-icons", generated from osIconKit) and tests.
 export function osIconKit() {
-  var ICONS = {
+  const ICONS = {
     debian: { s: "M10.2 3.6A4.6 4.6 0 1 0 11.4 8.6C11.4 6.4 9.8 5.4 8.2 5.4S5.6 7 6.6 8.2 9.2 8.6 9.2 7.4" },
     ubuntu: { s: "M7 2.2A4.8 4.8 0 1 0 7.01 2.2M7 5.2A1.8 1.8 0 1 0 7.01 5.2", f: "M6.3 1.6a.7.7 0 1 0 1.4 0a.7.7 0 1 0-1.4 0M1.9 9.2a.7.7 0 1 0 1.4 0a.7.7 0 1 0-1.4 0M10.7 9.2a.7.7 0 1 0 1.4 0a.7.7 0 1 0-1.4 0" },
     rhel: { s: "M2 9.6h10M3.6 9.6C3.6 5.2 5 3.2 7 3.2s3.4 2 3.4 6.4M1.6 11.2c2.8 1.2 8 1.2 10.8 0", f: "M3.7 7.9h6.6v1.4H3.7z" },
@@ -18,7 +18,7 @@ export function osIconKit() {
     unknown: { s: "M7 1.8A5.2 5.2 0 1 0 7.01 1.8M5.6 5.6a1.4 1.4 0 1 1 1.8 1.3c-.3.2-.4.5-.4 1", f: "M6.3 10.2a.7.7 0 1 0 1.4 0a.7.7 0 1 0-1.4 0" },
   };
   function glyph(fam) {
-    var g = ICONS[fam] || ICONS.unknown;
+    const g = ICONS[fam] || ICONS.unknown;
     return (g.s ? '<path class="osis" d="' + g.s + '"/>' : "") + (g.f ? '<path class="osif" d="' + g.f + '"/>' : "");
   }
   function iconSvg(fam, size) {

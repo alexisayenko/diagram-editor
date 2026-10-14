@@ -17,7 +17,11 @@ function strip(src) {
       else if (src[i] === "$" && src[i + 1] === "{") {
         i += 2;
         let depth = 1, start = i;
-        while (i < src.length && depth) { if (src[i] === "{") depth++; else if (src[i] === "}") depth--; i++; }
+        while (i < src.length && depth) {
+          if (src[i] === "{") depth++;
+          else if (src[i] === "}") depth--;
+          i++;
+        }
         out += " " + strip(src.slice(start, i - 1)) + " ";
       } else i++;
     }
@@ -25,21 +29,42 @@ function strip(src) {
   };
   while (i < src.length) {
     const c = src[i];
-    if (c === "/" && src[i + 1] === "/") { while (i < src.length && src[i] !== "\n") i++; continue; }
-    if (c === "/" && src[i + 1] === "*") { i = src.indexOf("*/", i + 2) + 2; continue; }
+    if (c === "/" && src[i + 1] === "/") {
+      while (i < src.length && src[i] !== "\n") i++;
+      continue;
+    }
+    if (c === "/" && src[i + 1] === "*") {
+      i = src.indexOf("*/", i + 2) + 2;
+      continue;
+    }
     if (c === '"' || c === "'") {
       i++;
       while (i < src.length && src[i] !== c) i += src[i] === "\\" ? 2 : 1;
-      i++; out += " 0 "; prev = "0"; continue;
+      i++;
+      out += " 0 ";
+      prev = "0";
+      continue;
     }
-    if (c === "`") { template(); out += " 0 "; prev = "0"; continue; }
+    if (c === "`") {
+      template();
+      out += " 0 ";
+      prev = "0";
+      continue;
+    }
     if (c === "/" && regexAllowed()) {
       i++;
       let cls = false;
-      while (i < src.length && (src[i] !== "/" || cls)) { if (src[i] === "\\") i++; else if (src[i] === "[") cls = true; else if (src[i] === "]") cls = false; i++; }
+      while (i < src.length && (src[i] !== "/" || cls)) {
+        if (src[i] === "\\") i++;
+        else if (src[i] === "[") cls = true;
+        else if (src[i] === "]") cls = false;
+        i++;
+      }
       i++;
       while (/[a-z]/.test(src[i] ?? "")) i++;
-      out += " 0 "; prev = "0"; continue;
+      out += " 0 ";
+      prev = "0";
+      continue;
     }
     out += c;
     if (!/\s/.test(c)) prev = c;
@@ -81,8 +106,15 @@ export function freeVariables(fn) {
       for (; k < code.length; k++) {
         const ch = code[k];
         if ("([{".includes(ch)) depth++;
-        else if (")]}".includes(ch)) { if (!depth) break; depth--; } else if (!depth && (ch === ";" || ch === "\n" && !/[=,+\-*/&|?:(]\s*$/.test(code.slice(m.index, k).trimEnd().slice(-1)) && /^\s*[A-Za-z_$}]/.test(code.slice(k + 1)) && !/^\s*(?:\?|:|\.|\|\||&&|\+|-|\*|\/|,)/.test(code.slice(k + 1)))) break;
-        else if (!depth && ch === ",") { j = k + 1; while (/\s/.test(code[j])) j++; break; }
+        else if (")]}".includes(ch)) {
+          if (!depth) break;
+          depth--;
+        } else if (!depth && (ch === ";" || ch === "\n" && !/[=,+\-*/&|?:(]\s*$/.test(code.slice(m.index, k).trimEnd().slice(-1)) && /^\s*[A-Za-z_$}]/.test(code.slice(k + 1)) && !/^\s*(?:\?|:|\.|\|\||&&|\+|-|\*|\/|,)/.test(code.slice(k + 1)))) break;
+        else if (!depth && ch === ",") {
+          j = k + 1;
+          while (/\s/.test(code[j])) j++;
+          break;
+        }
       }
       if (k >= code.length || code[k] !== "," ) break;
     }
@@ -100,5 +132,8 @@ export function freeVariables(fn) {
     if (/^\s*\(/.test(after) && /[{,]\s*$/.test(before) === false && /^\s*\([^)]*\)\s*\{/.test(after)) continue;
     free.add(name);
   }
-  return [...free].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return [...free].sort((a, b) => {
+    if (a === b) return 0;
+    return a < b ? -1 : 1;
+  });
 }

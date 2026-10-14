@@ -34,7 +34,7 @@ InfraDiagram.define("ui/panels", ["ui/core"], function (core) {
       var ro = new ResizeObserver(placeChrome);
       ro.observe($("ta"));
       ro.observe($("lc"));
-    } catch (e) { return; }
+    } catch { /* no ResizeObserver: window resize alone repositions */ }
   }
 
   return { placeChrome: placeChrome, initPanels: initPanels, setPanel: setPanel };

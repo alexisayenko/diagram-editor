@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
 import { tomlModel, mergeFolder } from "../engine/parse/toml.mjs";
-import { parseNetworksFile, withDerived, assignNetwork } from "../engine/parse/shared-networks.mjs";
+import { parseNetworksFile, withDerived, assignNetwork, buildNetworks } from "../engine/parse/shared-networks.mjs";
 import { parseConfig, checkConnections } from "../engine/model/config.mjs";
 import { edgeKey } from "../engine/model/edges.mjs";
 import { geometryKit, geometryMeta } from "../engine/render/geometry.mjs";
@@ -15,7 +15,6 @@ import { drawKit } from "../engine/render/draw-kit.mjs";
 import { renderModel } from "../engine/render/pipeline.mjs";
 import { resolveTypes } from "../engine/parse/types.mjs";
 import { renderSvg } from "../engine/render/svg.mjs";
-import { buildNetworks } from "../engine/parse/shared-networks.mjs";
 import { osInfo } from "../engine/model/os.mjs";
 import { nodeKey } from "../engine/lib/keys.mjs";
 import { renderDiagram } from "../engine/browser/render.mjs";
@@ -41,7 +40,7 @@ export function generate(n) {
       `id = "${sid(i)}"`, `name = "${sid(i)}.example.test"`, `region = "${rid(i % regions)}"`,
       `services = ["Service A${i % 7}", "Service B${i % 5}: node ${i}"]`, `ips = ["${block}.${host}/24"]`,
       `os = "${OSES[i % OSES.length]}"`, `role = "Role ${i % 9}"`,
-      `details = "Synthetic server ${i}.\\n\\nSecond paragraph of notes."`, "",
+      String.raw`details = "Synthetic server ${i}.\n\nSecond paragraph of notes."`, "",
     ].join("\n"));
   }
   const edges = new Set();
@@ -57,7 +56,7 @@ export function generate(n) {
   for (let b = 0; b < BLOCKS.length; b++) nets += `[[networks]]\ncidr = "${BLOCKS[b]}.0/24"\nname = "Network ${b + 1}"\ndescription = "Synthetic segment"\n\n`;
   for (let b = 0; b < BLOCKS.length; b++) for (let s = 0; s < 4; s++) nets += `[[networks]]\ncidr = "${BLOCKS[b]}.${s * 64}/26"\nname = "Segment ${b + 1}.${s + 1}"\n\n`;
   files.set(NETWORKS_FILE, nets);
-  const notes = Array.from({ length: 5 }, (_, i) => `"Note ${i + 1}\\nDate: 2026-01-0${i + 1}\\n\\nSynthetic note text for item ${i + 1}."`);
+  const notes = Array.from({ length: 5 }, (_, i) => String.raw`"Note ${i + 1}\nDate: 2026-01-0${i + 1}\n\nSynthetic note text for item ${i + 1}."`);
   files.set("notes.toml", `notes = [\n  ${notes.join(",\n  ")},\n]\n`);
   return files;
 }
@@ -115,7 +114,7 @@ export function measureOnce(files, folder, assetBundle) {
   r = ms(() => buildNetworks(networks, model, layout));
   const { nets: nn, ipNet } = r.value;
   out.deriveNetworks = r.t;
-  const { ent, typeList } = resolveTypes(model, layout, config.proposedLabel);
+  const { ent } = resolveTypes(model, layout, config.proposedLabel);
   for (const nd of model.nodes.values()) if (ent[nodeKey("server", nd.id)]) ent[nodeKey("server", nd.id)].os = osInfo(nd.fields.os);
   r = ms(() => renderSvg({ model, layout, ent, nets: nn, ipNet, routes, groups: config.groups, meta }));
   out.render = r.t;
@@ -125,7 +124,6 @@ export function measureOnce(files, folder, assetBundle) {
   out.svgBytes = Buffer.byteLength(r.value.svgBody);
   out.dataBytes = Buffer.byteLength(r.value.dataJson);
   out.srcdocBytes = out.pageBytes;
-  void typeList;
   return out;
 }
 

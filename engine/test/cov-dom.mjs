@@ -112,6 +112,6 @@ export function define(rel, globals, deps = []) {
   return mod;
 }
 
-export const clone = (o) => JSON.parse(JSON.stringify(o));
+export const clone = (o) => structuredClone(o);
 
-export const plain = (v) => JSON.parse(JSON.stringify(v));
+export const plain = (v) => structuredClone(v);

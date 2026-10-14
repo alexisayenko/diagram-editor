@@ -51,7 +51,7 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], functio
   }
 
   function osRow(pn, os) {
-    var first = pn.querySelector("table"), head = first && first.querySelector("th"), body = head && head.textContent.trim() === "Key" ? first.querySelector("tbody") : null, cell;
+    var first = pn.querySelector("table"), head = first?.querySelector("th"), body = head?.textContent.trim() === "Key" ? first.querySelector("tbody") : null, cell;
     if (body) {
       body.insertAdjacentHTML("afterbegin", "<tr><td>OS</td><td></td></tr>");
       cell = body.querySelector("tr td:last-child");

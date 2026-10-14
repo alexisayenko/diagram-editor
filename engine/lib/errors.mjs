@@ -1,7 +1,9 @@
 // The one error type for invalid diagram input. Libraries throw it; only CLI entry points catch it and exit.
 export class FormatError extends Error {
   constructor(detail, { file = null, line = null, path = null } = {}) {
-    const where = file ? (line ? `${file}:${line}` : file) : line ? `line ${line}` : "";
+    let where = "";
+    if (file) where = line ? `${file}:${line}` : file;
+    else if (line) where = `line ${line}`;
     const lead = [where, path].filter(Boolean).join(": ");
     super(lead ? `${lead}: ${detail}` : detail);
     this.name = "FormatError";

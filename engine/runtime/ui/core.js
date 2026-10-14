@@ -48,7 +48,7 @@ InfraDiagram.define("ui/core", ["ui/metrics"], function (metrics) {
     }
     function emit(event) {
       if (!subs[event]) throw new Error("InfraDiagram: unknown event " + event);
-      var args = Array.prototype.slice.call(arguments, 1);
+      var args = [...arguments].slice(1);
       subs[event].slice().forEach(function (fn) {
         try { fn.apply(null, args); } catch (e) { console.error("InfraDiagram: handler for " + event + " failed", e); }
       });

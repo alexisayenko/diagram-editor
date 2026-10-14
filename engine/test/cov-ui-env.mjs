@@ -17,19 +17,22 @@ const unesc = (s) => s.replaceAll(/&(#x?[0-9a-f]+|\w+);/gi, entity);
 const escText = (s) => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 const escAttr = (s) => escText(s).replaceAll('"', "&quot;");
 
+function parseCompound(t, comb) {
+  const c = { tag: null, id: null, cls: [], attrs: [], pseudo: [], comb };
+  for (const m of t.matchAll(/([#.]?[\w-]+)|\[([\w-]+)(?:=("?)([^\]"]*)\3)?\]|:([\w-]+)/g)) {
+    if (m[1]) { if (m[1][0] === "#") c.id = m[1].slice(1); else if (m[1][0] === ".") c.cls.push(m[1].slice(1)); else c.tag = m[1].toLowerCase(); }
+    else if (m[2]) c.attrs.push([m[2], m[4]]);
+    else if (m[5]) c.pseudo.push(m[5]);
+  }
+  return c;
+}
 function parseSelector(sel) {
   return sel.split(",").map((s) => s.trim()).filter(Boolean).map((part) => {
     const toks = part.match(/(?:\[[^\]]*\]|[^\s>[])+|>/g), comps = [];
     let comb = " ";
     for (const t of toks) {
       if (t === ">") { comb = ">"; continue; }
-      const c = { tag: null, id: null, cls: [], attrs: [], pseudo: [], comb };
-      for (const m of t.matchAll(/([#.]?[\w-]+)|\[([\w-]+)(?:=("?)([^\]"]*)\3)?\]|:([\w-]+)/g)) {
-        if (m[1]) { if (m[1][0] === "#") c.id = m[1].slice(1); else if (m[1][0] === ".") c.cls.push(m[1].slice(1)); else c.tag = m[1].toLowerCase(); }
-        else if (m[2]) c.attrs.push([m[2], m[4]]);
-        else if (m[5]) c.pseudo.push(m[5]);
-      }
-      comps.push(c);
+      comps.push(parseCompound(t, comb));
       comb = " ";
     }
     return comps;

@@ -26,5 +26,5 @@ export function tomlMultilineBody(text, eol, label = "Note text") {
     else if (ch === "\t") out += ch;
     else out += control(ch, label);
   }
-  return out.replace(/(?:"{3,})|(?:"+$)/g, (q) => String.raw`\"`.repeat(q.length));
+  return out.replace(/"+/g, (q, at) => (q.length >= 3 || at + q.length === out.length ? String.raw`\"`.repeat(q.length) : q));
 }

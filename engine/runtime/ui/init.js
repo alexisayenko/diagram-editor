@@ -15,8 +15,7 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
     if (!pk || (pk.kind !== "server" && pk.kind !== "region")) { selection.select(null); return; }
     const cl = tg.classList, id = pk.id;
     if (pk.kind === "server" && (cl.contains("nb") || cl.contains("ni") || cl.contains("ip"))) {
-      const txt = cl.contains("ip") ? ipText(tg, id) : tg.textContent;
-      copy.copyText(txt, e.clientX, e.clientY);
+      copy.copyText(cl.contains("ip") ? ipText(tg, id) : tg.textContent, e.clientX, e.clientY);
       return;
     }
     if (cl.contains("nt") || cl.contains("ct") || t.classList.contains("osg")) { selection.select(k); return; }

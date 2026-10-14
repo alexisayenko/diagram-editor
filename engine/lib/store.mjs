@@ -86,6 +86,7 @@ export function createStore(dir, io = nodeFs) {
       fn();
       return true;
     } catch (_) {
+      // best effort: a file that cannot be removed is simply left behind
       return false;
     }
   };
@@ -107,16 +108,19 @@ export function createStore(dir, io = nodeFs) {
   }
   function write(entries) {
     if (!Array.isArray(entries) || !entries.length || entries.length > MAX_FILES) throw new HttpError(400, `Send 1 to ${MAX_FILES} files`);
-    const seen = new Set(), conflicts = [];
-    for (const e of entries) {
-      if (conflictsWithDisk(e, seen)) conflicts.push(e.name);
-    }
+    const seen = new Set();
+    const conflicts = entries.filter((e) => conflictsWithDisk(e, seen)).map((e) => e.name);
     if (conflicts.length) throw new HttpError(409, `${conflicts.join(", ")} changed on disk since it was loaded. Nothing was written.`, { conflicts });
     sweep();
     const plan = entries.map((e) => {
       const target = pathOf(e.name);
       return { name: e.name, text: e.text, target, tmp: tempName(target), before: read(e.name) };
     });
+    stage(plan);
+    commit(plan);
+    return { saved: entries.map((e) => e.name) };
+  }
+  function stage(plan) {
     const staged = [];
     try {
       for (const p of plan) {
@@ -128,6 +132,8 @@ export function createStore(dir, io = nodeFs) {
       for (const p of staged) quietly(() => unlinkSync(p.tmp));
       throw new HttpError(500, `Writing ${staged.at(-1).name} failed: ${err.message}. Nothing was saved.`, { saved: [] });
     }
+  }
+  function commit(plan) {
     const done = [];
     try {
       for (const p of plan) {
@@ -140,7 +146,6 @@ export function createStore(dir, io = nodeFs) {
       const failed = plan[done.length].name;
       throw new HttpError(500, `Saving ${failed} failed: ${err.message}. ` + (stuck.length ? `Could not restore ${stuck.join(", ")}.` : "Nothing was saved."), { saved: stuck });
     }
-    return { saved: entries.map((e) => e.name) };
   }
   function restore(done) {
     const stuck = [];

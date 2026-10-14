@@ -60,7 +60,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
 
   // OS pill: icon, text, then the "EOL" marker after the pill; the text is cut with an ellipsis when pill and marker would not fit the box.
   function sizeOs(g, boxWidth) {
-    var t = g.querySelector(".ost"), r = g.querySelector("rect"), e = g.querySelector(".ose"), full = t.getAttribute("data-t") || t.textContent;
+    var t = g.querySelector(".ost"), r = g.querySelector("rect"), e = g.querySelector(".ose"), full = t.dataset.t || t.textContent;
     var cw = M.osCharWidth[ctx.style === "sketch" ? "sketch" : "other"], ew = e ? measure(e, 3, cw) + M.osPill.eolGap : 0, room = boxWidth - M.textX - M.osPill.extraW - ew;
     t.textContent = full;
     var tw = measure(t, full.length, cw);

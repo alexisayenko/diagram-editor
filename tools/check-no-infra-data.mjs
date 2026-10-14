@@ -16,10 +16,10 @@ const TLDS = "com|net|org|io|dev|cloud|eu|ru|de|uk|local|internal|corp|lan|intra
 const COMMON_TLDS = new Set(["com", "org", "io", "dev", "cloud"]);
 const INTERNAL_TLDS = new Set(["local", "internal", "corp", "lan", "intranet", "home"]);
 
-const IPV4 = /(?<![\w.])(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?![\w]|\.\d)/g;
+const IPV4 = /(?<![\w.])(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?!\w|\.\d)/g;
 const HOST = new RegExp(String.raw`(?<![\w@.-])((?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+(?:${TLDS}))(?![\w-])`, "gi");
-const EMAIL = /[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)/g;
-const TOOL = /[\w.-]*(?:jira|confluence|bitbucket)[\w.-]*\.[a-z]{2,}/gi;
+const EMAIL = /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)/g;
+const TOOL = /(?<![\w.-])[\w.-]*(?:jira|confluence|bitbucket)[\w.-]*\.[a-z]{2,}/gi;
 
 export function parseAllow(text) {
   const allow = { ip: [], host: [], email: [], file: [] };
@@ -43,40 +43,64 @@ function isPublicLooking(a, b, c, d) {
   return true;
 }
 
+const hostMatches = (host, list) => list.some((d) => host === d || host.endsWith("." + d));
+
+function ipHits(line, allow) {
+  const found = [];
+  for (const m of line.matchAll(IPV4)) {
+    const ip = m[0], low = ip.toLowerCase();
+    if (!isPublicLooking(m[1], m[2], m[3], m[4])) continue;
+    if (DOC_RANGES.some((r) => ip.startsWith(r))) continue;
+    if (allow.ip.some((p) => low.startsWith(p))) continue;
+    found.push(["ipv4-outside-documentation-ranges", ip]);
+  }
+  return found;
+}
+
+function emailHits(line, allow, owner) {
+  const found = [];
+  for (const m of line.matchAll(EMAIL)) {
+    const mail = m[0].toLowerCase(), domain = m[1].toLowerCase();
+    if (/^\d/.test(domain)) continue;
+    if (mail === owner.toLowerCase() || domainAllowed(domain, []) || domain.endsWith("users.noreply.github.com")) continue;
+    if (mail.startsWith("noreply@") || allow.email.includes(mail)) continue;
+    found.push(["email-address", m[0]]);
+  }
+  return found;
+}
+
+function hostHits(scrubbed, allow) {
+  const found = [];
+  for (const m of scrubbed.matchAll(HOST)) {
+    const host = m[1].toLowerCase(), parts = host.split("."), tld = parts.pop();
+    if (parts.length === 1 && (parts[0].length < 3 || !(COMMON_TLDS.has(tld) || INTERNAL_TLDS.has(tld)))) continue;
+    if (domainAllowed(host, allow.host) && !INTERNAL_TLDS.has(tld)) continue;
+    if (INTERNAL_TLDS.has(tld) && hostMatches(host, allow.host)) continue;
+    found.push(["real-looking-hostname", m[1]]);
+  }
+  return found;
+}
+
+function toolHits(scrubbed, allow) {
+  const found = [];
+  for (const m of scrubbed.matchAll(TOOL)) {
+    if (!hostMatches(m[0].toLowerCase(), allow.host)) found.push(["internal-tool-url", m[0]]);
+  }
+  return found;
+}
+
+function denyHits(line, deny) {
+  const lower = line.toLowerCase();
+  return deny.filter((w) => lower.includes(w)).map(() => ["deny-list-word", "(deny-list entry)"]);
+}
+
 export function scanText(text, file, { allow = parseAllow(""), owner = "", deny = [] } = {}) {
   if (allow.file.some((p) => file === p || file.startsWith(p))) return [];
-  const hits = [], lines = text.split("\n");
-  const add = (i, rule, match) => hits.push({ file, line: i + 1, rule, match });
-  lines.forEach((line, i) => {
-    for (const m of line.matchAll(IPV4)) {
-      const ip = m[0], low = ip.toLowerCase();
-      if (!isPublicLooking(m[1], m[2], m[3], m[4])) continue;
-      if (DOC_RANGES.some((r) => ip.startsWith(r))) continue;
-      if (allow.ip.some((p) => low.startsWith(p))) continue;
-      add(i, "ipv4-outside-documentation-ranges", ip);
-    }
-    for (const m of line.matchAll(EMAIL)) {
-      const mail = m[0].toLowerCase(), domain = m[1].toLowerCase();
-      if (/^\d/.test(domain)) continue;
-      if (mail === owner.toLowerCase() || domainAllowed(domain, []) || domain.endsWith("users.noreply.github.com")) continue;
-      if (mail.startsWith("noreply@") || allow.email.includes(mail)) continue;
-      add(i, "email-address", m[0]);
-    }
+  const hits = [];
+  text.split("\n").forEach((line, i) => {
     const scrubbed = line.replace(EMAIL, " ");
-    for (const m of scrubbed.matchAll(HOST)) {
-      const host = m[1].toLowerCase(), parts = host.split("."), tld = parts.pop();
-      if (parts.length === 1 && (parts[0].length < 3 || !(COMMON_TLDS.has(tld) || INTERNAL_TLDS.has(tld)))) continue;
-      if (domainAllowed(host, allow.host) && !INTERNAL_TLDS.has(tld)) continue;
-      if (INTERNAL_TLDS.has(tld) && allow.host.some((d) => host === d || host.endsWith("." + d))) continue;
-      add(i, "real-looking-hostname", m[1]);
-    }
-    for (const m of scrubbed.matchAll(TOOL)) {
-      const host = m[0].toLowerCase();
-      if (allow.host.some((d) => host === d || host.endsWith("." + d))) continue;
-      add(i, "internal-tool-url", m[0]);
-    }
-    const lower = line.toLowerCase();
-    for (const w of deny) if (lower.includes(w)) add(i, "deny-list-word", "(deny-list entry)");
+    const found = [...ipHits(line, allow), ...emailHits(line, allow, owner), ...hostHits(scrubbed, allow), ...toolHits(scrubbed, allow), ...denyHits(line, deny)];
+    for (const [rule, match] of found) hits.push({ file, line: i + 1, rule, match });
   });
   return hits;
 }

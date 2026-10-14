@@ -2,8 +2,8 @@
 // The serialized forms are fixed (engine/test/keys.test.mjs): n server, c region, e connection, g connection group, lv connection level.
 // Written as a kit so the page gets the same functions as the runtime module "ui/keys" (see engine/page/kits.mjs).
 export function keysKit() {
-  var PREFIX = { server: "n", region: "c", edge: "e", group: "g", level: "lv" };
-  var KIND = {};
+  const PREFIX = { server: "n", region: "c", edge: "e", group: "g", level: "lv" };
+  const KIND = {};
   Object.keys(PREFIX).forEach(function (k) { KIND[PREFIX[k]] = k; });
 
   function nodeKey(kind, id) {
@@ -13,7 +13,7 @@ export function keysKit() {
 
   // { kind, id } of a key; kind is null for a string that is not a key of a known kind (id: the whole string).
   function parseKey(key) {
-    var at = String(key).indexOf(":"), prefix = at < 0 ? "" : key.slice(0, at);
+    const at = String(key).indexOf(":"), prefix = at < 0 ? "" : key.slice(0, at);
     if (!Object.hasOwn(KIND, prefix)) return { kind: null, id: key };
     return { kind: KIND[prefix], id: key.slice(at + 1) };
   }

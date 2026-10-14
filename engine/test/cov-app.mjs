@@ -33,7 +33,12 @@ let renderFailure = null;
 const MODS = {
   "parse/toml-write.mjs": tomlWrite, "parse/networks-append.mjs": networksAppend, "parse/networks-name.mjs": networksName, "parse/toml.mjs": toml,
   "parse/types.mjs": types, "parse/new-diagram.mjs": newDiagram, "parse/import-servers.mjs": importServers, "lib/names.mjs": names, "lib/diagrams.mjs": diagrams,
-  "lib/zip.mjs": zip, "lib/files.mjs": files, "browser/render.mjs": { renderDiagram: (...args) => { if (renderFailure) throw renderFailure; return renderDiagram(...args); } }, "parse/layout-version.mjs": layoutVersion,
+  "lib/zip.mjs": zip, "lib/files.mjs": files, "browser/render.mjs": {
+    renderDiagram: (...args) => {
+      if (renderFailure) throw renderFailure;
+      return renderDiagram(...args);
+    },
+  }, "parse/layout-version.mjs": layoutVersion,
   "browser/api.mjs": browserApi, "browser/session.mjs": browserSession, "browser/frame-bridge.mjs": browserFrameBridge, "browser/dialogs.mjs": browserDialogs,
   "browser/dialog-flows.mjs": browserDialogFlows, "browser/edits.mjs": browserEdits, "browser/save.mjs": browserSave,
 };
@@ -58,7 +63,11 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
   const doc = new El("document");
   doc.body = new El("body", doc);
   const els = {};
-  for (const id of IDS) els[id] = Object.assign(new El(id === "view" ? "iframe" : DIALOG_IDS.has(id) ? "dialog" : "div", doc), { id });
+  const tagFor = (id) => {
+    if (id === "view") return "iframe";
+    return DIALOG_IDS.has(id) ? "dialog" : "div";
+  };
+  for (const id of IDS) els[id] = Object.assign(new El(tagFor(id), doc), { id });
   els.hs.querySelectorAll = (q) => (q === ".cp" ? h.cps : []);
   h.cps = [Object.assign(new El("button", doc), { id: "cp1" }), Object.assign(new El("button", doc), { id: "cp2" })];
   h.cps[0].dataset.copy = "#hstext"; h.cps[1].dataset.copy = "#hsnote"; h.cps.forEach((b) => { b.textContent = "Copy"; });

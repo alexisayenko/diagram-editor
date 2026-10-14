@@ -65,7 +65,8 @@ export function geometryKitOf(sizes, keyset) {
   // Text rows above the IP pills: body lines, hardware strip, OS pill.
   function rows(t) { return t.nb + (t.hw ? 1 : 0) + (t.os ? 1 : 0); }
   function needW(t) {
-    var os = t.os ? TEXT_X + (t.ol + (t.oe ? sizes.eolExtra : sizes.noEolExtra)) * OS_CW + sizes.osExtra : 0;
+    var osExtra = t.oe ? sizes.eolExtra : sizes.noEolExtra;
+    var os = t.os ? TEXT_X + (t.ol + osExtra) * OS_CW + sizes.osExtra : 0;
     return Math.ceil(Math.max(TEXT_X + t.tl * TITLE_CW + sizes.titleExtra, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + sizes.ipExtra : 0, os, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0));
   }
   function needH(t) { return sizes.boxPad + sizes.line * rows(t) + sizes.ipLine * t.ni; }
@@ -181,8 +182,8 @@ export function geometryKitOf(sizes, keyset) {
     return out;
   }
   // Writes val (OR-ed in when or is set) into arr, a nx x ny table (row stride ny), at every point (X[i], Y[j]) strictly inside rectangle r grown by m.
-  function paint(arr, ny, X, Y, r, m, val, or) {
-    var i0 = firstAbove(X, r.x0 - m + 0.01), i1 = firstAtLeast(X, r.x1 + m - 0.01), j0 = firstAbove(Y, r.y0 - m + 0.01), j1 = firstAtLeast(Y, r.y1 + m - 0.01);
+  function paint(arr, ax, r, m, val, or) {
+    var ny = ax.ny, X = ax.X, Y = ax.Y, i0 = firstAbove(X, r.x0 - m + 0.01), i1 = firstAtLeast(X, r.x1 + m - 0.01), j0 = firstAbove(Y, r.y0 - m + 0.01), j1 = firstAtLeast(Y, r.y1 + m - 0.01);
     for (var i = i0; i < i1; i++) {
       for (var j = j0; j < j1; j++) {
         if (or) arr[i * ny + j] |= val; else arr[i * ny + j] = val;
@@ -203,6 +204,22 @@ export function geometryKitOf(sizes, keyset) {
     });
   }
 
+  function segCost(out, flags, len, p) {
+    var a = 1, b = 1 + REGION;
+    if (flags[p] & 1) { a += HUG; b += HUG; }
+    if (flags[p] & 2) { a += TIGHT; b += TIGHT; }
+    out[0][p] = len * a; out[1][p] = len * b;
+  }
+  function fillCosts(hcost, vcost, hh, vh, xs, ys) {
+    var nx = xs.length, ny = ys.length;
+    for (var i = 0; i < nx; i++) {
+      for (var j = 0; j < ny; j++) {
+        if (i + 1 < nx) segCost(hcost, hh, Math.abs(xs[i + 1] - xs[i]), i * ny + j);
+        if (j + 1 < ny) segCost(vcost, vh, Math.abs(ys[j + 1] - ys[j]), i * ny + j);
+      }
+    }
+  }
+
   // Sparse orthogonal grid over obstacle borders (servers +M, titles +4, regions +-M), extra points and channel midpoints.
   function grid(S, extra) {
     var xs = [], ys = [], lo = [Infinity, Infinity], hi = [-Infinity, -Infinity];
@@ -219,32 +236,22 @@ export function geometryKitOf(sizes, keyset) {
     var nx = xs.length, ny = ys.length, P = nx * ny;
     var blk = new Uint8Array(P), hb = new Uint8Array(P), vb = new Uint8Array(P), hc = new Int16Array(P), vc = new Int16Array(P), hh = new Uint8Array(P), vh = new Uint8Array(P);
     var mx = mids(xs), my = mids(ys), i, j;
+    var axP = { ny: ny, X: xs, Y: ys }, axH = { ny: ny, X: mx, Y: ys }, axV = { ny: ny, X: xs, Y: my };
     for (i = 0; i + 1 < nx; i++) for (j = 0; j < ny; j++) hc[i * ny + j] = -1;
     for (i = 0; i < nx; i++) for (j = 0; j + 1 < ny; j++) vc[i * ny + j] = -1;
     function obstacle(r, m) {
-      paint(blk, ny, xs, ys, r, m, 1); paint(hb, ny, mx, ys, r, m, 1); paint(vb, ny, xs, my, r, m, 1);
+      paint(blk, axP, r, m, 1); paint(hb, axH, r, m, 1); paint(vb, axV, r, m, 1);
     }
     S.nodes.forEach(function (r) { obstacle(r, M); });
     S.titles.forEach(function (r) { obstacle(r, 4); });
     // A point's region is the first (lowest index) one that holds it: paint from the last region to the first.
-    for (var k = S.clusters.length - 1; k >= 0; k--) { paint(hc, ny, mx, ys, S.clusters[k], 0, k); paint(vc, ny, xs, my, S.clusters[k], 0, k); }
+    for (var k = S.clusters.length - 1; k >= 0; k--) { paint(hc, axH, S.clusters[k], 0, k); paint(vc, axV, S.clusters[k], 0, k); }
     // Bit 1: a segment hugging a region border. Bit 2: a segment within 5px of the narrowest allowed clearance (narrow channel).
     S.clusters.forEach(function (c) { paintHug(hh, ny, mx, ys, c, true); paintHug(vh, ny, my, xs, c, false); });
-    S.nodes.forEach(function (r) { paint(hh, ny, mx, ys, r, M + 5, 2, true); paint(vh, ny, xs, my, r, M + 5, 2, true); });
+    S.nodes.forEach(function (r) { paint(hh, axH, r, M + 5, 2, true); paint(vh, axV, r, M + 5, 2, true); });
     // Cost of the segment starting at table point p with every penalty but the region one (cheap), and with it (dear): length x multiplier, summed in the order the search used to.
     var hcost = [new Float64Array(P), new Float64Array(P)], vcost = [new Float64Array(P), new Float64Array(P)];
-    function costs(out, flags, len, p) {
-      var a = 1, b = 1 + REGION;
-      if (flags[p] & 1) { a += HUG; b += HUG; }
-      if (flags[p] & 2) { a += TIGHT; b += TIGHT; }
-      out[0][p] = len * a; out[1][p] = len * b;
-    }
-    for (i = 0; i < nx; i++) {
-      for (j = 0; j < ny; j++) {
-        if (i + 1 < nx) costs(hcost, hh, Math.abs(xs[i + 1] - xs[i]), i * ny + j);
-        if (j + 1 < ny) costs(vcost, vh, Math.abs(ys[j + 1] - ys[j]), i * ny + j);
-      }
-    }
+    fillCosts(hcost, vcost, hh, vh, xs, ys);
     return { xs: xs, ys: ys, nx: nx, ny: ny, blk: blk, hb: hb, vb: vb, hc: hc, vc: vc, hh: hh, vh: vh, hcost: hcost, vcost: vcost };
   }
   function nearIdx(a, v) {
@@ -276,7 +283,6 @@ export function geometryKitOf(sizes, keyset) {
       cache.scale = 2 ** Math.ceil(Math.log2(n + 2));
       cache.sd = new Float64Array(2 * n);
       cache.hp = new Float64Array(2 * n);
-      cache.gmark = new Int32Array(n);
       cache.gen = 0;
       cache.hf = new Float64Array(1024);
       cache.hs = new Int32Array(1024);
@@ -297,95 +303,110 @@ export function geometryKitOf(sizes, keyset) {
 
   // A* over (grid point, heading); cost = length (x region / hug penalties) + bends. starts / goals: {p, d, c}.
   // Ties pop in the order of a binary min-heap on the estimate alone, so the route chosen is a pure function of the grid and the ends.
+  function heur(Q, p) {
+    var hp = cache.hp, hx = Q.hx, G = Q.G;
+    if (hp[2 * p + 1] === Q.gen) return hp[2 * p];
+    var x = G.xs[Math.floor(p / G.ny)], y = G.ys[p % G.ny], m = Infinity;
+    for (const g of hx) m = Math.min(m, Math.abs(x - g[0]) + Math.abs(y - g[1]));
+    hp[2 * p] = m;
+    hp[2 * p + 1] = Q.gen;
+    return m;
+  }
+  function heapPush(f, st) {
+    if (cache.hn === cache.hf.length) {
+      var nf = new Float64Array(cache.hn * 2), ns = new Int32Array(cache.hn * 2);
+      nf.set(cache.hf); ns.set(cache.hs);
+      cache.hf = nf; cache.hs = ns;
+    }
+    var hf = cache.hf, hs = cache.hs, i = cache.hn++, q, t;
+    hf[i] = f; hs[i] = st;
+    while (i > 0) {
+      q = (i - 1) >> 1;
+      if (hf[q] <= hf[i]) break;
+      t = hf[q]; hf[q] = hf[i]; hf[i] = t;
+      t = hs[q]; hs[q] = hs[i]; hs[i] = t;
+      i = q;
+    }
+  }
+  function heapPop() {
+    var hf = cache.hf, hs = cache.hs, hn = --cache.hn;
+    if (!hn) return;
+    hf[0] = hf[hn]; hs[0] = hs[hn];
+    for (var a = 0; ;) {
+      var l = 2 * a + 1, r = l + 1, mm = a, t;
+      if (l < hn && hf[l] < hf[mm]) mm = l;
+      if (r < hn && hf[r] < hf[mm]) mm = r;
+      if (mm === a) break;
+      t = hf[mm]; hf[mm] = hf[a]; hf[a] = t;
+      t = hs[mm]; hs[mm] = hs[a]; hs[a] = t;
+      a = mm;
+    }
+  }
+  function markGoal(Q, g) {
+    if (!Q.goalAt.has(g.p)) Q.goalAt.set(g.p, []);
+    Q.goalAt.get(g.p).push(g);
+    Q.hx.push([Q.G.xs[Math.floor(g.p / Q.G.ny)], Q.G.ys[g.p % Q.G.ny]]);
+  }
+  function seed(Q, s) {
+    var sd = cache.sd, st = s.p * 4 + s.d;
+    if (sd[2 * st + 1] < Q.gmin || s.c < sd[2 * st]) {
+      sd[2 * st] = s.c;
+      sd[2 * st + 1] = Q.gmin;
+      heapPush(s.c + heur(Q, s.p), st);
+    }
+  }
+  function settle(Q, st, d0) {
+    var gl = Q.goalAt.get(st >> 2), d = st & 3;
+    if (!gl) return;
+    for (const g of gl) {
+      const total = d0 + turnCost(g.d, d) + g.c;
+      if (total < Q.best.cost) Q.best = { cost: total, st: st, goal: g };
+    }
+  }
+  function relax(Q, st, st2, nd, p2) {
+    var sd = cache.sd;
+    if (sd[2 * st2 + 1] < Q.gmin || nd < sd[2 * st2]) {
+      sd[2 * st2] = nd;
+      sd[2 * st2 + 1] = Q.gmin + st + 1;
+      heapPush(nd + heur(Q, p2), st2);
+    }
+  }
+  function stepTo(Q, st, d0, i2, j2, d2) {
+    var G = Q.G, p = st >> 2;
+    if (i2 < 0 || j2 < 0 || i2 >= G.nx || j2 >= G.ny) return;
+    var p2 = i2 * G.ny + j2;
+    if (G.blk[p2]) return;
+    var horiz = d2 % 2 === 0, forward = horiz ? d2 === 0 : d2 === 1, si = forward ? p : p2;
+    if ((horiz ? G.hb : G.vb)[si]) return;
+    var cl = (horiz ? G.hc : G.vc)[si], dear = cl >= 0 && cl !== Q.h0 && cl !== Q.h1 ? 1 : 0;
+    var nd = d0 + ((horiz ? G.hcost : G.vcost)[dear][si] + (d2 === (st & 3) ? 0 : BEND));
+    relax(Q, st, (p2 << 2) + d2, nd, p2);
+  }
+  function expand(Q, st, d0) {
+    var p = st >> 2, d = st & 3, i = Math.trunc(p / Q.G.ny), j = p - i * Q.G.ny;
+    for (var d2 = 0; d2 < 4; d2++) {
+      if (d2 !== ((d + 2) & 3)) stepTo(Q, st, d0, i + DX[d2], j + DY[d2], d2);
+    }
+  }
   function search(G, starts, goals, home) {
     searchBuffers(G.nx * G.ny * 4);
-    var sd = cache.sd, gen = cache.gen, gmin = gen * cache.scale, hp = cache.hp, gmark = cache.gmark, hf = cache.hf, hs = cache.hs, hn = 0;
-    var nx = G.nx, ny = G.ny, xs = G.xs, ys = G.ys, blk = G.blk, hb = G.hb, vb = G.vb, hc = G.hc, vc = G.vc, hcost = G.hcost, vcost = G.vcost;
-    var h0 = home.length > 0 ? home[0] : -2, h1 = home.length > 1 ? home[1] : -2;
-    var goalAt = new Map(), hx = [];
-    goals.forEach(function (g) {
-      gmark[g.p] = gen;
-      if (!goalAt.has(g.p)) goalAt.set(g.p, []);
-      goalAt.get(g.p).push(g);
-      hx.push([xs[Math.floor(g.p / ny)], ys[g.p % ny]]);
-    });
-    function h(p) {
-      if (hp[2 * p + 1] === gen) return hp[2 * p];
-      var x = xs[Math.floor(p / ny)], y = ys[p % ny], m = Infinity;
-      for (var k = 0; k < hx.length; k++) m = Math.min(m, Math.abs(x - hx[k][0]) + Math.abs(y - hx[k][1]));
-      hp[2 * p] = m;
-      hp[2 * p + 1] = gen;
-      return m;
+    var Q = {
+      G: G, gen: cache.gen, gmin: cache.gen * cache.scale, h0: home.length > 0 ? home[0] : -2, h1: home.length > 1 ? home[1] : -2,
+      goalAt: new Map(), hx: [], best: { cost: Infinity, st: -1, goal: null },
+    };
+    cache.hn = 0;
+    goals.forEach(function (g) { markGoal(Q, g); });
+    starts.forEach(function (s) { seed(Q, s); });
+    while (cache.hn) {
+      var f = cache.hf[0], st = cache.hs[0];
+      heapPop();
+      var d0 = cache.sd[2 * st];
+      if (f >= Q.best.cost) break;
+      if (f > d0 + heur(Q, st >> 2) + 1e-6) continue;
+      settle(Q, st, d0);
+      expand(Q, st, d0);
     }
-    function push(f, st) {
-      if (hn === hf.length) {
-        var nf = new Float64Array(hn * 2), ns = new Int32Array(hn * 2);
-        nf.set(hf); ns.set(hs);
-        hf = cache.hf = nf; hs = cache.hs = ns;
-      }
-      var i = hn++, q, t;
-      hf[i] = f; hs[i] = st;
-      while (i > 0) {
-        q = (i - 1) >> 1;
-        if (hf[q] <= hf[i]) break;
-        t = hf[q]; hf[q] = hf[i]; hf[i] = t;
-        t = hs[q]; hs[q] = hs[i]; hs[i] = t;
-        i = q;
-      }
-    }
-    starts.forEach(function (s) {
-      var st = s.p * 4 + s.d;
-      if (sd[2 * st + 1] < gmin || s.c < sd[2 * st]) {
-        sd[2 * st] = s.c;
-        sd[2 * st + 1] = gmin;
-        push(s.c + h(s.p), st);
-      }
-    });
-    var best = { cost: Infinity, st: -1, goal: null };
-    while (hn) {
-      var f = hf[0], st = hs[0];
-      hn--;
-      if (hn) {
-        hf[0] = hf[hn]; hs[0] = hs[hn];
-        for (var a = 0; ;) {
-          var l = 2 * a + 1, r = l + 1, mm = a, t;
-          if (l < hn && hf[l] < hf[mm]) mm = l;
-          if (r < hn && hf[r] < hf[mm]) mm = r;
-          if (mm === a) break;
-          t = hf[mm]; hf[mm] = hf[a]; hf[a] = t;
-          t = hs[mm]; hs[mm] = hs[a]; hs[a] = t;
-          a = mm;
-        }
-      }
-      var d0 = sd[2 * st], p = st >> 2, d = st & 3;
-      if (f >= best.cost) break;
-      if (f > d0 + h(p) + 1e-6) continue;
-      var gl = gmark[p] === gen ? goalAt.get(p) : null;
-      if (gl) {
-        for (var gi = 0; gi < gl.length; gi++) {
-          var total = d0 + turnCost(gl[gi].d, d) + gl[gi].c;
-          if (total < best.cost) best = { cost: total, st: st, goal: gl[gi] };
-        }
-      }
-      var i = (p / ny) | 0, j = p - i * ny;
-      for (var d2 = 0; d2 < 4; d2++) {
-        if (d2 === ((d + 2) & 3)) continue;
-        var i2 = i + DX[d2], j2 = j + DY[d2];
-        if (i2 < 0 || j2 < 0 || i2 >= nx || j2 >= ny) continue;
-        var p2 = i2 * ny + j2;
-        if (blk[p2]) continue;
-        var horiz = d2 % 2 === 0, si = (horiz ? d2 === 0 : d2 === 1) ? p : p2;
-        if ((horiz ? hb : vb)[si]) continue;
-        var cl = (horiz ? hc : vc)[si], dear = cl >= 0 && cl !== h0 && cl !== h1 ? 1 : 0;
-        var st2 = (p2 << 2) + d2, nd = d0 + ((horiz ? hcost : vcost)[dear][si] + (d2 === d ? 0 : BEND));
-        if (sd[2 * st2 + 1] < gmin || nd < sd[2 * st2]) {
-          sd[2 * st2] = nd;
-          sd[2 * st2 + 1] = gmin + st + 1;
-          push(nd + (hp[2 * p2 + 1] === gen ? hp[2 * p2] : h(p2)), st2);
-        }
-      }
-    }
-    return best.st < 0 ? null : traceBack(G, starts, best);
+    return Q.best.st < 0 ? null : traceBack(G, starts, Q.best);
   }
 
   // Port on side sd (0 right, 1 bottom, 2 left, 3 top; = outward heading) at position v along the side.

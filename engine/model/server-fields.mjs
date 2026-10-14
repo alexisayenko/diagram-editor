@@ -6,7 +6,7 @@
 //   check   ip | dns: a list entry validator        card  drawn on the server card
 //   label   panel table and form label, placeholder the form's example, add the form's "Add ..." button
 export function serverFieldsKit() {
-  var FIELDS = [
+  const FIELDS = [
     { key: "id", type: "single", label: "ID" },
     { key: "name", type: "single", label: "Name", form: true, card: true },
     { key: "server_type", type: "single", label: "Server type", form: true },
