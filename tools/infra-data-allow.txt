@@ -1,0 +1,30 @@
+# Values the infra-data check must not flag. One entry per line: "<kind> <value>".
+# Kinds: ip (address prefix), host (domain, also matches sub-domains), email, file (path prefix to skip).
+# Only documentation, public standards sites and code-shaped text belong here. Never a real value.
+
+# Private-range addresses used as obvious test values (RFC 5737 ranges need no entry).
+ip 10.0.0.
+ip 10.0.1.
+ip 10.0.2.
+ip 10.0.9.
+ip 10.1.1.
+ip 10.9.9.
+
+# Public sites the docs and the page legitimately link to.
+host github.com
+host sonarcloud.io
+host w3.org
+host jsdelivr.net
+host googleapis.com
+host gstatic.com
+host excalidraw.com
+host schemastore.org
+host webpagetest.org
+host perfetto.dev
+host material.io
+host chrome.com
+host apple.com
+
+# Code-shaped text that looks like a host name.
+host ctx.net
+host settings.local

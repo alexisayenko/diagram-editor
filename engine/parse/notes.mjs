@@ -1,4 +1,4 @@
-import { fail } from "../lib/util.mjs";
+import { fail } from "./errors.mjs";
 
 function dateOf(note, line, at) {
   const m = /^Date:\s*(\S.*)$/.exec(line);

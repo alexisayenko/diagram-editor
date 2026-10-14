@@ -1,4 +1,5 @@
-import { fail, unq } from "../lib/util.mjs";
+import { fail } from "./errors.mjs";
+import { unq } from "../lib/util.mjs";
 
 const IP = /^(\d{1,3}(?:\.\d{1,3}){3}\/\d+)/;
 const FW = /·\s*firewall$/;

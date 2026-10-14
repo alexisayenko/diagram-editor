@@ -2,10 +2,12 @@
 // Kept dependency-free and shared by Node tests and the standalone browser page.
 import { parseNotes } from "./notes.mjs";
 import { mergeTypes, RESERVED_TYPES } from "./types.mjs";
-export function ipProblem(ip) {
-  const m = typeof ip === "string" && /^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/.exec(ip);
-  return !m || m[1].split(".").some((n) => +n > 255) || +m[2] > 32 ? `invalid IPv4 CIDR '${ip}'` : null;
-}
+import { FormatError } from "./errors.mjs";
+import { ipv4CidrProblem } from "../lib/net.mjs";
+import { TOPOLOGY_FILE, LEGACY_TOPOLOGY_FILE, SERVER_TYPES_FILE, NOTES_FILE, DOCUMENTS_FILE, NETWORKS_FILE, SERVER_DIR } from "../lib/files.mjs";
+import { SERVER_KEYS, SERVER_ROW_FIELDS } from "../render/server-fields.mjs";
+
+export const ipProblem = ipv4CidrProblem;
 export function dnsProblem(name) {
   const ok = typeof name === "string" && name.length <= 253 && /^\w([\w-]{0,61}\w)?(\.\w([\w-]{0,61}\w)?)*\.?$/.test(name);
   return ok ? null : `invalid host name '${name}'`;
@@ -17,7 +19,7 @@ export function parseToml(src, spans = null) {
   src = src.replace(/^﻿/, "").replaceAll("\r\n", "\n");
   let p = 0, table = Object.create(null), current = null;
   const root = table;
-  const error = (message) => { throw new Error(`TOML:${src.slice(0, p).split("\n").length}: ${message}`); };
+  const error = (message) => { throw new FormatError(message, { line: src.slice(0, p).split("\n").length }); };
   function space(lines = true) {
     while (p < src.length) {
       if (src[p] === "#") { while (p < src.length && src[p] !== "\n") p++; }
@@ -139,7 +141,7 @@ export function parseToml(src, spans = null) {
 
 // One note card from its TOML string: first line title, optional "Date:" line, rest body.
 export function parseNoteText(text, at = "note", strict = false) {
-  const fail = (m) => { throw new Error(`TOML: ${at}: ${m}`); };
+  const fail = (m) => { throw new FormatError(m, { path: at }); };
   if (strict && text.trim() && !text.split("\n")[0].trim()) fail("the first line is the title and cannot be empty");
   const [head, ...rest] = text.trim().split("\n"), dated = /^\s*Date:/.test(rest[0] || "");
   if (!head) fail("needs a title line and body text");
@@ -152,43 +154,49 @@ export function parseNoteText(text, at = "note", strict = false) {
 
 // A diagram folder: file name (relative to the folder) -> the keys that file may hold.
 const FOLDER_FILES = {
-  "topology.toml": ["id", "title", "regions", "service_groups", "connections"],
-  "server-types.toml": ["server_types"],
-  "notes.toml": ["notes"],
-  "documents.toml": ["documents"],
+  [TOPOLOGY_FILE]: ["format_version", "id", "title", "regions", "service_groups", "connections"],
+  [SERVER_TYPES_FILE]: ["server_types"],
+  [NOTES_FILE]: ["notes"],
+  [DOCUMENTS_FILE]: ["documents"],
 };
-const ROOT_FILE = "topology.toml", LEGACY_ROOT_FILE = "diagram.toml";
 export function withRoot(files) {
-  if (!files.has(LEGACY_ROOT_FILE)) return files;
-  const out = new Map(files), legacy = out.get(LEGACY_ROOT_FILE);
-  out.delete(LEGACY_ROOT_FILE);
-  if (!out.has(ROOT_FILE)) out.set(ROOT_FILE, legacy);
+  if (!files.has(LEGACY_TOPOLOGY_FILE)) return files;
+  const out = new Map(files), legacy = out.get(LEGACY_TOPOLOGY_FILE);
+  out.delete(LEGACY_TOPOLOGY_FILE);
+  if (!out.has(TOPOLOGY_FILE)) out.set(TOPOLOGY_FILE, legacy);
   return out;
 }
-export const NETWORKS_FILE = "networks.toml";
-const SERVER_DIR = "servers/";
+
+export const FORMAT_VERSION = "1";
 
 function parseFile(name, text) {
   try { return parseToml(text); }
-  catch (e) { throw new Error(e.message.replace(/^TOML:/, `TOML: ${name}:`)); }
+  catch (e) { throw e instanceof FormatError ? new FormatError(e.detail, { file: name, line: e.line }) : e; }
+}
+
+export function checkFormatVersion(v, file = TOPOLOGY_FILE) {
+  if (v === undefined || v === FORMAT_VERSION) return;
+  if (typeof v === "string" && /^[1-9][0-9]{0,8}$/.test(v) && +v > +FORMAT_VERSION) throw new FormatError(`This diagram needs a newer engine (format_version ${v}, this engine supports ${FORMAT_VERSION})`, { file });
+  throw new FormatError(`format_version must be the string "${FORMAT_VERSION}" (got ${typeof v === "string" ? JSON.stringify(v) : "a non-string value"})`, { file });
 }
 
 // Merge the folder's files into one root object shaped like the former single-file document.
 export function mergeFolder(input) {
   const files = withRoot(input);
-  const fail = (m) => { throw new Error("TOML: " + m); };
-  if (!files.has("topology.toml")) fail("topology.toml is missing");
+  const fail = (m, file = null) => { throw new FormatError(m, { file }); };
+  if (!files.has(TOPOLOGY_FILE)) fail(TOPOLOGY_FILE + " is missing");
+  checkFormatVersion(parseFile(TOPOLOGY_FILE, files.get(TOPOLOGY_FILE)).format_version);
   const root = Object.create(null), servers = [];
   for (const name of [...files.keys()].sort((a, b) => (a < b ? -1 : Number(a > b)))) {
     const text = files.get(name), server = name.startsWith(SERVER_DIR) && name.slice(SERVER_DIR.length).match(/^([^/]+)\.toml$/);
     if (name === NETWORKS_FILE) continue;
     if (server) {
       const part = parseFile(name, text), stem = server[1];
-      if (part.id !== undefined && part.id !== stem) fail(`${name}: id '${part.id}' must equal the file name '${stem}'`);
+      if (part.id !== undefined && part.id !== stem) fail(`id '${part.id}' must equal the file name '${stem}'`, name);
       servers.push({ ...part, id: stem });
     } else if (Object.hasOwn(FOLDER_FILES, name)) {
       const part = parseFile(name, text), unknown = Object.keys(part).filter((k) => !FOLDER_FILES[name].includes(k));
-      if (unknown.length) fail(`${name}: unknown key ${unknown.join(", ")}; it may hold only ${FOLDER_FILES[name].join(", ")}`);
+      if (unknown.length) fail(`unknown key ${unknown.join(", ")}; it may hold only ${FOLDER_FILES[name].join(", ")}`, name);
       Object.assign(root, part);
     } else if (name.endsWith(".toml")) fail(`unexpected file ${name}; use topology.toml, server-types.toml, notes.toml, documents.toml, networks.toml and servers/<id>.toml`);
   }
@@ -196,7 +204,7 @@ export function mergeFolder(input) {
   return root;
 }
 
-const failToml = (m) => { throw new Error("TOML: " + m); };
+const failToml = (m) => { throw new FormatError(m); };
 
 function checkKeys(o, allowed, at) {
   const unknown = Object.keys(o).filter((k) => !allowed.includes(k));
@@ -217,12 +225,11 @@ function bool(v, at) {
 }
 
 const TABLE_KEYS = ["server_types", "regions", "service_groups", "servers", "connections", "documents"];
-const SERVER_KEYS = ["id", "name", "server_type", "region", "services", "ips", "os", "details", "proposed", "hardware", "cpu", "ram", "swap", "disk", "role", "dns", "jobs", "rmi_services", "systemd_services"];
-const SERVER_TEXT_KEYS = ["os", "hardware", "cpu", "ram", "swap", "disk", "role"];
-const SERVER_ROWS = [["OS", "os"], ["Hardware", "hardware"], ["CPU", "cpu"], ["RAM", "ram"], ["Swap", "swap"], ["Disk", "disk"], ["Role", "role"]];
+const SERVER_TEXT_KEYS = SERVER_ROW_FIELDS.map((f) => f.key);
+const SERVER_ROWS = SERVER_ROW_FIELDS.map((f) => [f.label, f.key]);
 
 function checkTables(t) {
-  checkKeys(t, ["id", "title", "notes", ...TABLE_KEYS], "diagram");
+  checkKeys(t, ["format_version", "id", "title", "notes", ...TABLE_KEYS], "diagram");
   for (const key of TABLE_KEYS) {
     if (t[key] !== undefined && (!Array.isArray(t[key]) || t[key].some((v) => !v || typeof v !== "object" || Array.isArray(v)))) failToml(`${key} must use [[${key}]] tables`);
   }

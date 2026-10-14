@@ -1,6 +1,7 @@
 // Surgical append of derived networks to a diagram folder's networks.toml: only `cidr` tables for CIDRs not yet listed, in address order,
 // after the existing bytes (comments, formatting and line endings untouched; CRLF files get CRLF).
-import { derivedCidrs, parseNetworksFile } from "./shared-networks.mjs";
+import { parseNetworksFile } from "./shared-networks.mjs";
+import { derivedCidrs } from "../lib/net.mjs";
 
 export function appendNetworks(existing, ips) {
   const defined = existing === null ? [] : parseNetworksFile(existing).map((n) => n.cidr);

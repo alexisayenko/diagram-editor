@@ -6,6 +6,7 @@ import { parseToml, tomlModel, mergeFolder } from "../parse/toml.mjs";
 import { setServer } from "../parse/toml-write.mjs";
 import { mergeTypes } from "../parse/types.mjs";
 import { demo as loadDemo, mod, withFile, mini } from "./helpers.mjs";
+import { serverFieldsKit } from "../render/server-fields.mjs";
 
 const demoFiles = loadDemo(), ctx = mergeFolder(demoFiles);
 const file = (id) => demoFiles.get(`servers/${id}.toml`);
@@ -163,7 +164,7 @@ test("server editor: type picker and field edits feed the dirty state; Done send
   let mod;
   const window = { InfraDiagramFileBacked: true, InfraDiagram: { serverEditor: { source: () => raw, apply: (id, f) => { applied.push([id, f]); return f.ips.includes("bad") ? "bad ip" : null; } } } };
   const src = readFileSync(new URL("../runtime/ui/server-edit.js", import.meta.url), "utf8");
-  runInNewContext(src, { window, document: { createElement: make }, InfraDiagram: { define: (n, d, f) => { mod = f({ $: () => pn, hooks }, { select: (k) => selected.push(k) }, { placeChrome() {} }); } } });
+  runInNewContext(src, { window, document: { createElement: make }, InfraDiagram: { define: (n, d, f) => { mod = f({ $: () => pn, hooks }, { select: (k) => selected.push(k) }, { placeChrome() {} }, serverFieldsKit()); } } });
   hooks.panel("n:web01", pn);
   assert.equal(mod.isDirty(), false);
   pn.fire("click", { target: tg });

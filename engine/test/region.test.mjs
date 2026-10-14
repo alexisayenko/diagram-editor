@@ -27,7 +27,7 @@ test("addRegion appends a region after the last one, id and title from the type"
 
 test("addRegion works on a new diagram with no regions, and keeps CRLF files", () => {
   const files = newDiagram("fresh"), r = addRegion(files, { server_type: "database" });
-  assert.equal(r.text, 'id = "fresh"\ntitle = "Fresh"\n\n[[regions]]\nid = "database"\ntitle = "Database"\nserver_type = "database"\n');
+  assert.equal(r.text, 'format_version = "1"\nid = "fresh"\ntitle = "Fresh"\n\n[[regions]]\nid = "database"\ntitle = "Database"\nserver_type = "database"\n');
   tomlModel(withFile(files, r.path, r.text));
   const crlf = withFile(files, "topology.toml", 'id = "fresh"\r\ntitle = "Fresh"\r\n\r\n[[regions]]\r\nid = "x"\r\ntitle = "X"\r\nserver_type = "gateway"\r\n');
   assert.ok(!addRegion(crlf, { server_type: "server" }).text.replace(/\r\n/g, "").includes("\n"));

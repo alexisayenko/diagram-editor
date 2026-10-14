@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { newDiagram, DIAGRAM_ID } from "../parse/new-diagram.mjs";
+import { newDiagram } from "../parse/new-diagram.mjs";
+import { DIAGRAM_ID } from "../lib/ids.mjs";
 import { prepareDiagram } from "../browser/render.mjs";
 import { addServer } from "../parse/toml-write.mjs";
 import { mergeFolder } from "../parse/toml.mjs";

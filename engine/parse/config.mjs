@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import { fail } from "../lib/util.mjs";
+import { fail } from "./errors.mjs";
 
 const ID = /^[a-z0-9][a-z0-9-]*$/;
 const COLOR = /^#[0-9A-Fa-f]{6}$/;

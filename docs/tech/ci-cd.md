@@ -12,6 +12,39 @@ added. Tests run locally: `node --test engine/test/*.test.mjs`.
 - SonarCloud already analyses every push through *automatic
   analysis*, with no workflow ([ADR-0011](decisions/adr-0011-static-analysis-sonarcloud.md)).
 
+### Local checks and the pre-commit hook
+
+`package.json` has no dependencies; it only names the commands
+(`engines.node >= 22`, run Node through WSL on Windows):
+
+| Command | Runs |
+| --- | --- |
+| `npm test` | `node --test engine/test/*.test.mjs` |
+| `npm run cover` | the same with `--experimental-test-coverage` |
+| `npm run check` | `browser.mjs --check`, `build.mjs examples/demo --check`, `tools/check-no-infra-data.mjs --all` |
+| `npm run serve` | `node engine/serve.mjs` |
+
+`package.json` sets no `"type"`: every engine file is `.mjs`, and the
+`.js` files under `engine/runtime/` and `engine/browser/` are browser
+scripts that are read as text, never imported.
+
+The hook is `tools/hooks/pre-commit` (read-only; it fixes nothing). Turn
+it on once per clone: `git config core.hooksPath tools/hooks`. On
+Linux or macOS the file needs its executable bit. It runs:
+
+1. `node tools/check-no-infra-data.mjs --staged`: staged files are
+   scanned for addresses outside the RFC 5737 ranges, real-looking host
+   names, e-mail addresses other than the one in `git config user.email`,
+   Jira / Confluence / Bitbucket URLs, and any word listed in the
+   git-ignored `local/deny-words.txt` (one word per line, optional).
+   Hits print as `file:line: rule: match`. Documentation values that are
+   safe go in `tools/infra-data-allow.txt` (`ip`, `host`, `email`,
+   `file` lines).
+2. `node engine/browser.mjs --check` and `node engine/build.mjs examples/demo --check`.
+
+Skip once with `git commit --no-verify`. The tests do not run in the hook
+(about two minutes).
+
 ### Proposal: one minimal workflow (not created)
 
 A single manual workflow, `code-quality.yml`, in the shape of the

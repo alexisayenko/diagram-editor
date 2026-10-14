@@ -1,6 +1,7 @@
 // Pure logic of the diagram pickers: the saved-diagram list, name rules and archive naming.
-import { DIAGRAM_ID } from "../parse/new-diagram.mjs";
-import { ARCHIVE_EXT, isArchiveName, readZip, writeZip } from "./zip.mjs";
+import { DIAGRAM_ID, sanitizeName } from "./ids.mjs";
+import { isArchiveName, readZip, writeZip } from "./zip.mjs";
+import { ARCHIVE_EXT, LAYOUT_FILE, TOPOLOGY_FILE, LEGACY_TOPOLOGY_FILE, SERVER_DIR_NAME } from "./files.mjs";
 
 // files: GET /api/files rows { name, size, mtime }. A folder is a diagram when it has topology.toml or a servers/*.toml file.
 export function listDiagrams(files) {
@@ -10,8 +11,8 @@ export function listDiagrams(files) {
     if (parts.length < 2) continue;
     const row = by.get(parts[0]) || { name: parts[0], servers: 0, mtime: 0, diagram: false };
     row.mtime = Math.max(row.mtime, f.mtime);
-    if (parts.length === 2 && (parts[1] === "topology.toml" || parts[1] === "diagram.toml")) row.diagram = true;
-    if (parts.length === 3 && parts[1] === "servers" && parts[2].endsWith(".toml")) { row.servers++; row.diagram = true; }
+    if (parts.length === 2 && (parts[1] === TOPOLOGY_FILE || parts[1] === LEGACY_TOPOLOGY_FILE)) row.diagram = true;
+    if (parts.length === 3 && parts[1] === SERVER_DIR_NAME && parts[2].endsWith(".toml")) { row.servers++; row.diagram = true; }
     by.set(parts[0], row);
   }
   return [...by.values()].filter((r) => r.diagram).map(({ name, servers, mtime }) => ({ name, servers, mtime })).sort((a, b) => b.mtime - a.mtime || a.name.localeCompare(b.name));
@@ -32,18 +33,6 @@ export function nameProblem(name, existing = []) {
   return null;
 }
 
-function trimDashes(s) {
-  let from = 0, to = s.length;
-  while (from < to && s[from] === "-") from++;
-  while (to > from && s[to - 1] === "-") to--;
-  return s.slice(from, to);
-}
-
-export function sanitizeName(raw) {
-  const dashed = String(raw).toLowerCase().replaceAll(/[^a-z0-9]+/g, "-");
-  return trimDashes(trimDashes(dashed).slice(0, 60)) || "diagram";
-}
-
 // Diagram name for an imported archive: the topology id when present, else the archive file name without .diag.zip.
 export function archiveDiagramName(topologyText, fileName) {
   const id = /^id[ \t]*=[ \t]*"([^"\n]+)"/m.exec(topologyText || "");
@@ -56,7 +45,6 @@ export function whenText(ms) {
   return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
 }
 
-export const LAYOUT_FILE = "diagram.layout.json";
 
 // Archive bytes of a diagram: every working file plus its layout, paths relative to the diagram root.
 export async function packDiagram(files, layoutText, date = new Date()) {
@@ -74,6 +62,6 @@ export async function unpackDiagram(bytes, fileName) {
   }
   const layoutText = files.get(LAYOUT_FILE) ?? null;
   files.delete(LAYOUT_FILE);
-  if (!files.has("topology.toml") && !files.has("diagram.toml")) throw new Error("The archive has no topology.toml, so it is not a diagram.");
-  return { name: archiveDiagramName(files.get("topology.toml") ?? files.get("diagram.toml"), fileName), files, layoutText };
+  if (!files.has(TOPOLOGY_FILE) && !files.has(LEGACY_TOPOLOGY_FILE)) throw new Error("The archive has no " + TOPOLOGY_FILE + ", so it is not a diagram.");
+  return { name: archiveDiagramName(files.get(TOPOLOGY_FILE) ?? files.get(LEGACY_TOPOLOGY_FILE), fileName), files, layoutText };
 }

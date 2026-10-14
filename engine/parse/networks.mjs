@@ -1,22 +1,16 @@
-import { fail } from "../lib/util.mjs";
+import { fail } from "./errors.mjs";
+import { ipv4Number, ipv4Text } from "../lib/net.mjs";
 
 const ITEM = /^(\s*)[-*]\s+(?:`([^`]+)`\s+)?(\S.*)$/;
 
-const ipNum = (s) => {
-  const p = s.split(".");
-  if (p.length !== 4 || p.some((o) => !/^\d{1,3}$/.test(o) || +o > 255)) return null;
-  return p.reduce((a, o) => a * 256 + +o, 0);
-};
-
 function parseCidr(s, at) {
   const m = s.match(/^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/);
-  const addr = m && ipNum(m[1]);
+  const addr = m && ipv4Number(m[1]);
   if (addr === null || !m || +m[2] > 32) fail(`${at}: invalid CIDR "${s}"; expected a.b.c.d/nn`);
   const size = 2 ** (32 - +m[2]);
-  if (addr % size) fail(`${at}: "${s}" has host bits set; network address is ${numIp(addr - (addr % size))}/${m[2]}`);
+  if (addr % size) fail(`${at}: "${s}" has host bits set; network address is ${ipv4Text(addr - (addr % size))}/${m[2]}`);
   return { lo: addr, hi: addr + size - 1 };
 }
-const numIp = (n) => [24, 16, 8, 0].map((b) => Math.floor(n / 2 ** b) % 256).join(".");
 
 export function parseNetworks(src) {
   const items = [];
@@ -52,7 +46,7 @@ export function networkMembers(items, model, layout) {
   const ips = [];
   for (const n of model.nodes.values()) {
     if (layout.nodes[n.id]?.hidden) continue;
-    for (const s of n.ip) ips.push([n, ipNum(s.split("/")[0])]);
+    for (const s of n.ip) ips.push([n, ipv4Number(s.split("/")[0])]);
   }
   const sets = items.map((it) => (it.cidr ? new Set(ips.filter(([, a]) => a >= it.lo && a <= it.hi).map(([n]) => n)) : null));
   const resolve = (k) => sets[k] || (sets[k] = new Set(items.flatMap((c, j) => (c.parent === k ? [...resolve(j)] : []))));
@@ -69,7 +63,7 @@ export function ipNetworks(items, texts) {
   const out = {};
   for (const t of texts) {
     for (const [, ip, pre] of t.matchAll(/(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?![\d.])(?:\/(\d{1,2})(?!\d))?/g)) {
-      const a = ipNum(ip);
+      const a = ipv4Number(ip);
       if (a === null || ip in out || (pre && +pre <= 32 && a % 2 ** (32 - +pre) === 0)) continue;
       let best = -1;
       items.forEach((it, k) => {

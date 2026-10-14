@@ -1,4 +1,6 @@
-export const DIAGRAM_ID = /^[a-z0-9][a-z0-9-]*$/;
+import { FORMAT_VERSION } from "./toml.mjs";
+import { DIAGRAM_ID } from "../lib/ids.mjs";
+import { TOPOLOGY_FILE, NETWORKS_FILE, SERVER_TYPES_FILE, NOTES_FILE, DOCUMENTS_FILE } from "../lib/files.mjs";
 
 const SERVER_TYPES = `[[server_types]]
 id = "server"
@@ -27,10 +29,10 @@ const titleFor = (id) => id.replace(/-+/g, " ").replace(/^./, (c) => c.toUpperCa
 export function newDiagram(id) {
   if (!DIAGRAM_ID.test(id)) throw new Error("A diagram name uses lowercase letters, digits and hyphens.");
   return new Map([
-    ["topology.toml", `id = ${JSON.stringify(id)}\ntitle = ${JSON.stringify(titleFor(id))}\n`],
-    ["networks.toml", ""],
-    ["server-types.toml", SERVER_TYPES],
-    ["notes.toml", ""],
-    ["documents.toml", ""],
+    [TOPOLOGY_FILE, `format_version = ${JSON.stringify(FORMAT_VERSION)}\nid = ${JSON.stringify(id)}\ntitle = ${JSON.stringify(titleFor(id))}\n`],
+    [NETWORKS_FILE, ""],
+    [SERVER_TYPES_FILE, SERVER_TYPES],
+    [NOTES_FILE, ""],
+    [DOCUMENTS_FILE, ""],
   ]);
 }

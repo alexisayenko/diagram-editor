@@ -12,6 +12,7 @@ Fast-path context for Claude Code. Full human-oriented docs:
 - User diagram data lives outside the repo (or in git-ignored `/local/`, `*.private.*`).
 - `examples/` and docs use fictional data only: `example.test` hosts, RFC 5737 IPs (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`), "Service A", "Region 1".
 - Bug repros are built from a description in the demo diagram, never from real files.
+- Mechanical check: `node tools/check-no-infra-data.mjs [--all]` (also the pre-commit hook, `git config core.hooksPath tools/hooks`); allow-list `tools/infra-data-allow.txt`, private deny-words `local/deny-words.txt`.
 
 ## Key principle
 

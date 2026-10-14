@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { osIconKit } from "../render/os-icons.mjs";
+import { serverFieldsKit } from "../render/server-fields.mjs";
 import { Script, createContext } from "node:vm";
 import { fileURLToPath } from "node:url";
 
@@ -324,6 +325,7 @@ export function loadUi(names, { D, html, storage, stubs = {}, globals = {}, conf
     if (name in stubs) return stubs[name];
     if (name in modules) return modules[name];
     if (name === "ui/os-icons") return (modules[name] = osIconKit());
+    if (name === "ui/server-fields") return (modules[name] = serverFieldsKit());
     const file = UI + name.replace(/^ui\//, "") + ".js";
     new Script(readFileSync(file, "utf8"), { filename: file }).runInContext(vmCtx);
     return modules[name];

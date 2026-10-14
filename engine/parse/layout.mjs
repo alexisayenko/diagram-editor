@@ -1,4 +1,4 @@
-import { fail } from "../lib/util.mjs";
+import { fail } from "./errors.mjs";
 
 export function parseLayout(src) {
   const layout = JSON.parse(src);

@@ -96,6 +96,17 @@ test("unknown keys of a stored layout survive a save", async () => {
   assert.deepEqual(JSON.parse(h.read("demo/diagram.layout.json")).keepMe, { a: 1 });
 });
 
+test("a layout from a newer engine opens with an automatic arrangement, a warning, and is never overwritten by Save", async () => {
+  const files = demoFiles("demo"), newer = JSON.stringify({ version: 2, diagramId: "demo", nodes: { db01: { future: true } } });
+  const h = await boot({ files: { ...files, "demo/diagram.layout.json": newer } });
+  assert.match(h.status(), /^demo · Automatically arranged.* Warning: The saved layout is version 2, newer than this engine supports \(1\)/);
+  assert.equal(h.statusError(), false);
+  h.ctl.editDirty = true;
+  await h.click("save");
+  assert.equal(h.read("demo/diagram.layout.json"), newer);
+  assert.match(h.status(), /Nothing saved · demo\/diagram\.layout\.json not written: it was made by a newer engine/);
+});
+
 test("edited notes are written to notes.toml and the count of files is reported", async () => {
   const h = await boot({ files: demoFiles("demo") });
   h.ctl.notesTexts = ["First edited note\n\nBody text."];

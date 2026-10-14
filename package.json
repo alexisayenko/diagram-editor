@@ -1,0 +1,13 @@
+{
+  "name": "diagram-editor",
+  "private": true,
+  "description": "Diagram editor for infrastructure diagrams. No dependencies: Node runs the engine as is.",
+  "license": "UNLICENSED",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test engine/test/*.test.mjs",
+    "cover": "node --test --experimental-test-coverage engine/test/*.test.mjs",
+    "check": "node engine/browser.mjs --check && node engine/build.mjs examples/demo --check && node tools/check-no-infra-data.mjs --all",
+    "serve": "node engine/serve.mjs"
+  }
+}

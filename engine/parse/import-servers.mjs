@@ -2,15 +2,8 @@
 import { parseToml, mergeFolder, tomlModel } from "./toml.mjs";
 import { mergeTypes } from "./types.mjs";
 import { setKeys } from "./toml-write.mjs";
-
-const VALID_ID = /^[A-Za-z][A-Za-z0-9_-]*$/;
-
-export function sanitizeId(raw) {
-  let id = String(raw).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  if (!id) return "server";
-  if (/^\d/.test(id)) id = "s" + id;
-  return id;
-}
+import { SERVER_ID, sanitizeId } from "../lib/ids.mjs";
+import { serverPath } from "../lib/files.mjs";
 
 const clean = (message) => String(message).replace(/^TOML: /, "");
 
@@ -19,7 +12,7 @@ const hasText = (v) => typeof v === "string" && v !== "";
 
 function baseIdOf(doc, entryName) {
   const rawId = hasText(doc.id) ? doc.id : entryName.split("/").pop().replace(/\.toml$/i, "");
-  return VALID_ID.test(rawId) ? rawId : sanitizeId(rawId);
+  return SERVER_ID.test(rawId) ? rawId : sanitizeId(rawId);
 }
 
 function uniqueId(baseId, isTaken) {
@@ -58,9 +51,9 @@ export function planImport(files, entries, { server_type, region, skip = new Set
   const target = { regionObj, region, server_type };
 
   const plan = (entry, doc, baseId, row) => {
-    const { id: newId, n } = uniqueId(baseId, (id) => taken.has(id) || work.has("servers/" + id + ".toml"));
+    const { id: newId, n } = uniqueId(baseId, (id) => taken.has(id) || work.has(serverPath(id)));
     const own = hasText(doc.name), base = own ? doc.name : newId, name = uniqueName(base, names, n);
-    const path = "servers/" + newId + ".toml";
+    const path = serverPath(newId);
     try {
       const text = setKeys(entry.text, importPairs(doc, newId, name, base, own, target));
       tomlModel(new Map(work).set(path, text));

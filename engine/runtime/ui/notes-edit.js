@@ -118,7 +118,7 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
     var text = edit.ta.value, parsed;
     try { parsed = parse(text); }
     catch (e) {
-      edit.err.textContent = String(e.message).replace(/^TOML: /, "");
+      edit.err.textContent = String(e.message);
       edit.err.hidden = false;
       return false;
     }

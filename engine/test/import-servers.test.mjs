@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { planImport, gridPlacements, sanitizeId, summary } from "../parse/import-servers.mjs";
+import { planImport, gridPlacements, summary } from "../parse/import-servers.mjs";
+import { sanitizeId } from "../lib/ids.mjs";
 import { newDiagram } from "../parse/new-diagram.mjs";
 import { addRegion } from "../parse/toml-write.mjs";
 import { mergeFolder } from "../parse/toml.mjs";

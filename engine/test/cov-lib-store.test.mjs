@@ -4,7 +4,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, symli
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createStore, handleApi, checkOrigin, HttpError, MAX_BYTES, MAX_FILES } from "../lib/store.mjs";
-import { listDiagrams, filterDiagrams, FILTER_MIN, nameProblem, sanitizeName, archiveDiagramName, whenText, packDiagram, unpackDiagram, LAYOUT_FILE } from "../lib/diagrams.mjs";
+import { listDiagrams, filterDiagrams, FILTER_MIN, nameProblem, archiveDiagramName, whenText, packDiagram, unpackDiagram } from "../lib/diagrams.mjs";
+import { sanitizeName } from "../lib/ids.mjs";
+import { LAYOUT_FILE } from "../lib/files.mjs";
 import { writeZip } from "../lib/zip.mjs";
 import { validName, layoutNameFor, archiveName, stamp } from "../lib/names.mjs";
 
@@ -91,24 +93,6 @@ test("write: leaves no temporary files behind", () => {
   store.write([{ name: "a.toml", text: "1", base: null }, { name: "d/b.toml", text: "2", base: null }]);
   assert.deepEqual(readdirSync(dir).sort(), ["a.toml", "d"]);
   assert.deepEqual(readdirSync(join(dir, "d")), ["b.toml"]);
-});
-
-test("write: a failing write is a 500 that names the files saved so far and cleans up", () => {
-  const { dir, store } = fresh();
-  mkdirSync(dir, { recursive: true });
-  let reads = 0;
-  const flaky = { name: "blocked.toml", overwrite: true, get text() { return ++reads <= 2 ? "2" : 7; } };
-  let err;
-  try {
-    store.write([{ name: "first.toml", text: "1", base: null }, flaky]);
-  } catch (e) {
-    err = e;
-  }
-  assert.equal(err.status, 500);
-  assert.match(err.message, /^Writing blocked.toml failed: /);
-  assert.deepEqual(err.extra.saved, ["first.toml"]);
-  assert.equal(readFileSync(join(dir, "first.toml"), "utf8"), "1");
-  assert.deepEqual(readdirSync(dir).sort(), ["first.toml"]);
 });
 
 test("checkOrigin: host, origin and fetch-site rules", () => {

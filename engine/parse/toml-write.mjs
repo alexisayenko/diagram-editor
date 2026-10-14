@@ -1,28 +1,17 @@
 // Surgical write-back of notes.toml (the `notes` key) and servers/<id>.toml: every other byte of the file is kept.
 import { parseToml, mergeFolder, tomlModel, ipProblem, dnsProblem } from "./toml.mjs";
 import { mergeTypes } from "./types.mjs";
+import { TOPOLOGY_FILE, serverPath } from "../lib/files.mjs";
+import { SERVER_ROW_FIELDS, SERVER_LIST_FIELDS, SERVER_FORM_KEYS } from "../render/server-fields.mjs";
+import { tomlBasic, tomlMultilineBody } from "./toml-escape.mjs";
 
 function eolOf(src) {
   const i = src.indexOf("\n");
   return i > 0 && src[i - 1] === "\r" ? "\r\n" : "\n";
 }
 
-function multiline(text, eol) {
-  let out = "";
-  for (const ch of text) {
-    const c = ch.codePointAt(0);
-    if (ch === "\\") out += String.raw`\\`;
-    else if (ch === "\n") out += eol;
-    else if (ch === "\t") out += ch;
-    else if (c < 32 || c === 127) out += String.raw`\u` + c.toString(16).padStart(4, "0");
-    else if (c >= 0xd800 && c <= 0xdfff) throw new Error("Note text contains an unpaired surrogate");
-    else out += ch;
-  }
-  return out.replace(/(?:"{3,})|(?:"+$)/g, (q) => String.raw`\"`.repeat(q.length));
-}
-
 export function formatNotes(texts, eol = "\n") {
-  const items = texts.map((t) => `  """${eol}${multiline(t, eol)}"""`);
+  const items = texts.map((t) => `  """${eol}${tomlMultilineBody(t, eol)}"""`);
   return `[${eol}${items.join("," + eol)},${eol}]`;
 }
 
@@ -99,45 +88,34 @@ export function setNotes(src, texts) {
   return out;
 }
 
-export const SERVER_STRINGS = ["os", "hardware", "cpu", "ram", "swap", "disk", "role"];
-export const SERVER_LISTS = ["ips", "dns", "jobs", "rmi_services", "systemd_services"];
-const FIELD_ORDER = ["name", "server_type", ...SERVER_STRINGS, ...SERVER_LISTS, "details"];
-
-function basic(text) {
-  let out = "";
-  for (const ch of text) {
-    const c = ch.codePointAt(0);
-    if (ch === "\\") out += String.raw`\\`;
-    else if (ch === '"') out += String.raw`\"`;
-    else if (ch === "\n") out += String.raw`\n`;
-    else if (ch === "\t") out += String.raw`\t`;
-    else if (c < 32 || c === 127) out += String.raw`\u` + c.toString(16).padStart(4, "0");
-    else if (c >= 0xd800 && c <= 0xdfff) throw new Error("Text contains an unpaired surrogate");
-    else out += ch;
-  }
-  return `"${out}"`;
-}
+export const SERVER_STRINGS = SERVER_ROW_FIELDS.map((f) => f.key);
+export const SERVER_LISTS = SERVER_LIST_FIELDS.map((f) => f.key);
+const FIELD_ORDER = SERVER_FORM_KEYS;
 
 function formatList(list, eol, multi) {
-  if (!multi) return `[${list.map(basic).join(", ")}]`;
-  const items = list.map((s) => `  ${basic(s)},${eol}`).join("");
+  if (!multi) return `[${list.map((s) => tomlBasic(s)).join(", ")}]`;
+  const items = list.map((s) => `  ${tomlBasic(s)},${eol}`).join("");
   return `[${eol}${items}]`;
 }
 
 function formatDetails(text, eol) {
-  return text.includes("\n") ? `"""${eol}${multiline(text, eol)}"""` : basic(text);
+  return text.includes("\n") ? `"""${eol}${tomlMultilineBody(text, eol)}"""` : tomlBasic(text);
 }
 
 const singleLine = (v) => typeof v === "string" && !/[\r\n]/.test(v);
 
+const LIST_CHECKS = {
+  ip: (v) => { const problem = ipProblem(v); return problem && `${problem}. Use IPv4 with a prefix, e.g. 192.0.2.10/24.`; },
+  dns: (v) => { const problem = dnsProblem(v); return problem && `${problem}.`; },
+};
+
 function checkNetworkFields(f) {
-  for (const ip of f.ips) {
-    const problem = ipProblem(ip.trim());
-    if (problem) throw new Error(`ips: ${problem}. Use IPv4 with a prefix, e.g. 192.0.2.10/24.`);
-  }
-  for (const name of f.dns) {
-    const problem = dnsProblem(name.trim());
-    if (problem) throw new Error(`dns: ${problem}.`);
+  for (const { key, check } of SERVER_LIST_FIELDS) {
+    if (!check) continue;
+    for (const entry of f[key]) {
+      const problem = LIST_CHECKS[check](entry.trim());
+      if (problem) throw new Error(`${key}: ${problem}`);
+    }
   }
 }
 
@@ -180,7 +158,7 @@ const unchangedField = (k, before, v) => (k === "details" ? typeof before === "s
 
 function serverFieldText(k, v, eol, multi) {
   if (SERVER_LISTS.includes(k)) return formatList(v, eol, multi);
-  return k === "details" ? formatDetails(v, eol) : basic(v);
+  return k === "details" ? formatDetails(v, eol) : tomlBasic(v);
 }
 
 function checkServerContext(fields, id, old, ctx) {
@@ -223,11 +201,11 @@ export function addServer(files, { region, server_type } = {}) {
   const taken = new Set([...(root.regions || []), ...(root.servers || [])].map((e) => e.id));
   const names = new Set((root.servers || []).map((s) => s.name ?? s.id));
   let n = (root.servers || []).length + 1;
-  while (taken.has("server" + n) || names.has("server-" + n) || files.has(`servers/server${n}.toml`)) n++;
-  const id = "server" + n, lines = [`id = ${basic(id)}`, `name = ${basic("server-" + n)}`];
-  if (region) lines.push(`region = ${basic(region)}`);
-  else lines.push(`server_type = ${basic(server_type ?? types[0])}`);
-  const text = lines.join("\n") + "\n", path = `servers/${id}.toml`;
+  while (taken.has("server" + n) || names.has("server-" + n) || files.has(serverPath("server" + n))) n++;
+  const id = "server" + n, lines = [`id = ${tomlBasic(id)}`, `name = ${tomlBasic("server-" + n)}`];
+  if (region) lines.push(`region = ${tomlBasic(region)}`);
+  else lines.push(`server_type = ${tomlBasic(server_type ?? types[0])}`);
+  const text = lines.join("\n") + "\n", path = serverPath(id);
   tomlModel(new Map(files).set(path, text));
   return { path, text, id };
 }
@@ -237,8 +215,8 @@ export function setKeys(src, pairs) {
   const eol = eolOf(src), doc = prepare(src), edits = [], lines = [];
   for (const [k, v] of pairs) {
     const cur = doc.spans.keys[k];
-    if (cur) edits.push(replaceValueEdit(doc, cur, basic(v)));
-    else lines.push(`${k} = ${basic(v)}`);
+    if (cur) edits.push(replaceValueEdit(doc, cur, tomlBasic(v)));
+    else lines.push(`${k} = ${tomlBasic(v)}`);
   }
   if (lines.length) edits.push(appendLinesEdit(doc, lines, eol, true));
   const text = applyEdits(src, edits), after = parseToml(text);
@@ -251,12 +229,12 @@ function copyIdentity(root, fileMap, id, old) {
   const names = new Set((root.servers || []).map((s) => s.name ?? s.id));
   const baseName = old.name ?? id;
   let n = 1, suffix = "-copy";
-  while (taken.has(id + suffix) || names.has(baseName + suffix) || fileMap.has(`servers/${id}${suffix}.toml`)) suffix = `-copy-${++n}`;
+  while (taken.has(id + suffix) || names.has(baseName + suffix) || fileMap.has(serverPath(id + suffix))) suffix = `-copy-${++n}`;
   return { newId: id + suffix, name: baseName + suffix };
 }
 
 export function duplicateServer(files, id) {
-  const srcPath = `servers/${id}.toml`, src = files.get(srcPath);
+  const srcPath = serverPath(id), src = files.get(srcPath);
   if (src === undefined) throw new Error(`Server '${id}' has no file ${srcPath}.`);
   const root = mergeFolder(files), old = (root.servers || []).find((s) => s.id === id);
   if (!old) throw new Error(`Server '${id}' not found.`);
@@ -265,7 +243,7 @@ export function duplicateServer(files, id) {
   if (!sameCanonical({ ...after, id: 0, name: 0 }, { ...parseToml(prepare(src).flat), id: 0, name: 0 }) || after.id !== newId || after.name !== name) {
     throw new Error("Internal error: the duplicated TOML does not match the original; nothing was written");
   }
-  const path = `servers/${newId}.toml`;
+  const path = serverPath(newId);
   tomlModel(new Map(files).set(path, text));
   return { path, text, id: newId };
 }
@@ -295,19 +273,19 @@ function insertRegionBlock(src, doc, block, eol) {
 
 // Appends a `[[regions]]` table to topology.toml after the last existing one; id and title come from the server type.
 export function addRegion(files, { server_type } = {}) {
-  const src = files.get("topology.toml");
-  if (src === undefined) throw new Error("topology.toml is missing");
+  const src = files.get(TOPOLOGY_FILE);
+  if (src === undefined) throw new Error(TOPOLOGY_FILE + " is missing");
   const root = mergeFolder(files), types = mergeTypes(root.server_types);
   if (typeof server_type !== "string" || !Object.hasOwn(types, server_type)) throw new Error(`Unknown server type '${server_type}'. Known: ${Object.keys(types).join(", ")}.`);
   const dup = (root.regions || []).find((r) => r.server_type === server_type);
   if (dup) throw new Error(`Server type '${server_type}' already has the region '${dup.id}'; a diagram has at most one region per server type.`);
   const id = freeRegionId(root, server_type), eol = eolOf(src), doc = prepare(src);
-  const block = [`[[regions]]`, `id = ${basic(id)}`, `title = ${basic(types[server_type].label)}`, `server_type = ${basic(server_type)}`].join(eol);
+  const block = [`[[regions]]`, `id = ${tomlBasic(id)}`, `title = ${tomlBasic(types[server_type].label)}`, `server_type = ${tomlBasic(server_type)}`].join(eol);
   const out = insertRegionBlock(src, doc, block, eol);
-  const after = mergeFolder(new Map(files).set("topology.toml", out)), added = (after.regions || []).at(-1);
+  const after = mergeFolder(new Map(files).set(TOPOLOGY_FILE, out)), added = (after.regions || []).at(-1);
   if ((after.regions || []).length !== (root.regions || []).length + 1 || added.id !== id || added.server_type !== server_type) throw new Error(REWRITE_MISMATCH);
-  tomlModel(new Map(files).set("topology.toml", out));
-  return { path: "topology.toml", text: out, id };
+  tomlModel(new Map(files).set(TOPOLOGY_FILE, out));
+  return { path: TOPOLOGY_FILE, text: out, id };
 }
 
 function setTopKeys(src, changes) {
@@ -319,8 +297,8 @@ function setTopKeys(src, changes) {
       delete expect[k];
     } else if (old[k] !== v) {
       expect[k] = v;
-      if (cur) edits.push(replaceValueEdit(doc, cur, basic(v)));
-      else lines.push(`${k} = ${basic(v)}`);
+      if (cur) edits.push(replaceValueEdit(doc, cur, tomlBasic(v)));
+      else lines.push(`${k} = ${tomlBasic(v)}`);
     }
   }
   if (lines.length) edits.push(appendLinesEdit(doc, lines, eol, true));
@@ -332,7 +310,7 @@ function setTopKeys(src, changes) {
 // Puts server `id` into `region` (an id) or out of every region (null). Entering adopts the region's server_type when the file sets its own;
 // leaving writes the type it had, so the server keeps it.
 export function moveServer(files, id, region) {
-  const path = `servers/${id}.toml`, src = files.get(path);
+  const path = serverPath(id), src = files.get(path);
   if (src === undefined) throw new Error(`Server '${id}' has no file ${path}.`);
   const root = mergeFolder(files), old = (root.servers || []).find((s) => s.id === id), regions = root.regions || [];
   if (!old) throw new Error(`Server '${id}' not found.`);

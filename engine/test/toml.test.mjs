@@ -17,7 +17,7 @@ test("TOML comments, quoted hashes, literal strings, escapes and multiline array
   assert.equal(t.servers[0].proposed, true);
 });
 test("bad TOML and schema errors are actionable", () => {
-  for (const source of ['title = "one"\ntitle = "two"', 'title = "bad\\q"', 'title = 4', '[servers]', 'title = "unterminated']) assert.throws(() => parseToml(source), /TOML:\d+:/);
+  for (const source of ['title = "one"\ntitle = "two"', 'title = "bad\\q"', 'title = 4', '[servers]', 'title = "unterminated']) assert.throws(() => parseToml(source), /line \d+: /);
   for (const [files, error] of [
     [withFile(demo, "topology.toml", 'wrong = "key"\n' + demo.get("topology.toml")), /topology.toml: unknown key wrong/],
     [withFile(demo, "topology.toml", 'notes = ["x"]\n' + demo.get("topology.toml")), /topology.toml: unknown key notes/],
@@ -112,7 +112,7 @@ test("TOML notes: string, array, invalid types and rendered cards", () => {
   assert.equal(many.length, 2);
   assert.equal(many[1].date, "2026-01-02");
   assert.deepEqual(tomlModel(mini(), "t").notes, []);
-  for (const bad of ['notes = true', 'notes = [""]', 'notes = ["Title only"]']) assert.throws(() => tomlModel(notes(bad), "t"), /TOML: notes/);
+  for (const bad of ['notes = true', 'notes = [""]', 'notes = ["Title only"]']) assert.throws(() => tomlModel(notes(bad), "t"), /notes/);
   assert.throws(() => tomlModel(notes('title = "x"'), "t"), /notes\.toml: unknown key title/);
   const html = renderDiagram(notes('notes = ["Visible note\\nShown without clicking."]'), "t", null, { cssSvg: css("svg"), cssPage: css("page"), js: script() }).html;
   assert.match(html, /<article class="note"><h3>Visible note<\/h3><p>Shown without clicking\.<\/p>/);

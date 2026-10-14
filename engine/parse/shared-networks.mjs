@@ -1,42 +1,14 @@
 // A diagram folder's networks.toml: [[networks]] tables (cidr, optional name, optional description).
 // The server-to-network relation is derived from IPs, never declared; networks implied by server IPs with a prefix are derived too.
 import { parseToml } from "./toml.mjs";
-
-const cmpBig = (a, b) => (a < b ? -1 : Number(a > b));
-
-export function parseIp(text) {
-  if (typeof text !== "string") return null;
-  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(text);
-  if (m) {
-    const o = m.slice(1).map(Number);
-    return o.some((x) => x > 255) ? null : { v: 4, n: BigInt(((o[0] * 256 + o[1]) * 256 + o[2]) * 256 + o[3]) };
-  }
-  if (!text.includes(":") || !/^[0-9A-Fa-f:]+$/.test(text)) return null;
-  const halves = text.split("::");
-  if (halves.length > 2) return null;
-  const groups = (t) => (t === "" ? [] : t.split(":"));
-  const head = groups(halves[0]), tail = halves.length === 2 ? groups(halves[1]) : [];
-  if (halves.length === 1 ? head.length !== 8 : head.length + tail.length > 7) return null;
-  const fill = halves.length === 2 ? new Array(8 - head.length - tail.length).fill("0") : [];
-  const all = [...head, ...fill, ...tail];
-  if (all.length !== 8 || all.some((g) => !/^[0-9A-Fa-f]{1,4}$/.test(g))) return null;
-  return { v: 6, n: all.reduce((a, g) => (a << 16n) + BigInt(Number.parseInt(g, 16)), 0n) };
-}
-
-export function parseCidr(text) {
-  const m = typeof text === "string" && /^([^/]+)\/(\d{1,3})$/.exec(text);
-  const ip = m && parseIp(m[1]);
-  if (!ip) return { error: `invalid CIDR '${text}'; expected a.b.c.d/nn or an IPv6 address with /nn` };
-  const bits = ip.v === 4 ? 32 : 128, len = +m[2];
-  if (len > bits) return { error: `invalid CIDR '${text}'; the prefix is at most ${bits}` };
-  const size = 1n << BigInt(bits - len);
-  if (ip.n % size) return { error: `'${text}' has host bits set` };
-  return { v: ip.v, len, lo: ip.n, hi: ip.n + size - 1n };
-}
+import { cmpBig, parseIp, parseCidr, contains, derivedCidr, derivedCidrs } from "../lib/net.mjs";
+import { FormatError } from "./errors.mjs";
 
 export function parseNetworksFile(src) {
-  const root = parseToml(src);
-  const fail = (m) => { throw new Error("networks.toml: " + m); };
+  let root;
+  try { root = parseToml(src); }
+  catch (e) { throw e instanceof FormatError ? new FormatError(e.detail, { file: "networks.toml", line: e.line }) : e; }
+  const fail = (m) => { throw new FormatError(m, { file: "networks.toml" }); };
   const extra = Object.keys(root).filter((k) => k !== "networks");
   if (extra.length) fail(`unknown key ${extra.join(", ")}; only [[networks]] tables are allowed`);
   const list = root.networks || [];
@@ -56,21 +28,6 @@ export function parseNetworksFile(src) {
   return items;
 }
 
-// Network implied by an IPv4 entry with a prefix (192.0.2.10/24 -> 192.0.2.0/24); null for /32, /0, no prefix, IPv6 or junk.
-export function derivedCidr(text) {
-  const m = typeof text === "string" && /^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/.exec(text.trim());
-  const ip = m && parseIp(m[1]), len = m && +m[2];
-  if (!ip || len < 1 || len > 31) return null;
-  const size = 1n << BigInt(32 - len), lo = ip.n - (ip.n % size), o = [24n, 16n, 8n, 0n].map((b) => (lo >> b) & 255n);
-  return o.join(".") + "/" + len;
-}
-
-// Distinct derived CIDRs of the given IP entries, in address order.
-export function derivedCidrs(ips) {
-  const set = new Set(ips.map(derivedCidr).filter(Boolean));
-  return [...set].sort((a, b) => { const x = parseCidr(a), y = parseCidr(b); return cmpBig(x.lo, y.lo) || x.len - y.len; });
-}
-
 // Defined networks plus derived ones that are not defined (name "", derived: true), defined first.
 export function withDerived(defined, ips) {
   const have = new Set(defined.map((d) => d.cidr));
@@ -85,7 +42,7 @@ export function assignNetwork(items, text) {
   let best = -1;
   if (!ip) return best;
   items.forEach((it, i) => {
-    if (it.v !== ip.v || ip.n < it.lo || ip.n > it.hi) return;
+    if (!contains(it, ip)) return;
     if (own && it.derived && it.cidr !== own) return;
     if (best < 0 || it.len > items[best].len) best = i;
   });

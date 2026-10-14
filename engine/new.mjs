@@ -1,13 +1,11 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
+import { runCli } from "./lib/cli.mjs";
+import { fail } from "./parse/errors.mjs";
 
 const ID = /^[a-z0-9][a-z0-9-]*$/;
 
-const fail = (m) => {
-  console.error("new: " + m);
-  process.exit(1);
-};
-
+runCli("new", () => {
 const target = process.argv.slice(2).find((a) => !a.startsWith("--"));
 if (!target) fail("usage: node engine/new.mjs <diagram-dir>");
 const dir = resolve(target);
@@ -56,3 +54,4 @@ Scaffolded by engine/new.mjs; replace the placeholder servers with real ones.
 mkdirSync(dir, { recursive: true });
 for (const [f, text] of Object.entries(files)) writeFileSync(resolve(dir, f), text);
 console.log(`new: created ${dir} (${Object.keys(files).join(", ")})`);
+});

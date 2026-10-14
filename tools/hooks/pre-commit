@@ -1,0 +1,31 @@
+#!/bin/sh
+# Pre-commit checks. Read-only: nothing is changed, staged or fixed for you.
+# Turn on once per clone:  git config core.hooksPath tools/hooks
+# Skip once (rarely needed): git commit --no-verify
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+# Use node from PATH; on Windows it may live in WSL instead.
+if command -v node >/dev/null 2>&1; then
+  run_node() { node "$@"; }
+elif command -v wsl >/dev/null 2>&1; then
+  run_node() { MSYS_NO_PATHCONV=1 wsl node "$@"; }
+else
+  echo "pre-commit: node not found, checks skipped" >&2
+  exit 0
+fi
+
+failed=0
+
+echo "pre-commit: infrastructure data in staged files"
+run_node tools/check-no-infra-data.mjs --staged || failed=1
+
+echo "pre-commit: generated outputs are up to date"
+run_node engine/browser.mjs --check || failed=1
+run_node engine/build.mjs examples/demo --check || failed=1
+
+if [ "$failed" -ne 0 ]; then
+  echo "pre-commit: failed. Fix the lines above, or regenerate with:" >&2
+  echo "  node engine/browser.mjs && node engine/build.mjs examples/demo" >&2
+  exit 1
+fi

@@ -99,7 +99,7 @@ test("errors: empty or non-string notes, broken TOML, unpaired surrogate", () =>
   assert.throws(() => setNotes('title = "t"\n', [""]), /non-empty/);
   assert.throws(() => setNotes('title = "t"\n', [1]), /non-empty/);
   assert.throws(() => setNotes('title = "t"\n', "x"), /non-empty/);
-  assert.throws(() => setNotes('title = "unterminated\n', ["A\nb"]), /TOML:/);
+  assert.throws(() => setNotes('title = "unterminated\n', ["A\nb"]), /line [0-9]+:/);
   assert.throws(() => setNotes('title = "t"\n', ["A\nb \ud800"]), /surrogate/);
 });
 

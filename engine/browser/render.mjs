@@ -1,4 +1,5 @@
-import { NETWORKS_FILE, tomlModel } from "../parse/toml.mjs";
+import { tomlModel } from "../parse/toml.mjs";
+import { NETWORKS_FILE } from "../lib/files.mjs";
 import { assignNetwork, buildNetworks, parseNetworksFile, withDerived } from "../parse/shared-networks.mjs";
 import { parseConfig, checkConnections } from "../parse/config.mjs";
 import { resolveTypes } from "../parse/types.mjs";
@@ -13,13 +14,14 @@ import { computeViewBox } from "../render/viewbox.mjs";
 import { buildEdgeKey, groupAssets } from "../render/edge-key.mjs";
 import { buildDataJson } from "../page/data.mjs";
 import { renderLayoutHtml } from "../page/layout-html.mjs";
+import { LAYOUT_VERSION } from "../parse/layout-version.mjs";
 
 const point = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
 const plainObject = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 
 function checkSaved(saved) {
   if (saved !== null && !plainObject(saved)) throw new Error("Layout must be a JSON object");
-  if (saved?.version !== undefined && saved.version !== 1) throw new Error("Unsupported saved layout version");
+  if (saved?.version !== undefined && saved.version !== LAYOUT_VERSION) throw new Error("Unsupported saved layout version");
   for (const kind of ["nodes", "clusters", "edges"]) {
     if (saved?.[kind] !== undefined && !plainObject(saved[kind])) throw new Error(`Layout '${kind}' must be an object`);
   }

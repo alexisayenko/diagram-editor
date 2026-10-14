@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { writeZip, readZip, crc32, entryProblem, isArchiveName } from "../lib/zip.mjs";
-import { listDiagrams, filterDiagrams, nameProblem, sanitizeName, archiveDiagramName, packDiagram, unpackDiagram, FILTER_MIN } from "../lib/diagrams.mjs";
+import { listDiagrams, filterDiagrams, nameProblem, archiveDiagramName, packDiagram, unpackDiagram, FILTER_MIN } from "../lib/diagrams.mjs";
 import { archiveName } from "../lib/names.mjs";
+import { sanitizeName } from "../lib/ids.mjs";
 import { demo } from "./helpers.mjs";
 
 const enc = new TextEncoder();

@@ -1621,7 +1621,7 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
     var text = edit.ta.value, parsed;
     try { parsed = parse(text); }
     catch (e) {
-      edit.err.textContent = String(e.message).replace(/^TOML: /, "");
+      edit.err.textContent = String(e.message);
       edit.err.hidden = false;
       return false;
     }
@@ -1701,13 +1701,39 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
   return { isDirty: isDirty, finish: finishEdit, texts: texts, markSaved: markSaved, show: show, stamped: stamped };
 });
 
-InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], function (core, selection, panels) {
+InfraDiagram.define("ui/server-fields", [], function () {
+  var kit = (function serverFieldsKit() {
+    var FIELDS = [
+      { key: "id", type: "single", label: "ID" },
+      { key: "name", type: "single", label: "Name", form: true, card: true },
+      { key: "server_type", type: "single", label: "Server type", form: true },
+      { key: "region", type: "single", label: "Region" },
+      { key: "os", type: "single", label: "OS", placeholder: "Ubuntu 24.04", form: true, row: true, card: true },
+      { key: "hardware", type: "single", label: "Hardware", placeholder: "8 vCPU, 16 GB RAM", form: true, row: true },
+      { key: "cpu", type: "single", label: "CPU", formLabel: "CPU (cores)", placeholder: "8", form: true, row: true, card: true },
+      { key: "ram", type: "single", label: "RAM", formLabel: "RAM (size)", placeholder: "16G", form: true, row: true, card: true },
+      { key: "swap", type: "single", label: "Swap", formLabel: "Swap (size)", placeholder: "2G", form: true, row: true, card: true },
+      { key: "disk", type: "single", label: "Disk", formLabel: "Disk (size)", placeholder: "50G", form: true, row: true, card: true },
+      { key: "role", type: "single", label: "Role", placeholder: "Reverse proxy", form: true, row: true },
+      { key: "ips", type: "list", label: "IPs", add: "Add IP", placeholder: "192.0.2.10/24", form: true, check: "ip", card: true },
+      { key: "dns", type: "list", label: "DNS", add: "Add DNS name", placeholder: "host.example.test", form: true, check: "dns" },
+      { key: "jobs", type: "list", label: "Jobs", add: "Add job", placeholder: "Job 104 batch import", form: true, card: true },
+      { key: "rmi_services", type: "list", label: "RMI services", add: "Add RMI service", placeholder: "ExampleService", form: true, card: true },
+      { key: "systemd_services", type: "list", label: "systemd services", add: "Add systemd service", placeholder: "example.service", form: true, card: true },
+      { key: "services", type: "list", label: "Services", card: true },
+      { key: "details", type: "text", label: "Notes", form: true },
+      { key: "proposed", type: "flag", label: "Proposed" },
+    ];
+    return { FIELDS: FIELDS };
+  })();
+
+  return { FIELDS: kit.FIELDS };
+});
+
+InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "ui/server-fields"], function (core, selection, panels, serverFields) {
   var $ = core.$;
-  var TEXTS = [["os", "OS", "Ubuntu 24.04"], ["hardware", "Hardware", "8 vCPU, 16 GB RAM"], ["cpu", "CPU (cores)", "8"], ["ram", "RAM (size)", "16G"], ["swap", "Swap (size)", "2G"], ["disk", "Disk (size)", "50G"], ["role", "Role", "Reverse proxy"]];
-  var LISTS = [
-    ["ips", "IPs", "Add IP", "192.0.2.10/24"], ["dns", "DNS", "Add DNS name", "host.example.test"], ["jobs", "Jobs", "Add job", "Job 104 batch import"],
-    ["rmi_services", "RMI services", "Add RMI service", "ExampleService"], ["systemd_services", "systemd services", "Add systemd service", "example.service"]
-  ];
+  var TEXTS = serverFields.FIELDS.filter(function (f) { return f.row; }).map(function (f) { return [f.key, f.formLabel || f.label, f.placeholder]; });
+  var LISTS = serverFields.FIELDS.filter(function (f) { return f.type === "list" && f.form; }).map(function (f) { return [f.key, f.label, f.add, f.placeholder]; });
   var edit = null, current = null;
 
   function bridge() { return window.InfraDiagram.serverEditor || null; }

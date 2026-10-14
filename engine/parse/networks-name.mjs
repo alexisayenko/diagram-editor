@@ -1,6 +1,7 @@
 // Surgical name edit of one [[networks]] entry in a diagram folder's networks.toml: only that entry's `name` line is replaced, inserted
 // or removed; every other byte (comments, formatting, line endings) is kept. A CIDR with no entry gets a new table (cidr + name) at the end.
-import { parseCidr } from "./shared-networks.mjs";
+import { parseCidr } from "../lib/net.mjs";
+import { tomlBasic } from "./toml-escape.mjs";
 
 export const MAX_NAME = 80;
 
@@ -10,7 +11,6 @@ const sameCidr = (a, b) => {
   return !x.error && !y.error && x.v === y.v && x.len === y.len && x.lo === y.lo;
 };
 
-const quote = (s) => JSON.stringify(s);
 
 export function normalizeName(name) {
   const n = String(name ?? "").trim();
@@ -54,7 +54,7 @@ function findEntry(lines, cidr) {
 function appendEntry(text, nl, cidr, n) {
   const body = text.endsWith("\n") ? text : text + nl;
   const head = text.trim() ? body + nl : text;
-  return head + "[[networks]]" + nl + 'cidr = "' + cidr + '"' + nl + "name = " + quote(n) + nl;
+  return head + "[[networks]]" + nl + 'cidr = "' + cidr + '"' + nl + "name = " + tomlBasic(n) + nl;
 }
 
 function editEntry(lines, { at, end }, n, nl) {
@@ -65,11 +65,11 @@ function editEntry(lines, { at, end }, n, nl) {
   }
   if (nameAt >= 0) {
     if (!n) lines.splice(nameAt, 1);
-    else lines[nameAt] = indentOf(lines[nameAt]) + "name = " + quote(n) + eolOf(lines[nameAt]);
+    else lines[nameAt] = indentOf(lines[nameAt]) + "name = " + tomlBasic(n) + eolOf(lines[nameAt]);
   } else if (n) {
     const l = lines[cidrLine], eol = eolOf(l);
     if (!eol) lines[cidrLine] = l + nl;
-    lines.splice(cidrLine + 1, 0, indentOf(l) + "name = " + quote(n) + eol);
+    lines.splice(cidrLine + 1, 0, indentOf(l) + "name = " + tomlBasic(n) + eol);
   }
   return lines.join("");
 }

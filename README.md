@@ -18,7 +18,7 @@ dependencies.
 
 ```sh
 node engine/serve.mjs                       # serve the page on http://127.0.0.1:8080
-node --test engine/test/*.test.mjs          # run the tests (see Testing)
+node --test engine/test/*.test.mjs          # run the tests (see Testing); also `npm test`
 node engine/browser.mjs [--check]           # regenerate diagram.html (check for drift)
 node engine/build.mjs examples/demo [--check]   # Mermaid build of the demo folder
 node engine/new.mjs <dir>                   # scaffold a Mermaid-format diagram folder
@@ -39,6 +39,10 @@ node engine/browser.mjs --check                                  # diagram.html 
 node engine/build.mjs examples/demo --check                      # demo outputs are current
 ```
 
+- Shortcuts (`package.json`, no dependencies): `npm test`, `npm run cover`, `npm run check`, `npm run serve`.
+- Pre-commit hook (once per clone): `git config core.hooksPath tools/hooks`. It blocks a commit that stages
+  infrastructure-looking data (`node tools/check-no-infra-data.mjs`) or leaves `diagram.html` or the demo outputs stale.
+  Details: [ci-cd.md](docs/tech/ci-cd.md#local-checks-and-the-pre-commit-hook).
 - 635 tests, 99.73% line coverage, no dependencies (`node:test`).
 - Files: `<topic>.test.mjs` and `cov-<area>-<topic>.test.mjs`;
   `helpers.mjs` and `cov-*.mjs` are shared helpers, not tests.
@@ -57,7 +61,7 @@ diagram-editor/
 ├── engine/          # parsers, layout, renderers, browser runtime, server, tests
 ├── examples/demo/   # synthetic sample diagram in every format
 ├── local/           # YOUR diagrams (git-ignored, never committed)
-├── tools/           # host-probe.sh: read-only Linux host probe
+├── tools/           # host-probe.sh, check-no-infra-data.mjs, hooks/pre-commit
 ├── AGENTS.md        # mirror of CLAUDE.md for other agents (kept in step)
 ├── CLAUDE.md        # agent guidance (kept in step with AGENTS.md)
 ├── diagram.html     # generated standalone page (node engine/browser.mjs)

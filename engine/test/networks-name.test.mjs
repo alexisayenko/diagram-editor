@@ -64,7 +64,7 @@ test("Save writes pending network names with the append in one base-checked put,
   const start = app.indexOf("async function syncNetworks()"), fn = app.slice(start, app.indexOf("\n}\n", start) + 2);
   const run = async (store, conflicts) => {
     const puts = [];
-    const ctx = { NETWORKS: "networks.toml", setNetworkName, appendNetworks, tomlModel: () => ({ model: { nodes: new Map([["a", { ip: ["192.0.2.10/24", "198.51.100.5/24"] }]]) } }),
+    const ctx = { NETWORKS_FILE: "networks.toml", setNetworkName, appendNetworks, tomlModel: () => ({ model: { nodes: new Map([["a", { ip: ["192.0.2.10/24", "198.51.100.5/24"] }]]) } }),
       stored: async () => store.text, putFiles: async (f) => { puts.push(f[0]); if (conflicts-- > 0) { store.text = (store.text ?? "") + "# edited elsewhere\n"; throw Object.assign(new Error("conflict"), { status: 409 }); } store.text = f[0].text; },
       active: { folder: "d", source: new Map(), work: new Map(), netNames: new Map([[A, "Office"]]) } };
     const out = await runInNewContext(`${fn}\nsyncNetworks()`, ctx);
@@ -85,7 +85,7 @@ test("Save writes pending network names with the append in one base-checked put,
 });
 
 test("renamed networks.toml is dirty work for Save, Export and the discard guards, and written only through the network sync", () => {
-  assert.match(app, /function renameNetwork\(cidr, name\)[\s\S]*?rerenderMany\(new Map\(\[\[NETWORKS, next\]\]\)/);
-  assert.match(app, /\(p !== NETWORKS \|\| active\.fresh\)/);
+  assert.match(app, /const renameNetwork = guarded\(editBlocked, \(cidr, name\)[\s\S]*?rerenderMany\(new Map\(\[\[NETWORKS_FILE, next\]\]\)/);
+  assert.match(app, /\(p !== NETWORKS_FILE \|\| active\.fresh\)/);
   assert.match(app, /renameNetwork \};/);
 });

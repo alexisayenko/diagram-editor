@@ -6,7 +6,7 @@ const CARD = '<article class="note"><h3>First note</h3><p>Body one</p><time>stal
 
 const noteParser = (text) => {
   const lines = text.split("\n"), m = /^Date: (.*)$/.exec(lines[1] || "");
-  if (lines[0] === "BAD") throw new Error("TOML: unsupported title");
+  if (lines[0] === "BAD") throw new Error("unsupported title");
   return { title: lines[0], date: m ? m[1] : "Note", paras: lines.slice(m ? 2 : 1).join("\n").split(/\n\n+/).map((s) => s.trim()).filter(Boolean) };
 };
 
@@ -139,7 +139,7 @@ test("Done button commits; the error box is hidden again as soon as the text cha
   assert.ok(t.err().hidden === true);
 });
 
-test("parser errors lose their TOML prefix; a missing parser reports that the editor is not ready", () => {
+test("parser errors show their message as is; a missing parser reports that the editor is not ready", () => {
   let t = notes();
   t.fire(t.cards()[0], "click");
   t.ta().value = "BAD";

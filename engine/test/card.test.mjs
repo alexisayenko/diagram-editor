@@ -6,6 +6,7 @@ import { shortTitle, TITLE_MAX, geometryKit, geometryMeta } from "../render/geom
 import { prepareDiagram, renderDiagram } from "../browser/render.mjs";
 import { css, script } from "../page/assets.mjs";
 import { mini } from "./helpers.mjs";
+import { SERVER_FIELDS } from "../render/server-fields.mjs";
 
 const assets = { cssSvg: css("svg"), cssPage: css("page"), js: script() };
 const long = "very-long-server-name-" + "x".repeat(60) + ".example.test";
@@ -142,7 +143,7 @@ test("details panel has no Jobs section; card still lists jobs; editor keeps the
   assert.ok(panel.includes("## DNS"));
   assert.ok(!/## Jobs/.test(panel));
   assert.ok(!panel.includes("Nightly import"));
-  assert.match(readFileSync(new URL("../runtime/ui/server-edit.js", import.meta.url), "utf8"), /\["jobs", "Jobs", "Add job"/);
+  assert.ok(SERVER_FIELDS.some((f) => f.key === "jobs" && f.form && f.card));
 });
 
 test("service group card flag: card lists only flagged groups' units; panel unchanged; non-boolean rejected", () => {

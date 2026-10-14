@@ -1,10 +1,7 @@
-InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], function (core, selection, panels) {
+InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "ui/server-fields"], function (core, selection, panels, serverFields) {
   var $ = core.$;
-  var TEXTS = [["os", "OS", "Ubuntu 24.04"], ["hardware", "Hardware", "8 vCPU, 16 GB RAM"], ["cpu", "CPU (cores)", "8"], ["ram", "RAM (size)", "16G"], ["swap", "Swap (size)", "2G"], ["disk", "Disk (size)", "50G"], ["role", "Role", "Reverse proxy"]];
-  var LISTS = [
-    ["ips", "IPs", "Add IP", "192.0.2.10/24"], ["dns", "DNS", "Add DNS name", "host.example.test"], ["jobs", "Jobs", "Add job", "Job 104 batch import"],
-    ["rmi_services", "RMI services", "Add RMI service", "ExampleService"], ["systemd_services", "systemd services", "Add systemd service", "example.service"]
-  ];
+  var TEXTS = serverFields.FIELDS.filter(function (f) { return f.row; }).map(function (f) { return [f.key, f.formLabel || f.label, f.placeholder]; });
+  var LISTS = serverFields.FIELDS.filter(function (f) { return f.type === "list" && f.form; }).map(function (f) { return [f.key, f.label, f.add, f.placeholder]; });
   var edit = null, current = null;
 
   function bridge() { return window.InfraDiagram.serverEditor || null; }

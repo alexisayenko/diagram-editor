@@ -14,6 +14,8 @@ import * as importServers from "../parse/import-servers.mjs";
 import * as names from "../lib/names.mjs";
 import * as diagrams from "../lib/diagrams.mjs";
 import * as zip from "../lib/zip.mjs";
+import * as files from "../lib/files.mjs";
+import * as layoutVersion from "../parse/layout-version.mjs";
 import { El, run, flush } from "./cov-dom.mjs";
 import { dataOf } from "./cov-canvas.mjs";
 import { demo } from "./helpers.mjs";
@@ -23,7 +25,7 @@ export { flush };
 const MODS = {
   "parse/toml-write.mjs": tomlWrite, "parse/networks-append.mjs": networksAppend, "parse/networks-name.mjs": networksName, "parse/toml.mjs": toml,
   "parse/types.mjs": types, "parse/new-diagram.mjs": newDiagram, "parse/import-servers.mjs": importServers, "lib/names.mjs": names, "lib/diagrams.mjs": diagrams,
-  "lib/zip.mjs": zip, "browser/render.mjs": { renderDiagram },
+  "lib/zip.mjs": zip, "lib/files.mjs": files, "browser/render.mjs": { renderDiagram }, "parse/layout-version.mjs": layoutVersion,
 };
 const IDS = ["new", "open", "importdiag", "diagfile", "save", "export", "import", "status", "view", "welcome", "op", "oplist", "opq", "opnote", "opclose", "nw", "nwname", "nwmsg", "nwlist", "nwok", "nwtaken", "nwcancel",
   "imp", "impfiles", "implist", "imptype", "impregion", "impinfo", "impok", "impcancel", "hs", "hstext", "hsnote", "hostscript", "hsd", "hsclose"];

@@ -28,7 +28,10 @@ in an agent prompt is a leak that git history cannot undo.
 - Safe to publish and to hand to agents.
 - Every test and screenshot needs a synthetic fixture
   (`examples/demo/`); reproducing a real bug takes extra effort.
-- Nothing mechanical enforces the rule yet; review is by eye.
+- `tools/check-no-infra-data.mjs` (run by the pre-commit hook) flags
+  addresses outside the documentation ranges, real-looking host names,
+  e-mail addresses, internal-tool URLs and words from the git-ignored
+  `local/deny-words.txt`. It catches shapes, not meaning: review stays.
 
 ## Alternatives
 

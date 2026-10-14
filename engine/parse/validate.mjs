@@ -1,4 +1,4 @@
-import { fail } from "../lib/util.mjs";
+import { fail } from "./errors.mjs";
 import { edgeKey } from "./mmd.mjs";
 import { geometryKit, displayLabels, shortTitle } from "../render/geometry.mjs";
 

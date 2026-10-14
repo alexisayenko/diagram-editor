@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fail } from "../lib/util.mjs";
+import { fail, FormatError } from "../parse/errors.mjs";
 import { parseLayout } from "../parse/layout.mjs";
 import { parseNotes } from "../parse/notes.mjs";
 import { parseDocuments } from "../parse/documents.mjs";
@@ -10,20 +10,12 @@ import { parseNetworks, networkMembers, ipNetworks } from "../parse/networks.mjs
 import { mergeTypes, resolveTypes, RESERVED_TYPES } from "../parse/types.mjs";
 import { validateGeometry } from "../parse/validate.mjs";
 
-class Exit extends Error {}
-
 function trap(fn) {
-  const origExit = process.exit, origErr = console.error, logged = [];
-  process.exit = (code) => { throw Object.assign(new Exit("exit"), { code }); };
-  console.error = (m) => logged.push(m);
   try {
-    return { ok: true, value: fn(), logged };
+    return { ok: true, value: fn(), logged: [] };
   } catch (e) {
-    if (!(e instanceof Exit)) throw e;
-    return { ok: false, code: e.code, logged };
-  } finally {
-    process.exit = origExit;
-    console.error = origErr;
+    if (!(e instanceof FormatError)) throw e;
+    return { ok: false, code: 1, logged: [e.message] };
   }
 }
 const failure = (fn) => {
@@ -38,8 +30,8 @@ const pass = (fn) => {
   return r.value;
 };
 
-test("fail prefixes the message and exits with code 1", () => {
-  assert.equal(failure(() => fail("boom")), "build: boom");
+test("fail throws a FormatError and never exits", () => {
+  assert.equal(failure(() => fail("boom")), "boom");
 });
 
 test("parseLayout rejects retired keys and passes the rest", () => {
@@ -105,7 +97,7 @@ test("parseConfig: overrides", () => {
 });
 
 test("parseConfig: top-level errors", () => {
-  assert.match(cfgErr("{nope"), /^build: diagram\.json: /);
+  assert.match(cfgErr("{nope"), /^diagram\.json: /);
   assert.match(cfgErr("[]"), /must be an object/);
   assert.match(cfgErr("null"), /must be an object/);
   assert.match(cfgErr({ title: "T", extra: 1, more: 2 }), /unknown key "extra", "more" \(allowed: title, id/);

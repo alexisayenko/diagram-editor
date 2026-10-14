@@ -1,9 +1,8 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { fail, readText } from "../lib/util.mjs";
-import { geometryKit } from "../render/geometry.mjs";
-import { drawKit } from "../render/draw-kit.mjs";
-import { osIconKit } from "../render/os-icons.mjs";
+import { readText } from "../lib/util.mjs";
+import { fail } from "../parse/errors.mjs";
+import { KITS } from "./kits.mjs";
 
 const ENGINE = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -16,7 +15,7 @@ const CSS = {
 // "canvas/geometry" is generated from render/geometry.mjs (geometryKit) so build and edit mode route connections identically.
 const RUNTIME = [
   "ui/core", "ui/os-icons", "ui/details", "ui/skins", "ui/panels", "ui/networks", "ui/legend", "ui/selection", "ui/clear-click",
-  "ui/export-columns", "ui/copy", "ui/export-image", "ui/init", "ui/notes-edit", "ui/server-edit",
+  "ui/export-columns", "ui/copy", "ui/export-image", "ui/init", "ui/notes-edit", "ui/server-fields", "ui/server-edit",
   "canvas/geometry", "canvas/draw-kit", "canvas/model", "canvas/zoom-pan", "canvas/draw", "canvas/edit-mode", "canvas/context-menu",
 ];
 
@@ -34,11 +33,6 @@ const kitSource = (name, fn, names) => {
     fn.toString().split("\n").map((l, i) => (l && i ? "  " + l : l)).join("\n") +
     `)();\n\n  return { ${exportList} };\n});`
   );
-};
-const GENERATED = {
-  "ui/os-icons": { fn: osIconKit, file: "engine/render/os-icons.mjs (osIconKit)", names: ["ICONS", "glyph", "iconSvg"] },
-  "canvas/geometry": { fn: geometryKit, file: "engine/render/geometry.mjs (geometryKit)", names: ["headerTitle", "boxExtent", "fitBox", "fitRegion", "regionBounds", "resizeRegion", "route", "problems"] },
-  "canvas/draw-kit": { fn: drawKit, file: "engine/render/draw-kit.mjs (drawKit)", names: ["decimate", "smoothPath", "distToStroke", "hits", "hitIndex", "history", "validate", "pathMarkup", "markup", "newId"] },
 };
 
 // Each module file is exactly: InfraDiagram.define("<name>", [deps], function (<params>) { ... return { exports }; });
@@ -94,8 +88,8 @@ function checkModules(mods) {
 
 // One <script> body: the define() loader, then every module in RUNTIME order.
 export function script() {
-  const src = (name) => (GENERATED[name] ? kitSource(name, GENERATED[name].fn, GENERATED[name].names) : load(`runtime/${name}.js`).trim());
-  const file = (name) => (GENERATED[name] ? GENERATED[name].file : `engine/runtime/${name}.js`);
+  const src = (name) => (KITS[name] ? kitSource(name, KITS[name].fn, KITS[name].names) : load(`runtime/${name}.js`).trim());
+  const file = (name) => (KITS[name] ? KITS[name].file : `engine/runtime/${name}.js`);
   const mods = RUNTIME.map((name) => parseModule(name, src(name), file(name)));
   checkModules(mods);
   return [load("runtime/define.js").trim(), ...mods.map((m) => m.src)].join("\n\n");

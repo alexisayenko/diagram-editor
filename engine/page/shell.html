@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Infrastructure diagrams</title>
+<style>
+@@CSS@@
+</style></head><body>
+<header><strong>Infrastructure diagrams</strong><button id="new">New diagram</button><button id="open">Open saved diagram</button><button id="importdiag">Import diagram</button><input id="diagfile" type="file" accept=".diag.zip" hidden><button id="import" disabled>Import servers</button><input id="impfiles" type="file" accept=".toml" multiple hidden><button id="export" disabled>Export</button><button id="save" disabled>Save</button><button id="hostscript">Host script</button></header>
+<div id="status" role="status" aria-live="polite">Open a saved diagram, start a New diagram, or Import a .diag.zip file.</div>
+<main id="welcome"><h1>From servers to a diagram</h1><p>Start a <b>New diagram</b>, use <b>Open saved diagram</b> to pick one stored on the local server, or <b>Import diagram</b> to open a <code>.diag.zip</code> file; the most recently saved diagram opens automatically. The engine arranges your servers and connections automatically.</p><p>Use <b>Edit layout</b> to move servers and regions, then <b>Save</b>. Your arrangement is stored in the folder as <code>diagram.layout.json</code>; edited notes go back into <code>notes.toml</code> and edited servers into their <code>servers/&lt;id&gt;.toml</code>. <b>Export</b> downloads the whole diagram as one <code>&lt;id&gt;-&lt;timestamp&gt;.diag.zip</code> file.</p><p>After changing services or adding servers in the folder, reload the page. Existing positions are restored and new objects are placed automatically.</p><p>Start with <code>examples/demo/</code>. See <code>AUTHORING.md</code> for the format. Storing and saving need <code>node engine/serve.mjs</code>; any modern browser works (Export and Import diagram work without it).</p></main>
+<div id="hs" class="dlg" hidden><div role="dialog" aria-modal="true" aria-labelledby="hst"><h2 id="hst">Host script</h2><div class="body"><p>Collect facts from Linux servers over SSH and get a <code>servers/&lt;id&gt;.toml</code> snippet for each. The probe is read-only and needs no sudo. Run the steps on a machine that can SSH to the servers.</p><ol>
+<li><h3>Save the script</h3><p>Save it as <code>host-probe.sh</code> in the folder you will work in; the loop in step 3 reads it from there.</p><div class="bar"><details id="hsd"><summary>Show script</summary><pre id="hstext" tabindex="0"></pre></details><button type="button" class="cp" data-copy="#hstext">Copy</button></div></li>
+<li><h3>List the hosts</h3><p>Create <code>hosts.txt</code> next to it: one host (IP address or DNS name) per line. Lines starting with <code>#</code> are comments; blank lines are skipped.</p><div class="code"><pre id="hshosts" tabindex="0"># web servers
+192.0.2.10
+198.51.100.20
+app-01.example.test</pre><button type="button" class="cp" data-copy="#hshosts">Copy</button></div></li>
+<li><h3>Run the probe on every host</h3><p>Paste this into a terminal in that folder. It never waits for a password (hosts need key-based login), gives up on an unreachable host after 10 seconds, and saves each result to <code>out/&lt;host&gt;.toml</code> as well as showing it.</p><div class="code"><pre id="hscmd" tabindex="0">mkdir -p out
+while read -r host _ || [ -n "$host" ]; do
+  case "$host" in ''|'#'*) continue ;; esac
+  echo "##### $host"
+  ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=10 \
+    "$host" 'bash -s' &lt; host-probe.sh | tee "out/$host.toml"
+  echo
+done &lt; hosts.txt</pre><button type="button" class="cp" data-copy="#hscmd">Copy</button></div></li>
+<li><h3>Import into the diagram</h3><p>Open or create a diagram here, click <b>Import servers</b> in the toolbar and choose the <code>out/*.toml</code> files. Pick a server type or a region, review the list and confirm; the servers are added as new <code>servers/&lt;id&gt;.toml</code> files and <b>Save</b> writes them.</p></li>
+</ol></div><div class="row"><span id="hsnote" role="status"></span><button id="hsclose">Close</button></div></div></div>
+<div id="imp" class="dlg" hidden><div role="dialog" aria-modal="true" aria-labelledby="impt"><h2 id="impt">Import servers</h2><div class="body"><div class="opts"><label>Server type<select id="imptype"></select></label><label>Region (optional)<select id="impregion"></select></label></div><ul id="implist"></ul></div><div class="row"><span id="impinfo" role="status"></span><button id="impcancel">Cancel</button><button id="impok">Import</button></div></div></div>
+<div id="op" class="dlg" hidden><div role="dialog" aria-modal="true" aria-labelledby="opt"><h2 id="opt">Open saved diagram</h2><div class="body"><input id="opq" type="search" placeholder="Filter diagrams" aria-label="Filter diagrams" hidden><ul id="oplist"></ul><p id="opnote" class="note"></p></div><div class="row"><span></span><button id="opclose">Close</button></div></div></div>
+<div id="nw" class="dlg" hidden><div role="dialog" aria-modal="true" aria-labelledby="nwt"><h2 id="nwt">New diagram</h2><div class="body"><label>Diagram name (lowercase letters, digits and hyphens)<input id="nwname" type="text" spellcheck="false" autocomplete="off"></label><p id="nwmsg" class="msg" role="alert"></p><div id="nwtaken"><p class="note">Existing diagrams:</p><ul id="nwlist" class="taken"></ul></div></div><div class="row"><span></span><button id="nwcancel">Cancel</button><button id="nwok">Create</button></div></div></div>
+<iframe id="view" title="Infrastructure diagram" hidden></iframe>
+<script>@@SCRIPT@@</script></body></html>
