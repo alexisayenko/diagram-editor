@@ -1,6 +1,7 @@
 // Dependency-free zip reader / writer for `.diag.zip` diagram archives (stored and deflate entries only).
 // Browser and Node 22: uses the platform CompressionStream / DecompressionStream ("deflate-raw").
 // An archive is untrusted input: names, counts and sizes are checked, and the size caps are enforced while inflating.
+import { segmentProblem, caseKey } from "./names.mjs";
 export const MAX_ENTRIES = 500;
 export const MAX_FILE_BYTES = 2 * 1024 * 1024;
 export const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
@@ -85,6 +86,10 @@ export function entryProblem(name) {
   if (name.startsWith("/") || /^[A-Za-z]:/.test(name)) return "absolute entry name '" + name + "'";
   if (name.split("/").some((s) => s === ".." || s === ".")) return "entry name '" + name + "' leaves the diagram folder";
   if (!ENTRY_NAME.test(name)) return "unsupported file '" + name + "' (a diagram holds .toml and .json files, servers in servers/)";
+  for (const s of name.split("/")) {
+    const p = segmentProblem(s);
+    if (p) return "unusable file name " + p;
+  }
   return null;
 }
 
@@ -120,8 +125,8 @@ function acceptEntry(h, seen, maxFile) {
   if (ignorable(name)) return null;
   const problem = entryProblem(name);
   if (problem) throw new Error("Rejected archive: " + problem + ".");
-  if (seen.has(name)) throw new Error("Rejected archive: duplicate entry '" + name + "'.");
-  seen.add(name);
+  if (seen.has(caseKey(name))) throw new Error("Rejected archive: duplicate entry '" + name + "' (names that differ only in case collide on Windows and macOS).");
+  seen.add(caseKey(name));
   if (usize > maxFile) throw new Error("'" + name + "' is larger than " + maxFile / 1024 / 1024 + " MB.");
   return { name, method, crc, csize, usize, local };
 }

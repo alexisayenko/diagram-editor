@@ -2,7 +2,7 @@
 import { mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { validName } from "./names.mjs";
+import { validName, caseKey } from "./names.mjs";
 
 export const MAX_BYTES = 2 * 1024 * 1024;
 export const MAX_FILES = 256;
@@ -17,7 +17,7 @@ export class HttpError extends Error {
 
 export function createStore(dir) {
   const pathOf = (name) => {
-    if (!validName(name)) throw new HttpError(400, "Invalid file name. Use letters, digits, dot, dash or underscore, ending in .toml or .json, at most two folder levels.");
+    if (!validName(name)) throw new HttpError(400, "Invalid file name. Use letters, digits, dot, dash or underscore, ending in .toml or .json, at most two folder levels; Windows device names such as con or nul and names ending in a dot are not allowed.");
     return join(dir, ...name.split("/"));
   };
   const read = (name) => {
@@ -59,8 +59,8 @@ export function createStore(dir) {
   function conflictsWithDisk(e, seen) {
     if (!e || typeof e !== "object") throw new HttpError(400, "Invalid file entry");
     pathOf(e.name);
-    if (seen.has(e.name)) throw new HttpError(400, "Duplicate file name: " + e.name);
-    seen.add(e.name);
+    if (seen.has(caseKey(e.name))) throw new HttpError(400, "Duplicate file name (names are compared ignoring case): " + e.name);
+    seen.add(caseKey(e.name));
     if (typeof e.text !== "string") throw new HttpError(400, "Missing text for " + e.name);
     if (Buffer.byteLength(e.text) > MAX_BYTES) throw new HttpError(413, `${e.name} is larger than ${MAX_BYTES / 1024 / 1024} MB`);
     const current = read(e.name);

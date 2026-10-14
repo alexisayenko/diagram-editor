@@ -72,3 +72,40 @@ test("osInfo keeps the stored text and EOL detection on the original; the pill u
   assert.equal(info.eol, "2024-08");
   assert.equal(shortOs("Red Hat Enterprise Linux 8.6 (Ootpa)"), "RHEL 8.6 Ootpa");
 });
+
+function probeOut(osRelease, hostname) {
+  const dir = mkdtempSync(join(tmpdir(), "hostile-"));
+  writeFileSync(join(dir, "os-release"), osRelease.replaceAll("@MARK@", join(dir, "pwned")));
+  const script = `${fn}\nhostname() { printf '%s' "$HOST_NAME"; }\nmain </dev/null`;
+  const r = spawnSync("bash", ["-c", script], { env: { ...process.env, OS_RELEASE: join(dir, "os-release"), DEBIAN_VERSION: join(dir, "none"), HOST_NAME: hostname }, encoding: "utf8" });
+  return { out: r.stdout, marker: join(dir, "pwned") };
+}
+
+test("hostile os-release and hostname values: nothing runs and the snippet stays valid TOML", { skip: !bash }, async () => {
+  const { existsSync } = await import("node:fs");
+  const { parseToml } = await import("../parse/toml.mjs");
+  const cases = [
+    ['ID=foo\nNAME="Evil $(touch @MARK@)"\nVERSION_ID="1`touch @MARK@`"\nPRETTY_NAME="x"\n', "host$(touch /nonexistent/mark)"],
+    ['ID=foo\nPRETTY_NAME="back\\slash \\"quote\\" \$HOME"\nVERSION_CODENAME=$(touch @MARK@)\n', 'h"q\b'],
+    ["ID=foo\nPRETTY_NAME='single \"dq\" \ end'\n", "multi\nline\nhost"],
+    ["ID=foo\nPRETTY_NAME=\"ctl\u0001\u0007\u001b[31m\ttab\rcr\u007f\"\n", "ctl\u0001host\ttab"],
+    [`ID=foo\nPRETTY_NAME="${"A".repeat(5000)}"\n`, "h".repeat(5000)],
+    ["ID=foo\nPRETTY_NAME=ok; touch @MARK@\nFOO=$(touch @MARK@)\n$(touch @MARK@)\n", "plain"],
+  ];
+  for (const [rel, host] of cases) {
+    const { out, marker } = probeOut(rel, host);
+    assert.ok(!existsSync(marker), "command executed");
+    assert.ok(out.length > 0);
+    assert.equal(typeof parseToml(out).id, "string");
+    assert.ok(!/[\x00-\x08\x0b-\x1f\x7f]/.test(out.replace(/\n/g, "")), "control characters in output");
+  }
+});
+
+test("os-release values stay literal text and unlisted keys are ignored", { skip: !bash }, () => {
+  assert.equal(osName('ID=foo\nPRETTY_NAME="a $HOME `id` $(id)"\n'), "a $HOME `id` $(id)");
+  assert.equal(osName(String.raw`ID=foo
+PRETTY_NAME="say \"hi\" \\ \$x"
+`), String.raw`say "hi" \ $x`);
+  assert.equal(osName("ID=foo\nPRETTY_NAME='it is'\nPATH=/nowhere\n"), "it is");
+  assert.equal(osName('ID=foo\nPRETTY_NAME="CRLF"\r\n'), "CRLF");
+});
