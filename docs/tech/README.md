@@ -12,6 +12,9 @@ Don't pre-create — extract on first real entry. See
 
 - **`stack.md`** — the v1 stack: framework, hosting, storage,
   payments, language, etc., with rationale per pick.
+- **[`refactoring-recommendations.md`](refactoring-recommendations.md)** —
+  reviewed findings merged into a wave roadmap (security, structure,
+  formats), with owner decisions.
 - **`architecture.md`** — system overview, data flow, key
   components.
 - **`ci-cd.md`** (scaffolded) — CI/CD playbook: manual workflows, test layers,
@@ -34,7 +37,7 @@ Don't pre-create — extract on first real entry. See
 ## Deploy and CI
 
 No deploy target and no CI workflows yet; the engine runs locally.
-Tests: `node --test engine/test/*.test.mjs` (WSL, 627 tests; see
+Tests: `node --test engine/test/*.test.mjs` (WSL, 628 tests; see
 [ADR-0010](decisions/adr-0010-test-strategy.md)). SonarCloud analyses
 every push ([ADR-0011](decisions/adr-0011-static-analysis-sonarcloud.md)).
 [`ci-cd.md`](ci-cd.md) is the scaffolded playbook and holds a proposed

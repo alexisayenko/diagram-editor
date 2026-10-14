@@ -136,6 +136,8 @@ and rules):
 - [`tech/architecture.md`](tech/architecture.md),
   [`tech/authoring.md`](tech/authoring.md) — engine and format
   reference
+- [`tech/refactoring-recommendations.md`](tech/refactoring-recommendations.md)
+  — reviewed refactoring roadmap and owner decisions
 - [`tech/decisions/README.md`](tech/decisions/README.md) — ADR index
 - [`tech/ci-cd.md`](tech/ci-cd.md) — CI/CD playbook (manual
   workflows, test layers, deploy and release paths)
@@ -190,6 +192,7 @@ docs/
 ├── tech/                               # entry: tech/README.md
 │   ├── architecture.md                 # engine module map, page behaviour
 │   ├── authoring.md                    # diagram format, workflow, local API
+│   ├── refactoring-recommendations.md  # reviewed roadmap, owner decisions
 │   ├── decisions/                      # ADRs: adr-NNNN-<slug>.md + README
 │   └── ci-cd.md                        # CI/CD playbook
 ├── ui-ux/                              # entry: ui-ux/README.md

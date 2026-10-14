@@ -62,3 +62,26 @@ not implemented.
 
 - Lives in: `docs/product/concepts/`
 - Source spec: [`product/concepts/service-cname.md`](product/concepts/service-cname.md)
+
+## C3 — Security hardening
+
+Persistent layer: treat `.diag.zip` files and diagram text as untrusted.
+Iframe CSP and sandbox, server headers, pinned or removed CDN code,
+probe `eval`, mechanical check for the no-infra-data rule.
+
+- Lives in: `engine/serve.mjs`, `engine/browser/`, `engine/page/`, `tools/`
+- Source: [BP-01 to BP-06 and BP-23](tech/refactoring-recommendations.md#3-prioritised-roadmap),
+  [ADR-0001](tech/decisions/adr-0001-no-infra-data-in-repo.md)
+- Decisions: D3 and D4 in the recommendations (section 5).
+
+## C4 — Format versioning
+
+Persistent layer: a diagram folder, layout and archive written today
+must open tomorrow, and a newer file must fail with a clear message.
+`format_version`, layout version policy, naming and unit rules,
+archive manifest, aliases for C2.
+
+- Lives in: `engine/parse/`, `engine/browser/render.mjs`, `engine/lib/`
+- Source: [DM-01, DM-02, DM-05, AR-10](tech/refactoring-recommendations.md#3-prioritised-roadmap),
+  [authoring.md](tech/authoring.md)
+- Decisions: D2 and D5 in the recommendations (section 5).

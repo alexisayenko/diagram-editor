@@ -76,6 +76,7 @@ Auth notes if any (HTTPS, fine-grained PAT, etc.).]
 - [docs/tech/ci-cd.md](docs/tech/ci-cd.md) — CI/CD playbook
 - [docs/tech/architecture.md](docs/tech/architecture.md) — engine module map, build, page behaviour
 - [docs/tech/authoring.md](docs/tech/authoring.md) — TOML authoring format and workflow
+- [docs/tech/refactoring-recommendations.md](docs/tech/refactoring-recommendations.md) — reviewed refactoring roadmap and owner decisions
 - [docs/tech/decisions/](docs/tech/decisions/README.md) — ADRs: why the engine is built this way
 - [ADR-0010](docs/tech/decisions/adr-0010-test-strategy.md) — test strategy and coverage
 - [ADR-0011](docs/tech/decisions/adr-0011-static-analysis-sonarcloud.md) — SonarCloud

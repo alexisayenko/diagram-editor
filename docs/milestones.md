@@ -14,6 +14,17 @@ One bullet per event: ISO date, an em dash, what happened in a
 sentence or two, and a link to the task or artifact that carries
 the detail. Newest first; several events on one date are fine.
 
+- 2026-10-14 — Planned: refactoring roadmap in four waves, from five
+  reviews; none started
+  ([recommendations](tech/refactoring-recommendations.md#3-prioritised-roadmap)).
+  - Wave 0: quick wins and security: iframe CSP, server headers, CDN
+    pinning, probe `eval`, stale docs.
+  - Wave 1: foundations: `format_version`, typed errors, shared
+    helpers, honest bundler, tooling, transactional save.
+  - Wave 2: structural: one render pipeline, legacy path decision,
+    `app.js` split, layering, update model.
+  - Wave 3: nice-to-have: layout v2, units, warnings channel, aliases,
+    API polish, harness merge.
 - 2026-10-14 — Tests, refactor and static analysis: 627 tests with 99.85%
   line coverage, large functions split, six bugs found by the tests
   fixed, SonarCloud clean-up

@@ -44,6 +44,60 @@ jobs:
 - Triggers stay manual until the free-minutes budget is a
   non-issue; see the principles below.
 
+### Deferred: local SonarCloud scan
+
+Status: deferred; no script or token file exists yet. Do it only when
+coverage on the SonarCloud dashboard is wanted.
+
+Why coverage shows "No data" today: *automatic analysis* only reads the
+sources. It never runs the tests, so no coverage report reaches
+SonarCloud. A scan that uploads an lcov file fixes that. It cannot run
+together with automatic analysis.
+
+Why local and not GitHub Actions: a scan job costs billed minutes (the
+Sonar job took about 159 s in the moene measurement below) and the free
+quota is small. Run it by hand from the developer machine instead.
+
+Procedure (in WSL):
+
+1. Create a SonarCloud user token and store it as
+   `~/.config/sonarcloud/token.env` with the single line
+   `SONAR_TOKEN=<token>`; then `chmod 600` the file. Never put it in
+   the repo, never echo it.
+2. In SonarCloud, switch **Automatic Analysis** off for the project
+   (Administration, Analysis Method). Leave it off, or pushes will be
+   analysed twice and the scan is rejected.
+3. Produce the report:
+
+   ```sh
+   node --test --experimental-test-coverage      --test-reporter=lcov --test-reporter-destination=lcov.info      engine/test/*.test.mjs
+   ```
+
+   `lcov.info` must stay untracked (add it to `.gitignore` with the
+   script).
+4. Use the sonar-scanner CLI 8.1.0.6389, installed at
+   `~/.local/share/sonar-scanner` in WSL. Run it from the repo root
+   with `SONAR_TOKEN` sourced from the env file:
+
+   ```sh
+   set -a; . ~/.config/sonarcloud/token.env; set +a
+   ~/.local/share/sonar-scanner/bin/sonar-scanner
+   ```
+
+5. Put these settings in `sonar-project.properties` (project key
+   `alexisayenko_diagram-editor`, the organization key from the
+   project page): `sonar.sources=engine,tools`,
+   `sonar.tests=engine/test`,
+   `sonar.javascript.lcov.reportPaths=lcov.info`, and the same
+   exclusions as `.sonarcloud.properties`
+   ([ADR-0011](decisions/adr-0011-static-analysis-sonarcloud.md)).
+6. Check the dashboard: coverage replaces "No data" within a minute of
+   the upload.
+
+If this is automated later, the `sonar` job in the proposal above is the
+shape; it needs the `SONAR_TOKEN` repository secret and the same
+Automatic Analysis switch.
+
 Playbook for testing and shipping a project on the GitHub Free
 plan with a $0 Actions budget. Extracted from moene
 (`project-moodtracker`), which is the worked example throughout;
