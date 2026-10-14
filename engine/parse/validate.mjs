@@ -1,6 +1,6 @@
 import { fail } from "../lib/util.mjs";
 import { edgeKey } from "./mmd.mjs";
-import { geometryKit } from "../render/geometry.mjs";
+import { geometryKit, displayLabels, shortTitle } from "../render/geometry.mjs";
 
 const BAND = 30, BAND_GAP = 10, BOX_HEAD = 20;
 const MIN_GAP = 20, CLUSTER_PAD = 16;
@@ -63,10 +63,10 @@ const gapOf = (a, b) => Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b
 // Drawn extent of a box: header above y, chrome widened to fit the title, bottom stretched to the last IP pill.
 function checkSpacing(clusters, nodes, layout) {
   const problems = [];
-  const boxes = [];
+  const boxes = [], labels = displayLabels(Object.fromEntries([...nodes.values()].map((n) => [n.id, n.title])));
   for (const n of nodes.values()) {
     const g = layout.nodes[n.id];
-    if (!g.hidden) boxes.push({ id: n.id, cluster: n.cluster, ...kit.boxExtent(g, n.title.length) });
+    if (!g.hidden) boxes.push({ id: n.id, cluster: n.cluster, ...kit.boxExtent(g, shortTitle(labels[n.id]).length) });
   }
   const cl = [...clusters.keys()].map((id) => {
     const c = layout.clusters[id];

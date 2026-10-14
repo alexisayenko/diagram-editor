@@ -123,7 +123,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     });
     Object.keys(D.idx.nodes).forEach(function (id) {
       var e = D.idx.nodes[id], g = s.nodes[id];
-      setXY(els[e.t], g.title); setRect(els[e.r], g);
+      setXY(els[e.t], geometry.headerTitle(g, ctx.style)); setRect(els[e.r], g);
       e.b.forEach(function (i, k) { setXY(els[i], g.body[k]); });
       e.i.forEach(function (i, k) { setXY(els[i], g.ip[k]); });
     });
@@ -133,6 +133,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     skins.sync(s);
   }
 
+  core.hooks.title = geometry.headerTitle;
   core.hooks.route = function () {
     var s = core.hooks.getState && core.hooks.getState();
     if (s) { routeEdges(s); markBad(s); }

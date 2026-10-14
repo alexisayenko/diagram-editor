@@ -1,0 +1,48 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { osInfo } from "../parse/os-eol.mjs";
+import { shortOs, OS_MAX } from "../render/geometry.mjs";
+
+const probe = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../tools/host-probe.sh"), "utf8");
+const fn = probe.match(/^os_name\(\) \{[\s\S]*?^\}/m)[0];
+const bash = spawnSync("bash", ["-c", "true"]).error ? null : "bash";
+
+function osName(osRelease, debianVersion) {
+  const dir = mkdtempSync(join(tmpdir(), "osname-"));
+  writeFileSync(join(dir, "os-release"), osRelease);
+  if (debianVersion !== undefined) writeFileSync(join(dir, "debian_version"), debianVersion);
+  const r = spawnSync("bash", ["-c", `${fn}\nos_name`], { env: { ...process.env, OS_RELEASE: join(dir, "os-release"), DEBIAN_VERSION: join(dir, "debian_version") }, encoding: "utf8" });
+  return r.stdout;
+}
+
+test("probe builds the os value: distro, version, codename", { skip: !bash }, () => {
+  assert.equal(osName('ID=debian\nVERSION_ID="11"\nVERSION_CODENAME=bullseye\nPRETTY_NAME="Debian GNU/Linux 11 (bullseye)"\n', "11.11\n"), "Debian 11.11 bullseye");
+  assert.equal(osName('ID=debian\nVERSION_ID="12"\nVERSION_CODENAME=bookworm\n', "12.3\n"), "Debian 12.3 bookworm");
+  assert.equal(osName('ID=debian\nVERSION_ID="12"\nVERSION_CODENAME=bookworm\n', "bookworm/sid\n"), "Debian bookworm");
+  assert.equal(osName('ID=debian\nVERSION_CODENAME=trixie\n'), "Debian trixie");
+  assert.equal(osName('ID=ubuntu\nVERSION_ID="16.04"\nVERSION="16.04.7 LTS (Xenial Xerus)"\nVERSION_CODENAME=xenial\n'), "Ubuntu 16.04 LTS Xenial");
+  assert.equal(osName('ID=ubuntu\nVERSION_ID="22.04"\nPRETTY_NAME="Ubuntu 22.04.4 LTS"\nVERSION_CODENAME=jammy\n'), "Ubuntu 22.04 LTS Jammy");
+  assert.equal(osName('ID=ubuntu\nVERSION_ID="23.10"\nVERSION="23.10 (Mantic Minotaur)"\nVERSION_CODENAME=mantic\n'), "Ubuntu 23.10 Mantic");
+  assert.equal(osName('ID=rocky\nNAME="Rocky Linux"\nVERSION_ID="9.4"\nPRETTY_NAME="Rocky Linux 9.4 (Blue Onyx)"\n'), "Rocky Linux 9.4");
+  assert.equal(osName('ID=alpine\nNAME="Alpine Linux"\nVERSION_ID=3.19.1\n'), "Alpine Linux 3.19.1");
+  assert.equal(osName('ID=foo\nPRETTY_NAME="Foo OS rolling"\n'), "Foo OS rolling");
+});
+
+test("EOL status resolves for the new and the old os formats", () => {
+  const today = new Date("2026-10-14");
+  const eol = (s) => osInfo(s, today).eol;
+  for (const s of ["Ubuntu 16.04 LTS Xenial", "Ubuntu 16.04.7 LTS", "Ubuntu 16.04", "Debian 11.11 bullseye", "Debian GNU/Linux 11 (bullseye)", "Debian 11", "Debian 12.3 bookworm", "CentOS Linux 7 (Core)", "Oracle Linux Server 7.9"]) assert.ok(eol(s), s);
+  for (const s of ["Ubuntu 22.04 LTS Jammy", "Ubuntu 24.04 LTS Noble", "Debian 13.1 trixie", "Debian bookworm"]) assert.equal(eol(s), null, s);
+});
+
+test("pill text is shown in full up to a sane maximum, then cut with an ellipsis", () => {
+  assert.equal(shortOs("Ubuntu 16.04 LTS Xenial"), "Ubuntu 16.04 LTS Xenial");
+  const long = "Some Distribution Long Name 1.2.3 codename-with-a-very-long-suffix";
+  assert.equal(shortOs(long).length, OS_MAX);
+  assert.ok(shortOs(long).endsWith("…"));
+});

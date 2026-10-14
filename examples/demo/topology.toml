@@ -50,3 +50,13 @@ from = "app02"
 to = "cache"
 label = "TCP · proposed cache"
 proposed = true
+
+[[service_groups]]
+id = "application"
+label = "Application services"
+patterns = ["app-*", "tomcat*"]
+
+[[service_groups]]
+id = "middleware"
+label = "Middleware"
+patterns = ["wildfly*", "nginx"]

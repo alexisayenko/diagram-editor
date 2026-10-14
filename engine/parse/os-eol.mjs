@@ -10,9 +10,9 @@ const EOL = {
 function eolOf(os) {
   let m;
   if ((m = os.match(/^Ubuntu (\d+)(?:\.(\d+))?/i))) return EOL.ubuntu[`${m[1]}.${m[2] || "04"}`] || null;
-  if ((m = os.match(/^Debian (\d+)/i))) return EOL.debian[m[1]] || null;
-  if ((m = os.match(/^CentOS (\d+)/i))) return EOL.centos[m[1]] || null;
-  if ((m = os.match(/^Oracle Linux (\d+)/i))) return EOL.oracle[m[1]] || null;
+  if ((m = os.match(/^Debian(?: GNU\/Linux)? (\d+)/i))) return EOL.debian[m[1]] || null;
+  if ((m = os.match(/^CentOS(?: Linux)? (\d+)/i))) return EOL.centos[m[1]] || null;
+  if ((m = os.match(/^Oracle Linux(?: Server)? (\d+)/i))) return EOL.oracle[m[1]] || null;
   if ((m = os.match(/^Windows Server (\d{4})( R2)?/i))) return EOL.windows[m[1] + (m[2] ? " R2" : "")] || null;
   return null;
 }

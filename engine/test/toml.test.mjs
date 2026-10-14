@@ -42,7 +42,7 @@ test("fresh demo auto-layout is valid, deterministic and non-overlapping", () =>
   validateGeometry(a.model, a.layout, a.meta);
   assert.equal(a.model.nodes.size, 7);
   assert.equal(a.model.clusters.size, 4);
-  assert.equal(a.meta.edges.find((e) => e.k === "app01>db01").fl, 1);
+  assert.equal(a.meta.edges.find((e) => e.k === "app01>db01").fl, 3);
 });
 test("restore, update service count, add and remove objects without losing existing coordinates", () => {
   const first = prepareDiagram(demo, "demo");

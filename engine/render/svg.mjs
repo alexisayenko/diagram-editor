@@ -1,7 +1,7 @@
 import { esc } from "../lib/util.mjs";
 import { edgeKey, endKey, isDashed } from "../parse/mmd.mjs";
 import { fwGlyph } from "./firewall.mjs";
-import { shortTitle } from "./geometry.mjs";
+import { shortTitle, shortOs, displayLabels } from "./geometry.mjs";
 
 const NET_ICON = "M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75";
 
@@ -18,6 +18,7 @@ export function renderSvgBody(model, layout, ent, nets, ipNet, routes, groups, m
     if (m.fl !== null) hl[m.from.slice(2) + ":" + m.fl] = m.g || "";
     if (m.tl !== null) hl[m.to.slice(2) + ":" + m.tl] = m.g || "";
   }
+  const labels = displayLabels(Object.fromEntries([...nodes.values()].map((n) => [n.id, n.title])));
   const out = [];
   let cnt = 0;
   const add = (s) => (out.push(s), cnt++);
@@ -39,7 +40,7 @@ export function renderSvgBody(model, layout, ent, nets, ipNet, routes, groups, m
     if (g.hidden) continue;
     const k = "n:" + n.id;
     const e = { c: add(`<g class="ch"${A(k)}></g>`) };
-    e.t = add(`<text class="nt"${A(k)} x="${g.title[0]}" y="${g.title[1]}">${esc(shortTitle(n.title))}${shortTitle(n.title) === n.title ? "" : `<title>${esc(n.title)}</title>`}</text>`);
+    e.t = add(`<text class="nt"${A(k)} x="${g.x + 10}" y="${g.y - 10}">${esc(shortTitle(labels[n.id]))}${shortTitle(labels[n.id]) === n.title ? "" : `<title>${esc(n.title)}</title>`}</text>`);
     e.r = add(`<rect class="b"${A(k)} x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="14"/>`);
     e.b = n.body.map((s, i) => {
       const h = hl[n.id + ":" + i];
@@ -54,8 +55,8 @@ export function renderSvgBody(model, layout, ent, nets, ipNet, routes, groups, m
       return add(`<g class="nwb"${A(k)} data-n="${j}" data-i="${i}" role="button" tabindex="0" aria-pressed="false" aria-label="${lbl}" transform="translate(${at})"><title>${lbl}</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="${NET_ICON}"/></g>`);
     });
     const os = ent[k].os;
-    const ol = os ? esc(os.v) + (os.eol ? ' <tspan class="ose">EOL</tspan>' : "") : "OS ?";
-    e.o = add(`<g class="osg${os ? (os.eol ? " eol" : "") : " unk"}"${A(k)}><rect class="osp" height="12"/><text class="ost" x="4" y="9">${ol}</text></g>`);
+    const ol = os ? esc(shortOs(os.v)) + (os.eol ? ' <tspan class="ose">EOL</tspan>' : "") : "OS ?";
+    e.o = add(`<g class="osg${os ? (os.eol ? " eol" : "") : " unk"}"${A(k)}><rect class="osp" height="12"/><text class="ost" x="4" y="9">${ol}</text><title>${os ? esc(os.v) : "OS unknown"}</title></g>`);
     idx.nodes[n.id] = e;
     out.push("");
   }

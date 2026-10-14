@@ -54,7 +54,7 @@ export function resolveTypes({ clusters, nodes, classDefs, classes, types }, lay
     ent[key] = { ...base, ty, prop, tk: prop ? "proposed" : ty, tag: ty ? TYPES[ty].tag + (prop ? " · PROPOSED" : "") : "" };
   };
   for (const c of clusters.values()) addEnt("c:" + c.id, c.id, { title: c.title, cl: null, db: false });
-  for (const n of nodes.values()) if (!layout.nodes[n.id].hidden) addEnt("n:" + n.id, n.id, { title: n.title, cl: n.cluster, db: n.db, body: n.body, ip: n.ip });
+  for (const n of nodes.values()) if (!layout.nodes[n.id].hidden) addEnt("n:" + n.id, n.id, { title: n.title, cl: n.cluster, db: n.db, body: n.body, ip: n.ip, ...(n.hwc && n.hwc.length ? { hwc: n.hwc } : {}) });
   if (typeProblems.length) fail("\n  " + typeProblems.join("\n  "));
 
   const used = new Set(Object.values(ent).map((e) => e.tk));

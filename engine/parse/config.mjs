@@ -46,7 +46,10 @@ function parseProcesses(p) {
   return out;
 }
 
-const lineOf = (node, prefix) => node.body.findIndex((l) => l.startsWith(prefix));
+const lineOf = (node, prefix) => {
+  const from = node.jn || 0, i = node.body.slice(from, node.svc === undefined ? undefined : from + node.svc).findIndex((l) => l.startsWith(prefix));
+  return i < 0 ? -1 : from + i;
+};
 
 export function checkConnections({ groups, processes }, edgeIds, nodes) {
   const seen = {};

@@ -30,7 +30,7 @@ const kitSource = (name, fn, names) =>
   fn.toString().split("\n").map((l, i) => (l && i ? "  " + l : l)).join("\n") +
   `)();\n\n  return { ${names.map((n) => `${n}: kit.${n}`).join(", ")} };\n});`;
 const GENERATED = {
-  "canvas/geometry": { fn: geometryKit, file: "engine/render/geometry.mjs (geometryKit)", names: ["boxExtent", "fitBox", "fitRegion", "regionBounds", "resizeRegion", "route", "problems"] },
+  "canvas/geometry": { fn: geometryKit, file: "engine/render/geometry.mjs (geometryKit)", names: ["headerTitle", "boxExtent", "fitBox", "fitRegion", "regionBounds", "resizeRegion", "route", "problems"] },
   "canvas/draw-kit": { fn: drawKit, file: "engine/render/draw-kit.mjs (drawKit)", names: ["decimate", "smoothPath", "distToStroke", "hits", "hitIndex", "history", "validate", "pathMarkup", "markup", "newId"] },
 };
 

@@ -88,6 +88,17 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
     });
   }
 
+  // Hardware strip (value then label, e.g. "4 cpu · 8G ram", as on the card): after the first table of the section, else after the type tag.
+  function hwStrip(pn, cells) {
+    if (!cells || !cells.length) return;
+    var d = document.createElement("div");
+    d.className = "hws";
+    d.textContent = cells.map(function (c) { return c[1] + " " + c[0]; }).join(" 00b7 ");
+    var t = pn.querySelector("table");
+    if (t) t.parentNode.insertBefore(d, t.nextSibling);
+    else pn.insertBefore(d, pn.querySelector(".tg").nextSibling);
+  }
+
   // The "Close" button (#pc) is wired once by ui/init.
   function renderPanel(key) {
     var e = D.ent[key], pn = $("pn");
@@ -107,6 +118,7 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
       else html += '<p class="pm">Part of ' + esc(ce.title) + "</p>";
     }
     pn.innerHTML = html;
+    if (key.charAt(0) === "n") hwStrip(pn, e.hwc);
     if (key.charAt(0) === "n") osRow(pn, e.os);
     netButtons(pn);
     pn.setAttribute("data-ty", e.ty);

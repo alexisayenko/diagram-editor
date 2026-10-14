@@ -1,6 +1,6 @@
 InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, details) {
   var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx, CW = core.CW, STYLES = core.STYLES, hooks = core.hooks;
-  var pillW = {}, boxW = {}, btn = {};
+  var pillW = {}, boxW = {}, btn = {}, TEXT_X = 10;
 
   function measure(el, n, cw) {
     var w = 0;
@@ -14,8 +14,8 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
 
   function nodeChrome(id) {
     var S = ctx.style, g = D.layout.nodes[id], e = D.ent["n:" + id], ix = D.idx.nodes[id];
-    var tl = g.title[0] - g.x;
-    var tw = measure(els[ix.t], e.title.length, CW[S]);
+    var tl = TEXT_X;
+    var tw = measure(els[ix.t], els[ix.t].firstChild.textContent.length, CW[S]);
     var bottom = g.h;
     var ipw = g.ip.map(function (p, k) {
       bottom = Math.max(bottom, p[1] - g.y + 7);
@@ -33,10 +33,11 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     } else {
       h = '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
     }
-    h += '<g class="ic" transform="translate(' + (W - 17) + ' -16) scale(.75)">' + icon(e.db ? "db" : "server") + "</g>";
+    h += '<g class="ic" transform="translate(' + (W - 22.8) + ' -16.8) scale(.85)">' + icon(e.db ? "db" : "server") + "</g>";
     h += hw;
     var dv = function (y) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; };
     var below = !!(m.hw || m.os || g.ip.length);
+    if (m.nj && nb > m.nj) h += dv(8 + 16 * m.nj);
     if (nb && below) h += dv(8 + 16 * nb);
     if (m.hw && (m.os || g.ip.length)) h += dv(hwY + 6);
     if (m.os && g.ip.length) h += dv(g.ip[0][1] - g.y - 12.5);
@@ -110,6 +111,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     Object.keys(D.idx.nodes).forEach(function (id) {
       var g = s.nodes[id];
       els[D.idx.nodes[id].c].setAttribute("transform", "translate(" + g.x + " " + g.y + ")");
+      if (hooks.title) { var ht = hooks.title(g, ctx.style), tx = els[D.idx.nodes[id].t]; tx.setAttribute("x", ht[0]); tx.setAttribute("y", ht[1]); }
       placeOs(id, g);
       placeNetButtons(id, g);
     });

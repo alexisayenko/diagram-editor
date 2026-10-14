@@ -46,27 +46,63 @@ list_ips() {
     | grep -Ev '^(lo|docker|veth|br-|virbr|cni|flannel|cali|tun|podman)' | awk '{print $2}'
 }
 
-# Pretty OS name, e.g. "Ubuntu 22.04.4 LTS" (os-release is a plain shell file).
+# OS name from /etc/os-release, e.g. "Debian 11.11 bullseye", "Ubuntu 16.04 LTS Xenial", "Rocky Linux 9.4".
+# os-release is a plain shell file, so we "source" it inside a subshell (the parentheses) to keep its variables to ourselves.
 os_name() {
-  [ -r /etc/os-release ] || return 0
-  . /etc/os-release 2>/dev/null
-  printf '%s' "${PRETTY_NAME:-}"
+  [ -r "${OS_RELEASE:-/etc/os-release}" ] || return 0
+  (
+    . "${OS_RELEASE:-/etc/os-release}" 2>/dev/null
+    id=${ID:-}
+    ver=${VERSION_ID:-}
+    code=${VERSION_CODENAME:-}
+    case "$id" in
+      debian)
+        # /etc/debian_version holds the full point release ("11.11"); testing/sid hold words such as "bookworm/sid".
+        full=$(cat "${DEBIAN_VERSION:-/etc/debian_version}" 2>/dev/null)
+        case "$full" in
+          [0-9]*.[0-9]*) ver=$full ;;
+          [0-9]*) ;;
+          *) ver= ;;
+        esac
+        [ -n "$code" ] || code=$(printf '%s' "${VERSION:-}" | sed -n 's/.*(\(.*\)).*/\1/p')
+        printf '%s' "Debian${ver:+ $ver}${code:+ $code}"
+        ;;
+      ubuntu)
+        lts=
+        case "${VERSION:-} ${PRETTY_NAME:-}" in *LTS*) lts=" LTS" ;; esac
+        # Capitalise the first letter of the codename ("xenial" -> "Xenial").
+        cap=$(printf '%s' "$code" | sed 's/^./\U&/')
+        printf '%s' "Ubuntu${ver:+ $ver}$lts${cap:+ $cap}"
+        ;;
+      *)
+        if [ -n "$ver" ] && [ -n "${NAME:-}" ]; then
+          short=$(printf '%s' "$NAME" | sed 's/ GNU\/Linux//; s/ Server$//; s/ Linux Server$/ Linux/')
+          printf '%s' "$short $ver${code:+ $code}"
+        elif [ -n "${PRETTY_NAME:-}" ]; then
+          printf '%s' "$PRETTY_NAME"
+        elif [ -r /etc/redhat-release ]; then
+          # Old RHEL-likes without VERSION_ID: "CentOS release 6.10 (Final)".
+          head -n 1 /etc/redhat-release
+        fi
+        ;;
+    esac
+  )
 }
 
-# Total RAM rounded to whole GiB, or nothing if unknown.
+# Total RAM rounded to whole G (GiB), as "8G", or nothing if unknown.
 memory_gib() {
   local kb
   kb=$(awk '/^MemTotal/{print $2}' /proc/meminfo 2>/dev/null)
   [ -n "$kb" ] || return 0
-  printf '%s GiB' "$(( (kb + 524288) / 1048576 ))"
+  printf '%sG' "$(( (kb + 524288) / 1048576 ))"
 }
 
-# Swap size rounded to whole GiB; nothing if there is no swap or it is unknown.
+# Swap size rounded to whole G (GiB), as "2G"; nothing if there is no swap or it is unknown.
 swap_gib() {
   local kb
   kb=$(awk '/^SwapTotal/{print $2}' /proc/meminfo 2>/dev/null)
   [ -n "$kb" ] && [ "$kb" -gt 0 ] 2>/dev/null || return 0
-  printf '%s GiB' "$(( (kb + 524288) / 1048576 ))"
+  printf '%sG' "$(( (kb + 524288) / 1048576 ))"
 }
 
 # Size of the root filesystem as df -h prints it (e.g. "50G"); nothing if unavailable.
@@ -174,7 +210,7 @@ main() {
   echo "name = \"$(printf '%s' "$fqdn" | esc)\""
   echo "ips = $(list_ips | to_array)"
   if [ -n "$os" ]; then echo "os = \"$(printf '%s' "$os" | esc)\""; fi
-  if [ -n "$ncpu" ]; then echo "cpu = \"$ncpu cores\""; fi
+  if [ -n "$ncpu" ]; then echo "cpu = \"$ncpu\""; fi
   if [ -n "$ram" ]; then echo "ram = \"$ram\""; fi
   if [ -n "$swap" ]; then echo "swap = \"$swap\""; fi
   if [ -n "$disk" ]; then echo "disk = \"$(printf '%s' "$disk" | esc)\""; fi

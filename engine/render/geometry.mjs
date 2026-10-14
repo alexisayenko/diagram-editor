@@ -3,17 +3,34 @@ import { processAnchors } from "../parse/config.mjs";
 
 // Longest server name drawn in a header; longer names are cut with an ellipsis (the full name stays in a tooltip).
 export const TITLE_MAX = 34;
+// Longest OS text drawn in the pill; the full text stays in the tooltip.
+export const OS_MAX = 40;
+export function shortOs(s) { return s.length > OS_MAX ? s.slice(0, OS_MAX - 1) + "…" : s; }
 export function shortTitle(t) { return t.length > TITLE_MAX ? t.slice(0, TITLE_MAX - 1) + "…" : t; }
+
+// Header label of a server: the first DNS label when the name is a DNS name (has a dot, not an IPv4 / IPv6 literal), else the name as is.
+export function hostLabel(name) {
+  const n = String(name).trim();
+  if (!n.includes(".") || n.includes(":") || /^\d{1,3}(\.\d{1,3}){3}$/.test(n) || /^\[.*\]$/.test(n)) return name;
+  return n.split(".")[0] || name;
+}
+// Labels for { id: name }: short host names, but the full name wherever two servers would share a label.
+export function displayLabels(names) {
+  const short = {}, count = {};
+  for (const [id, n] of Object.entries(names)) { short[id] = hostLabel(n); count[short[id]] = (count[short[id]] || 0) + 1; }
+  return Object.fromEntries(Object.keys(names).map((id) => [id, count[short[id]] > 1 ? names[id] : short[id]]));
+}
 
 // Static facts the kit needs besides layout.json geometry; built once, shipped to the runtime as D.meta.
 // Node nb / ni: body and IP line counts, os / ol: 1 and the text length when the server has an OS pill row, hw: hardware strip text (own row when not empty) (auto-layout). Edge lv: "process" when an endpoint is a body line (diagram.json processes), else "server".
 export function geometryMeta(model, groups, processes) {
   const len = (a) => a.reduce((m, s) => Math.max(m, s.length), 0);
+  const labels = displayLabels(Object.fromEntries([...model.nodes.values()].map((n) => [n.id, n.title])));
   const gOf = {}, pa = processAnchors(processes, model.nodes);
   for (const [g, d] of Object.entries(groups || {})) for (const k of d.edges) gOf[k] = g;
   return {
     clusters: Object.fromEntries([...model.clusters.values()].map((c) => [c.id, { tl: c.title.length }])),
-    nodes: Object.fromEntries([...model.nodes.values()].map((n) => [n.id, { tl: shortTitle(n.title).length, os: n.os ? 1 : 0, ol: n.os ? n.os.length : 0, hw: n.hw || "", bl: len(n.body), il: len(n.ip), nb: n.body.length, ni: n.ip.length, cl: n.cluster }])),
+    nodes: Object.fromEntries([...model.nodes.values()].map((n) => [n.id, { tl: shortTitle(labels[n.id]).length, os: n.os ? 1 : 0, ol: n.os ? shortOs(n.os).length : 0, hw: n.hw || "", bl: len(n.body), il: len(n.ip), nb: n.body.length, nj: n.jn || 0, ni: n.ip.length, cl: n.cluster }])),
     edges: model.edges.map((e) => ({ k: edgeKey(e), from: endKey(model, e.from), to: endKey(model, e.to), ll: e.label.length, fw: e.fw, g: gOf[edgeKey(e)] || null, fl: pa[edgeKey(e)]?.fl ?? null, tl: pa[edgeKey(e)]?.tl ?? null, lv: pa[edgeKey(e)] ? "process" : "server" })),
   };
 }
@@ -31,17 +48,22 @@ export function geometryKit() {
   function r1(v) { return Math.round(v * 10) / 10; }
   function num(a, b) { return a - b; }
 
+  // Start of a server header text: TEXT_X from the left, vertically centred in the header bar (CSS dominant-baseline: central); Sketch keeps the saved spot above the box.
+  function headerTitle(g, style) {
+    return style === "sketch" ? [g.title[0], g.title[1]] : [r1(g.x + TEXT_X), r1(g.y - HEAD / 2)];
+  }
+
   function boxExtent(g, tl, w) {
     var bottom = g.y + g.h;
     for (var i = 0; i < g.ip.length; i++) bottom = Math.max(bottom, g.ip[i][1] + 7);
-    return { x0: g.x, y0: g.y - HEAD, x1: g.x + (w || Math.max(g.w, g.title[0] - g.x + tl * TITLE_CW + 28)), y1: bottom };
+    return { x0: g.x, y0: g.y - HEAD, x1: g.x + (w || Math.max(g.w, TEXT_X + tl * TITLE_CW + 28)), y1: bottom };
   }
 
   // Body and IP lines sit at the box's text padding; the box is wide enough for its title, body lines and IP pills plus network buttons.
   function fitBox(g, t) {
     g.body.forEach(function (p) { p[0] = g.x + TEXT_X; });
     g.ip.forEach(function (p) { p[0] = g.x + TEXT_X; });
-    var need = Math.max(g.title[0] - g.x + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0, t.os ? TEXT_X + (t.ol + 4) * OS_CW + 14 : 0, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0);
+    var need = Math.max(TEXT_X + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0, t.os ? TEXT_X + (t.ol + 4) * OS_CW + 14 : 0, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0);
     g.w = Math.max(g.w, Math.ceil(need));
   }
 
@@ -490,5 +512,5 @@ export function geometryKit() {
     return bad;
   }
 
-  return { boxExtent: boxExtent, fitBox: fitBox, fitRegion: fitRegion, regionBounds: regionBounds, resizeRegion: resizeRegion, route: route, problems: problems };
+  return { headerTitle: headerTitle, boxExtent: boxExtent, fitBox: fitBox, fitRegion: fitRegion, regionBounds: regionBounds, resizeRegion: resizeRegion, route: route, problems: problems };
 }

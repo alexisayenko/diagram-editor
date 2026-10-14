@@ -122,7 +122,7 @@ export function parseNoteText(text, at = "note", strict = false) {
 
 // A diagram folder: file name (relative to the folder) -> the keys that file may hold.
 export const FOLDER_FILES = {
-  "topology.toml": ["id", "title", "regions", "connections"],
+  "topology.toml": ["id", "title", "regions", "service_groups", "connections"],
   "server-types.toml": ["server_types"],
   "notes.toml": ["notes"],
   "documents.toml": ["documents"],
@@ -175,10 +175,18 @@ export function tomlModel(files, folder = "diagram", nets = null) {
   function str(v, at) { if (typeof v !== "string" || !v.trim()) fail(`${at} must be a non-empty string`); return v; }
   function list(v, at) { if (v === undefined) return []; if (!Array.isArray(v) || v.some((s) => typeof s !== "string" || !s.trim())) fail(`${at} must be an array of non-empty strings`); return v; }
   function bool(v, at) { if (v !== undefined && typeof v !== "boolean") fail(`${at} must be true or false`); return v || false; }
-  keys(t, ["id", "title", "notes", "server_types", "regions", "servers", "connections", "documents"], "diagram");
-  for (const key of ["server_types", "regions", "servers", "connections", "documents"]) {
+  keys(t, ["id", "title", "notes", "server_types", "regions", "service_groups", "servers", "connections", "documents"], "diagram");
+  for (const key of ["server_types", "regions", "service_groups", "servers", "connections", "documents"]) {
     if (t[key] !== undefined && (!Array.isArray(t[key]) || t[key].some((v) => !v || typeof v !== "object" || Array.isArray(v)))) fail(`${key} must use [[${key}]] tables`);
   }
+  const groups = (t.service_groups || []).map((g, i) => {
+    const at = "service_groups[" + (i + 1) + "]";
+    keys(g, ["id", "label", "patterns"], at);
+    if (g.id !== undefined) str(g.id, at + ".id");
+    str(g.label, at + ".label");
+    if (!Array.isArray(g.patterns) || !g.patterns.length || g.patterns.some((p) => typeof p !== "string" || !p.trim())) fail(at + ".patterns must be a non-empty array of non-empty strings");
+    return { label: g.label.trim(), patterns: g.patterns.map(globRegExp) };
+  });
   const id = t.id ?? folder;
   if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) fail("id must contain lowercase letters, digits and hyphens");
   const config = { id, title: str(t.title, "title"), groups: {}, processes: {} };
@@ -244,7 +252,7 @@ export function tomlModel(files, folder = "diagram", nets = null) {
     const title = str(s.name ?? eid, eid + ".name");
     if (names.has(title)) fail(`${eid}: duplicate server name '${title}'`);
     names.add(title);
-    model.nodes.set(eid, { id: eid, title, cluster, db: !!TYPES[ty].db, body: serviceLines(list(s.services, eid + ".services"), list(s.jobs, eid + ".jobs"), list(s.rmi_services, eid + ".rmi_services"), list(s.systemd_services, eid + ".systemd_services")), svc: list(s.services, eid + ".services").length, hw: hardwareStrip(s), ip: ips, os: typeof s.os === "string" && s.os && !/^TBD$/i.test(s.os) ? s.os : null });
+    model.nodes.set(eid, { id: eid, title, cluster, db: !!TYPES[ty].db, body: serviceLines(list(s.services, eid + ".services"), list(s.jobs, eid + ".jobs"), list(s.rmi_services, eid + ".rmi_services"), list(s.systemd_services, eid + ".systemd_services")), jn: jobLines(list(s.jobs, eid + ".jobs")).length, svc: list(s.services, eid + ".services").length, hw: hardwareStrip(s), hwc: hardwareCells(s), ip: ips, os: typeof s.os === "string" && s.os && !/^TBD$/i.test(s.os) ? s.os : null });
     classes(eid, ty, bool(s.proposed, eid + ".proposed"));
     for (const k of ["os", "hardware", "cpu", "ram", "swap", "disk", "role"]) if (s[k] !== undefined) str(s[k], eid + "." + k);
     if (s.details !== undefined && typeof s.details !== "string") fail(`${eid}.details must be a string`);
@@ -252,7 +260,8 @@ export function tomlModel(files, folder = "diagram", nets = null) {
     for (const name of dns) { const problem = dnsProblem(name); if (problem) fail(`${eid}: ${problem}`); }
     const rows = [["OS", s.os], ["Hardware", s.hardware], ["CPU", s.cpu], ["RAM", s.ram], ["Swap", s.swap], ["Disk", s.disk], ["Role", s.role]].filter(([, v]) => v).map(([k, v]) => `| ${k} | ${v.replace(/\|/g, "/")} |`);
     const block = (head, items) => items.length ? `## ${head}\n\n${items.map((i) => "- " + i).join("\n")}\n\n` : "";
-    sections[title] = (rows.length ? `| Key | Value |\n|---|---|\n${rows.join("\n")}\n\n` : "") + block("IPs", nets ? ips.map((ip) => `${ip} — ${nets.of(ip)?.name ?? "unassigned network"}`) : ips) + block("DNS", dns) + block("Jobs", jobs) + block("RMI services", rmi) + block("systemd services", units) + (s.details || "");
+    const groupedBlocks = (us, gs) => groupUnits(us, gs).map(([h, a]) => block(h, a)).join("");
+    sections[title] = (rows.length ? `| Key | Value |\n|---|---|\n${rows.join("\n")}\n\n` : "") + block("IPs", nets ? ips.map((ip) => `${ip} — ${nets.of(ip)?.name ?? "unassigned network"}`) : ips) + block("DNS", dns) + block("Jobs", jobs) + block("RMI services", rmi) + groupedBlocks(units, groups) + (s.details || "");
   }
   const edgeIds = new Set();
   for (const e of t.connections || []) {
@@ -270,7 +279,7 @@ export function tomlModel(files, folder = "diagram", nets = null) {
       for (const [end, prefix] of [[from, process.from], [to, process.to]]) {
         if (prefix === null) continue;
         str(prefix, k + ".service");
-        const matches = model.nodes.get(end)?.body.slice(0, model.nodes.get(end).svc).filter((line) => line.startsWith(prefix)) || [];
+        const matches = model.nodes.get(end)?.body.slice(model.nodes.get(end).jn, model.nodes.get(end).jn + model.nodes.get(end).svc).filter((line) => line.startsWith(prefix)) || [];
         if (matches.length !== 1) fail(`${k}: service '${prefix}' must match exactly one service on '${end}'`);
       }
       config.processes[k] = Object.fromEntries(Object.entries(process).filter(([, v]) => v !== null));
@@ -279,19 +288,55 @@ export function tomlModel(files, folder = "diagram", nets = null) {
   return { config, model, sections, notes, docs };
 }
 
-// Body lines of a server card: its services, then jobs, RMI services and systemd services, each of the last three
-// capped at LIST_LINES with a "+N more" line, so probe-imported servers show content; the details panel lists everything.
+// Body lines of a server card: a jobs section (jn lines), then a services section (services, RMI services, systemd
+// services); jobs, RMI and systemd are each capped at LIST_LINES with a "+N more" line, so probe-imported servers show content; the details panel lists everything.
 export const LIST_LINES = 4;
 export function serviceLines(services, jobs = [], rmi = [], units = []) {
-  const cap = (a) => (a.length > LIST_LINES ? [...a.slice(0, LIST_LINES), `+${a.length - LIST_LINES} more`] : a);
-  return [...services, ...cap(jobs), ...cap(rmi), ...cap(units)];
+  return [...jobLines(jobs), ...services, ...capLines(rmi), ...capLines(units)];
 }
+export const capLines = (a) => (a.length > LIST_LINES ? [...a.slice(0, LIST_LINES), `+${a.length - LIST_LINES} more`] : a);
+export const jobLines = capLines;
 
-// One-line hardware strip: set cells of cpu / ram / swap / disk ("sd"), else the free-text hardware key; "" when none.
-export const HW_SEP = " │ ";
+// One-line hardware strip: set cells of cpu / ram / swap / disk ("sd") as "<value> <label>" joined by " ·", else the free-text hardware key; "" when none.
+export const HW_SEP = " · ";
+// Size unit shown after every ram / swap / disk number; change it here ("G", "GiB", "GB") to switch the whole UI (card, details panel).
+export const SIZE_UNIT = "G";
+const oneDecimal = (n) => String(Math.round(n * 10) / 10);
+// Display form of a stored value, the stored text is never rewritten: cpu "4 cores" / "4" -> "4"; sizes "8 GiB", "8GB", "8192 MiB", "50G" -> "8G"; unknown formats as stored.
+export function normCpu(v) {
+  const m = /^(\d+)\s*(?:v?cpus?|cores?)?$/i.exec(v);
+  return m ? m[1] : v;
+}
+export function normSize(v) {
+  const m = /^(\d+(?:\.\d+)?)\s*([kmgt])(?:i?b)?$/i.exec(v);
+  if (!m) return v;
+  const f = { k: 1 / 1048576, m: 1 / 1024, g: 1, t: 1024 }[m[2].toLowerCase()];
+  return oneDecimal(Number(m[1]) * f) + SIZE_UNIT;
+}
+// The four hardware cells with data, in card order: [["cpu", "11"], ["ram", "8G"], ...] (shown on the card strip and in the details panel; value first, then label).
+export function hardwareCells(s) {
+  const norm = { cpu: normCpu, ram: normSize, swap: normSize, disk: normSize };
+  return [["cpu", s.cpu], ["ram", s.ram], ["swap", s.swap], ["sd", s.disk]].filter(([, v]) => typeof v === "string" && v.trim()).map(([k, v]) => [k, norm[k === "sd" ? "disk" : k](v.trim())]);
+}
 export function hardwareStrip(s) {
-  const cells = [["cpu", s.cpu], ["ram", s.ram], ["swap", s.swap], ["sd", s.disk]].filter(([, v]) => typeof v === "string" && v.trim()).map(([k, v]) => `${k}: ${v.trim()}`);
+  const cells = hardwareCells(s).map(([k, v]) => `${v} ${k}`);
   if (cells.length) return cells.join(HW_SEP);
   const h = typeof s.hardware === "string" ? s.hardware.trim() : "";
   return h.length > 48 ? h.slice(0, 47) + "…" : h;
+}
+
+// Glob with `*` (any run) and `?` (one character), case-insensitive, matched against the whole service name.
+export function globRegExp(p) {
+  return new RegExp("^" + p.trim().replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".") + "$", "i");
+}
+// Splits systemd units by `[[service_groups]]` (first matching group wins, name compared without ".service"):
+// [[label, units], ...] in group order, then "Other services"; with no groups the single "systemd services" list; empty sections omitted.
+export function groupUnits(units, groups) {
+  if (!groups.length) return units.length ? [["systemd services", units]] : [];
+  const buckets = groups.map(() => []), other = [];
+  for (const u of units) {
+    const name = u.replace(/\.service$/i, ""), i = groups.findIndex((g) => g.patterns.some((re) => re.test(name)));
+    (i < 0 ? other : buckets[i]).push(u);
+  }
+  return [...groups.map((g, i) => [g.label, buckets[i]]), ["Other services", other]].filter(([, a]) => a.length);
 }
