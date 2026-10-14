@@ -229,9 +229,21 @@ Three-node RAC; clients connect to the cluster service name.
 | OS | Debian 13 |
 | Confluence | <https://wiki.example.test/display/DEMO/stats-01> |
 </script>
-<script type="module">
-import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
+<script type="importmap">
+{"imports":{"mermaid":"https://cdn.jsdelivr.net/npm/mermaid@12.2.0/dist/mermaid.esm.min.mjs","marked":"https://cdn.jsdelivr.net/npm/marked@18.1.1/lib/marked.esm.js"},"integrity":{"https://cdn.jsdelivr.net/npm/mermaid@12.2.0/dist/mermaid.esm.min.mjs":"sha384-1zE8eD4a3qmTtl4mMJrmjzEupBhNg25KA88b0P9vQee9I6JEDc8yxcUY4s4pDjuN","https://cdn.jsdelivr.net/npm/marked@18.1.1/lib/marked.esm.js":"sha384-3zyzJHbICZVHR8JCCUAEEJ0IfpypHKS28C4Dscg3prb8nDVH5OR0JL/jHj9zBD39"}}
+</script>
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/mermaid@12.2.0/dist/mermaid.esm.min.mjs" integrity="sha384-1zE8eD4a3qmTtl4mMJrmjzEupBhNg25KA88b0P9vQee9I6JEDc8yxcUY4s4pDjuN" crossorigin="anonymous">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/marked@18.1.1/lib/marked.esm.js" integrity="sha384-3zyzJHbICZVHR8JCCUAEEJ0IfpypHKS28C4Dscg3prb8nDVH5OR0JL/jHj9zBD39" crossorigin="anonymous">
+<script type="module" crossorigin="anonymous">
+import mermaid from "mermaid";
+import { marked } from "marked";
+const escHtml = (t) => t.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+marked.use({
+  walkTokens(t) {
+    if (t.type === "html") t.text = escHtml(t.text);
+    if ((t.type === "link" || t.type === "image") && !/^https?:\/\//i.test(t.href)) t.href = "#";
+  },
+});
 const dark = matchMedia("(prefers-color-scheme: dark)").matches;
 mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default" });
 await mermaid.run();

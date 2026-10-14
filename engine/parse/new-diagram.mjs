@@ -21,7 +21,7 @@ dark = "#4DD0E1"
 infra = true
 `;
 
-export const titleFor = (id) => id.replace(/-+/g, " ").replace(/^./, (c) => c.toUpperCase());
+const titleFor = (id) => id.replace(/-+/g, " ").replace(/^./, (c) => c.toUpperCase());
 
 // An empty diagram folder (path -> text); `servers/` has no files until the first server is added.
 export function newDiagram(id) {

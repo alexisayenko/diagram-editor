@@ -87,7 +87,6 @@ const cfgErr = (o, dir = "/x/my-diagram") => failure(() => parseConfig(typeof o 
 test("parseConfig: defaults", () => {
   const c = cfg({ title: "T" });
   assert.equal(c.id, "my-diagram");
-  assert.equal(c.legacyId, null);
   assert.equal(c.proposedLabel, "Proposed");
   assert.deepEqual(c.edgeLabels, { request: "connection", dashed: "proposed move", firewall: "firewall on the path" });
   assert.deepEqual(c.groups, {});
@@ -95,9 +94,8 @@ test("parseConfig: defaults", () => {
 });
 
 test("parseConfig: overrides", () => {
-  const c = cfg({ title: "T", id: "abc", legacyId: "old-1", proposedLabel: "Next", edgeLabels: { request: "call" }, groups: { g1: { label: "G", color: "#AABBCC", edges: ["a>b"] }, g2: { label: "H", color: "#112233", darkColor: "#445566", edges: ["b>c"] } }, processes: { "a>b": { from: "x" }, "b>c": { to: "y" } } });
+  const c = cfg({ title: "T", id: "abc", proposedLabel: "Next", edgeLabels: { request: "call" }, groups: { g1: { label: "G", color: "#AABBCC", edges: ["a>b"] }, g2: { label: "H", color: "#112233", darkColor: "#445566", edges: ["b>c"] } }, processes: { "a>b": { from: "x" }, "b>c": { to: "y" } } });
   assert.equal(c.id, "abc");
-  assert.equal(c.legacyId, "old-1");
   assert.equal(c.proposedLabel, "Next");
   assert.equal(c.edgeLabels.request, "call");
   assert.equal(c.edgeLabels.dashed, "proposed move");
@@ -115,8 +113,7 @@ test("parseConfig: top-level errors", () => {
   assert.match(cfgErr({ title: "  " }), /"title" must be a non-empty string/);
   assert.match(cfgErr({ title: "T", id: "Bad Id" }), /id "Bad Id" must match/);
   assert.match(cfgErr({ title: "T" }, "/x/Bad_Folder"), /id "Bad_Folder" must match/);
-  assert.match(cfgErr({ title: "T", legacyId: "-x" }), /legacyId "-x" must match/);
-  assert.match(cfgErr({ title: "T", legacyId: 5 }), /"legacyId" must be a non-empty string/);
+  assert.match(cfgErr({ title: "T", legacyId: "x" }), /unknown key "legacyId"/);
   assert.match(cfgErr({ title: "T", edgeLabels: [] }), /"edgeLabels" must be an object/);
   assert.match(cfgErr({ title: "T", edgeLabels: { nope: "x" } }), /unknown edgeLabels key nope \(allowed: request, dashed, firewall\)/);
   assert.match(cfgErr({ title: "T", proposedLabel: "" }), /"proposedLabel" must be a non-empty string/);

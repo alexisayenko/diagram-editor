@@ -1,4 +1,4 @@
-import { esc, fail } from "../lib/util.mjs";
+import { esc } from "../lib/util.mjs";
 
 const CSS = `:root{--bg:#fff;--fg:#1d2433;--muted:#5b6475;--line:#d6dae3;--note-bg:#fff4b8;--note-fg:#3b3200;--note-line:#e2c94a;--red:#d62728}
 @media (prefers-color-scheme:dark){:root{--bg:#14171f;--fg:#e6e9f0;--muted:#9aa3b5;--line:#2c3342;--note-bg:#4a4116;--note-fg:#fff3b0;--note-line:#8a7a2a;--red:#ff6b6b}}
@@ -21,11 +21,15 @@ h1{font-size:1.3rem;margin:0 0 12px}
 .details table{border-collapse:collapse;margin:8px 0}
 .details th,.details td{border:1px solid var(--line);padding:4px 10px;text-align:left}`;
 
+const MERMAID_URL = "https://cdn.jsdelivr.net/npm/mermaid@12.2.0/dist/mermaid.esm.min.mjs";
+const MERMAID_SRI = "sha384-1zE8eD4a3qmTtl4mMJrmjzEupBhNg25KA88b0P9vQee9I6JEDc8yxcUY4s4pDjuN";
+const MARKED_URL = "https://cdn.jsdelivr.net/npm/marked@18.1.1/lib/marked.esm.js";
+const MARKED_SRI = "sha384-3zyzJHbICZVHR8JCCUAEEJ0IfpypHKS28C4Dscg3prb8nDVH5OR0JL/jHj9zBD39";
+
 const LINE = { request: "<i></i>", dashed: '<i class="dash"></i>' };
 
 // Mermaid view of the model; edgeKinds is buildEdgeKey().kinds (the firewall row has no Mermaid equivalent).
 export function renderIndexHtml({ title, mmd, details, notes, edgeKinds }) {
-  if (/<\/script/i.test(details)) fail('details.md: contains "</script"');
   const paragraphs = (paras) => paras.map((p) => `<p>${esc(p)}</p>`).join("\n");
   const notesHtml = notes
     .map((n) => `<div class="note">\n<h2>${esc(n.title)}, ${esc(n.date)}</h2>\n${paragraphs(n.paras)}\n</div>`)
@@ -60,11 +64,23 @@ ${legend}
 <section class="details" id="details"></section>
 </main>
 <script type="text/markdown" id="details-md">
-${details.trimEnd()}
+${details.trimEnd().replace(/<\/(script)/gi, "&lt;/$1")}
 </script>
-<script type="module">
-import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
+<script type="importmap">
+{"imports":{"mermaid":"${MERMAID_URL}","marked":"${MARKED_URL}"},"integrity":{"${MERMAID_URL}":"${MERMAID_SRI}","${MARKED_URL}":"${MARKED_SRI}"}}
+</script>
+<link rel="modulepreload" href="${MERMAID_URL}" integrity="${MERMAID_SRI}" crossorigin="anonymous">
+<link rel="modulepreload" href="${MARKED_URL}" integrity="${MARKED_SRI}" crossorigin="anonymous">
+<script type="module" crossorigin="anonymous">
+import mermaid from "mermaid";
+import { marked } from "marked";
+const escHtml = (t) => t.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+marked.use({
+  walkTokens(t) {
+    if (t.type === "html") t.text = escHtml(t.text);
+    if ((t.type === "link" || t.type === "image") && !/^https?:\\/\\//i.test(t.href)) t.href = "#";
+  },
+});
 const dark = matchMedia("(prefers-color-scheme: dark)").matches;
 mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default" });
 await mermaid.run();

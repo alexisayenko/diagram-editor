@@ -2,6 +2,7 @@ import { edgeKey } from "../parse/mmd.mjs";
 
 const PAD = 20;
 const CW = 7;
+const EMPTY_VIEWBOX = "0 0 800 500";
 
 export function computeViewBox({ clusters, nodes, edges }, layout, routes) {
   const bb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
@@ -41,6 +42,7 @@ export function computeViewBox({ clusters, nodes, edges }, layout, routes) {
       txt(r.fw.label[0], r.fw.label[1], "firewall", r.fw.anchor);
     }
   });
+  if (bb.x0 === Infinity) return EMPTY_VIEWBOX;
   const vx = Math.floor(bb.x0 - PAD), vy = Math.floor(bb.y0 - PAD);
   const vw = Math.ceil(bb.x1 + PAD) - vx, vh = Math.ceil(bb.y1 + PAD) - vy;
   return `${vx} ${vy} ${vw} ${vh}`;

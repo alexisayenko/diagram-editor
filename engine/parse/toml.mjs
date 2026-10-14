@@ -151,13 +151,13 @@ export function parseNoteText(text, at = "note", strict = false) {
 }
 
 // A diagram folder: file name (relative to the folder) -> the keys that file may hold.
-export const FOLDER_FILES = {
+const FOLDER_FILES = {
   "topology.toml": ["id", "title", "regions", "service_groups", "connections"],
   "server-types.toml": ["server_types"],
   "notes.toml": ["notes"],
   "documents.toml": ["documents"],
 };
-export const ROOT_FILE = "topology.toml", LEGACY_ROOT_FILE = "diagram.toml";
+const ROOT_FILE = "topology.toml", LEGACY_ROOT_FILE = "diagram.toml";
 export function withRoot(files) {
   if (!files.has(LEGACY_ROOT_FILE)) return files;
   const out = new Map(files), legacy = out.get(LEGACY_ROOT_FILE);
@@ -166,7 +166,7 @@ export function withRoot(files) {
   return out;
 }
 export const NETWORKS_FILE = "networks.toml";
-export const SERVER_DIR = "servers/";
+const SERVER_DIR = "servers/";
 
 function parseFile(name, text) {
   try { return parseToml(text); }
@@ -319,7 +319,7 @@ function serverNode(ctx, s, eid, cluster, ty, ips, title) {
   const services = list(s.services, eid + ".services"), jobs = cardJobs(list(s.jobs, eid + ".jobs")), rmi = list(s.rmi_services, eid + ".rmi_services");
   const body = serviceLines(services, jobs, rmi, cardUnits(list(s.systemd_services, eid + ".systemd_services"), ctx.groups));
   const os = typeof s.os === "string" && s.os && !/^TBD$/i.test(s.os) ? s.os : null;
-  return { id: eid, title, cluster, db: !!ctx.TYPES[ty].db, body, jn: jobLines(jobs).length, svc: services.length, hw: hardwareStrip(s), hwc: hardwareCells(s), ip: ips, os };
+  return { id: eid, title, cluster, db: !!ctx.TYPES[ty].db, body, jn: capLines(jobs).length, svc: services.length, hw: hardwareStrip(s), hwc: hardwareCells(s), ip: ips, os };
 }
 
 function addServers(ctx) {
@@ -413,17 +413,16 @@ export function tomlModel(files, folder = "diagram", nets = null) {
 
 // Body lines of a server card: a jobs section (jn lines), then a services section (services, RMI services, systemd
 // services); jobs, RMI and systemd are each capped at LIST_LINES with a "+N more" line, so probe-imported servers show content; the details panel lists everything.
-export const LIST_LINES = 4;
+const LIST_LINES = 4;
 export function serviceLines(services, jobs = [], rmi = [], units = []) {
-  return [...jobLines(jobs), ...services, ...capLines(rmi), ...capLines(units)];
+  return [...capLines(jobs), ...services, ...capLines(rmi), ...capLines(units)];
 }
-export const capLines = (a) => (a.length > LIST_LINES ? [...a.slice(0, LIST_LINES), `+${a.length - LIST_LINES} more`] : a);
-export const jobLines = capLines;
+const capLines = (a) => (a.length > LIST_LINES ? [...a.slice(0, LIST_LINES), `+${a.length - LIST_LINES} more`] : a);
 // Probe-found crontab lines ("cron: ...") stay in the data and the editor but are not shown on the card.
-export const cardJobs = (jobs) => jobs.filter((j) => !/^cron:/i.test(String(j).trim()));
+const cardJobs = (jobs) => jobs.filter((j) => !/^cron:/i.test(String(j).trim()));
 
 // One-line hardware strip: set cells of cpu / ram / swap / disk ("sd") as "<value> <label>" joined by " ·", else the free-text hardware key; "" when none.
-export const HW_SEP = " · ";
+const HW_SEP = " · ";
 // Size unit shown after every ram / swap / disk number; change it here ("G", "GiB", "GB") to switch the whole UI (card, details panel).
 export const SIZE_UNIT = "G";
 const oneDecimal = (n) => String(Math.round(n * 10) / 10);
@@ -457,7 +456,7 @@ export function globRegExp(p) {
 // Splits systemd units by `[[service_groups]]` (first matching group wins, name compared without ".service"):
 // [[label, units], ...] in group order; unmatched units are intentionally dropped; with no groups the single "systemd services" list; empty sections omitted.
 // Card body units: with at least one `card = true` group, only the units of those groups (group order); otherwise all units.
-export function cardUnits(units, groups) {
+function cardUnits(units, groups) {
   if (!groups.some((g) => g.card)) return units;
   const flagged = new Set(groups.filter((g) => g.card).map((g) => g.label));
   return groupUnits(units, groups).filter(([h]) => flagged.has(h)).flatMap(([, a]) => a);

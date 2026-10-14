@@ -19,7 +19,7 @@ const importButton = document.querySelector("#import");
 const status = document.querySelector("#status");
 const frame = document.querySelector("#view");
 let serverOk = false, active = null, ready = false, busy = false;
-const NOTES = "notes.toml", LAYOUT = "diagram.layout.json", REGION_W = 220, REGION_H = 120;
+const NOTES = "notes.toml", REGION_W = 220, REGION_H = 120;
 const isTomlPath = (p) => /\.toml$/i.test(p);
 const editor = () => ready ? frame.contentWindow.InfraDiagram?.modules["canvas/edit-mode"] : null;
 const notesApi = () => ready ? frame.contentWindow.InfraDiagram?.modules["ui/notes-edit"] : null;

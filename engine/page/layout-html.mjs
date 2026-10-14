@@ -2,7 +2,7 @@ import { esc } from "../lib/util.mjs";
 import { drawKit } from "../render/draw-kit.mjs";
 
 const FONTS = "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap";
-export const LAYOUT_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'";
+const LAYOUT_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'";
 const STYLES = [["sketch", "Sketch"], ["clean", "Clean"], ["dark", "Dark"], ["swiss", "Swiss"]];
 
 const paragraphs = (paras) => paras.map((p) => `<p>${esc(p)}</p>`).join("");

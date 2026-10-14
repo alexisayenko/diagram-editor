@@ -214,13 +214,10 @@ test("hooks.panel is called with the key and the panel element", () => {
   assert.equal(calls[0][1], $("pn"));
 });
 
-test("core helpers: esc, storage with legacy id migration and blocked storage", () => {
-  const t = loadUi(["ui/details"], { ...fixture({ legacyId: "old" }) });
+test("core helpers: esc, storage", () => {
+  const t = loadUi(["ui/details"], { ...fixture() });
   const core = t.modules["ui/core"];
   assert.equal(core.esc("<a&b>"), "&lt;a&amp;b&gt;");
-  t.sandbox.localStorage.setItem("old-types", "[1]");
-  assert.equal(core.lsGet("types"), "[1]");
-  assert.equal(t.sandbox.localStorage.getItem("d1-types"), "[1]");
   core.lsSet("x", "1");
   assert.equal(core.lsGet("x"), "1");
   core.lsDel("x");

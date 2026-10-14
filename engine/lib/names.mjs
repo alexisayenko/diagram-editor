@@ -1,5 +1,5 @@
 // File-name rules shared by the page and the local file server: <diagram folder>/[servers/]<name>.toml|json.
-export const FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9][A-Za-z0-9._-]*){0,2}\.(toml|json)$/;
+const FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9][A-Za-z0-9._-]*){0,2}\.(toml|json)$/;
 
 const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 

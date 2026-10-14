@@ -4,7 +4,7 @@ import { fail } from "../lib/util.mjs";
 const ID = /^[a-z0-9][a-z0-9-]*$/;
 const COLOR = /^#[0-9A-Fa-f]{6}$/;
 const EDGE_LABELS = { request: "connection", dashed: "proposed move", firewall: "firewall on the path" };
-const KEYS = ["title", "id", "legacyId", "proposedLabel", "edgeLabels", "groups", "processes"];
+const KEYS = ["title", "id", "proposedLabel", "edgeLabels", "groups", "processes"];
 const GROUP_KEYS = ["label", "color", "darkColor", "edges"];
 
 const str = (v, key) => {
@@ -97,7 +97,6 @@ export function parseConfig(src, dir) {
   }
   const id = c.id === undefined ? basename(dir) : str(c.id, "id");
   if (!ID.test(id)) fail(`diagram.json: id "${id}" must match ${ID} (it defaults to the folder name)`);
-  if (c.legacyId !== undefined && !ID.test(str(c.legacyId, "legacyId"))) fail(`diagram.json: legacyId "${c.legacyId}" must match ${ID}`);
   const el = c.edgeLabels ?? {};
   if (typeof el !== "object" || Array.isArray(el)) fail('diagram.json: "edgeLabels" must be an object');
   const badEl = Object.keys(el).filter((k) => !(k in EDGE_LABELS));
@@ -105,7 +104,6 @@ export function parseConfig(src, dir) {
   return {
     title: str(c.title, "title"),
     id,
-    legacyId: c.legacyId ?? null,
     proposedLabel: c.proposedLabel === undefined ? "Proposed" : str(c.proposedLabel, "proposedLabel"),
     edgeLabels: Object.fromEntries(Object.entries(EDGE_LABELS).map(([k, d]) => [k, el[k] === undefined ? d : str(el[k], "edgeLabels." + k)])),
     groups: c.groups === undefined ? {} : parseGroups(c.groups),

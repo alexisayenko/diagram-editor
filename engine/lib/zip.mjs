@@ -2,9 +2,9 @@
 // Browser and Node 22: uses the platform CompressionStream / DecompressionStream ("deflate-raw").
 // An archive is untrusted input: names, counts and sizes are checked, and the size caps are enforced while inflating.
 import { segmentProblem, caseKey } from "./names.mjs";
-export const MAX_ENTRIES = 500;
-export const MAX_FILE_BYTES = 2 * 1024 * 1024;
-export const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+const MAX_ENTRIES = 500;
+const MAX_FILE_BYTES = 2 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 export const MAX_ARCHIVE_BYTES = 20 * 1024 * 1024;
 export const ARCHIVE_EXT = ".diag.zip";
 const ENTRY_NAME = /^(?:servers\/)?[A-Za-z0-9][A-Za-z0-9._-]*\.(?:toml|json)$/;

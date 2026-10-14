@@ -9,15 +9,10 @@ InfraDiagram.define("ui/core", [], function () {
   var ctx = { style: "clean", hidden: {}, sel: null, net: null, sys: true, ready: false };
   var hooks = { getState: null, isEdit: null, fit: null, route: null, title: null, panel: null, beforeSelect: null, pending: null, view: null, viewNode: null, rerender: null };
 
-  // Keys are "<diagram id>-<name>"; a value still under "<legacyId>-<name>" is copied over on first read.
+  // Keys are "<diagram id>-<name>".
   function lsGet(name) {
     try {
-      var v = localStorage.getItem(D.id + "-" + name);
-      if (v === null && D.legacyId) {
-        v = localStorage.getItem(D.legacyId + "-" + name);
-        if (v !== null) localStorage.setItem(D.id + "-" + name, v);
-      }
-      return v;
+      return localStorage.getItem(D.id + "-" + name);
     } catch (e) { return null; }
   }
   function lsSet(name, v) { try { localStorage.setItem(D.id + "-" + name, v); } catch (e) { return; } }
