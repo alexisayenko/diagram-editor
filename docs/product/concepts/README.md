@@ -28,6 +28,13 @@ palette, period, garment, outfit, …]
   view of the noun, not the database table. The data model in a
   concept doc is product-shaped, not storage-shaped.
 
+## Existing concepts
+
+- [`terminology.md`](terminology.md) — agreed vocabulary for the
+  diagrams and the engine.
+- [`service-cname.md`](service-cname.md) — DNS alias clients use to
+  reach a service (concept, not implemented).
+
 ## Naming convention
 
 File name = the concept name in `kebab-case.md`
