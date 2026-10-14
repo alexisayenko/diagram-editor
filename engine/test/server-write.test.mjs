@@ -168,7 +168,7 @@ test("server editor: type picker and field edits feed the dirty state; Done send
   let mod;
   const window = { InfraDiagramFileBacked: true }, host = { serverEditor: { source: () => raw, apply: (id, f) => { applied.push([id, f]); return f.ips.includes("bad") ? "bad ip" : null; } } };
   const src = readFileSync(new URL("../runtime/ui/server-edit.js", import.meta.url), "utf8");
-  runInNewContext(src, { window, document: { createElement: make }, InfraDiagram: { define: (n, d, f) => { mod = f({ $: () => pn, host, provide() {}, on: (e, fn) => { hooks.panel = fn; } }, { select: (k) => selected.push(k) }, { placeChrome() {} }, serverFieldsKit(), keys); } } });
+  runInNewContext(src, { window, document: { createElement: make }, InfraDiagram: { define: (n, d, f) => { mod = f({ core: { $: () => pn, host, provide() {}, on: (e, fn) => { hooks.panel = fn; } }, selection: { select: (k) => selected.push(k) }, panels: { placeChrome() {} }, serverFields: serverFieldsKit(), keys }); } } });
   hooks.panel("n:web01", pn);
   assert.equal(mod.isDirty(), false);
   pn.fire("click", { target: tg });

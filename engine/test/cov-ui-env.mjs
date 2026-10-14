@@ -1,4 +1,5 @@
 import { keysKit } from "../lib/keys.mjs";
+import { wrapModule } from "../page/assets.mjs";
 import { METRICS, metricsKit } from "../render/metrics.mjs";
 import { readFileSync } from "node:fs";
 import { osIconKit } from "../render/os-icons.mjs";
@@ -347,7 +348,7 @@ export function loadUi(names, { D, html, storage, stubs = {}, globals = {}, conf
   };
   sandbox.window = sandbox;
   const modules = {};
-  const define = (name, deps, fn) => { modules[name] = fn(...deps.map(load)); };
+  const define = (name, deps, fn) => { modules[name] = fn(Object.fromEntries(deps.map((d) => [d.split("/").pop().replace(/-(\w)/g, (_, c) => c.toUpperCase()), load(d)]))); };
   sandbox.InfraDiagram = { modules, define };
   function load(name) {
     if (name in stubs) return stubs[name];
@@ -357,7 +358,7 @@ export function loadUi(names, { D, html, storage, stubs = {}, globals = {}, conf
     if (name === "ui/os-icons") { modules[name] = osIconKit(); return modules[name]; }
     if (name === "ui/server-fields") { modules[name] = serverFieldsKit(); return modules[name]; }
     const file = UI + name.replace(/^ui\//, "") + ".js";
-    new Script(readFileSync(file, "utf8"), { filename: file }).runInContext(vmCtx); // NOSONAR: test harness evaluates this repository's own sources to measure coverage
+    new Script(wrapModule(readFileSync(file, "utf8")), { filename: file }).runInContext(vmCtx); // NOSONAR: test harness evaluates this repository's own sources to measure coverage
     return modules[name];
   }
   const vmCtx = createContext(sandbox);

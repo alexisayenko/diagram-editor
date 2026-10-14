@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/panels", ["ui/core"], function (core) {
+InfraDiagram.define("ui/panels", ["ui/core"], function ({ core }) {
   var $ = core.$;
   var PANELS = { np: ["nh", "nl", "notes-collapsed"], dp: ["dh", "dl", "docs-collapsed"], lp: ["lh", "lb", "legend-collapsed"], wp: ["wh", "wb", "networks-collapsed"] };
 

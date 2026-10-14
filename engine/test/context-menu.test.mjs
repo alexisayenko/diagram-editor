@@ -19,7 +19,7 @@ test("addServer creates a uniquely named servers/<id>.toml in the region or with
   tomlModel(withFile(next, second.path, second.text));
 });
 
-const regionAt = new Function("return " + readFileSync(new URL("../runtime/canvas/model.js", import.meta.url), "utf8").match(/function regionAt[\s\S]*?\n  }\n/)[0])();
+const regionAt = new Function("return " + readFileSync(new URL("../runtime/canvas/model.js", import.meta.url), "utf8").match(/function regionAt[\s\S]*?\n}\n/)[0])();
 
 function harness({ on = true, add = () => null, duplicate, regions, nets, rename } = {}) {
   const make = () => {
@@ -38,7 +38,7 @@ function harness({ on = true, add = () => null, duplicate, regions, nets, rename
   const state = { on, st: { clusters: { big: { x: 0, y: 0, w: 500, h: 500 }, small: { x: 100, y: 100, w: 100, h: 100 } } } };
   let mod;
   const src = readFileSync(new URL("../runtime/canvas/context-menu.js", import.meta.url), "utf8");
-  runInNewContext(src, { window: win, document: doc, InfraDiagram: { define: (n, d, f) => { mod = f({ svg, $: () => tm, D: { nets }, host }, { state, point: (e) => ({ x: e.clientX, y: e.clientY }), regionAt }, { editName: (i) => calls.push(["edit-name", i]) }, keys); } } });
+  runInNewContext(src, { window: win, document: doc, InfraDiagram: { define: (n, d, f) => { mod = f({ core: { svg, $: () => tm, D: { nets }, host }, model: { state, point: (e) => ({ x: e.clientX, y: e.clientY }), regionAt }, networks: { editName: (i) => calls.push(["edit-name", i]) }, keys }); } } });
   const fire = (target, t, ev = {}) => (target.listeners[t] || []).forEach((f) => f({ target: svg, preventDefault() { prevented.push(t); }, stopPropagation() {}, ...ev }));
   return { svg, tm, doc, win, calls, prevented, state, mod, fire, menu: () => doc.body.children.find((c) => !c.removed) };
 }

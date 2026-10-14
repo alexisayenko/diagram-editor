@@ -1,14 +1,18 @@
-InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "canvas/zoom-pan", "ui/keys"], function (core, init, model, zoomPan, keys) {
+function hash(s) {
+  var h = 5381;
+  for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+function toJson(s) {
+  return JSON.stringify(s, null, 2) + "\n";
+}
+
+InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "canvas/zoom-pan", "ui/keys"], function ({ core, init, model, zoomPan, keys }) {
   var svg = core.svg, els = core.els, $ = core.$, state = model.state, base = model.base, fit = zoomPan.fit;
   var GRID = 5;
   var drag = null, frame = 0;
   var KEY = "layout-draft:" + hash(JSON.stringify(base) + svg.textContent.replace(/\s+/g, " "));
-
-  function hash(s) {
-    var h = 5381;
-    for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
-    return h.toString(36);
-  }
 
   function loadDraft() {
     if (window.InfraDiagramFileBacked) return null;
@@ -19,10 +23,6 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     return null;
   }
   function saveDraft() { if (!window.InfraDiagramFileBacked) core.lsSet(KEY, JSON.stringify(state.st)); }
-
-  function toJson(s) {
-    return JSON.stringify(s, null, 2) + "\n";
-  }
 
   function currentLayout() { return model.clone(state.on ? state.st : base); }
   function isDirty() { return state.on && JSON.stringify(state.st) !== JSON.stringify(base); }

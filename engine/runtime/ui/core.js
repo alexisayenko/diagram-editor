@@ -1,4 +1,33 @@
-InfraDiagram.define("ui/core", ["ui/metrics"], function (metrics) {
+function esc(s) { return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); }
+
+function clipboard(text, done) {
+  function fallback() {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); /* NOSONAR: legacy fallback when the clipboard API is unavailable */ } catch (e) { ok = false; }
+    ta.remove();
+    done(ok);
+  }
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+  else fallback();
+}
+
+function save(blob, name) {
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+}
+
+InfraDiagram.define("ui/core", ["ui/metrics"], function ({ metrics }) {
   var STYLES = ["sketch", "clean", "dark", "swiss"];
   var CW = metrics.METRICS.charWidth;
   var BG = { clean: "#F3F5F9", dark: "#0A1020", swiss: "#FFFFFF" };
@@ -77,34 +106,7 @@ InfraDiagram.define("ui/core", ["ui/metrics"], function (metrics) {
   }
   function lsSet(name, v) { try { localStorage.setItem(D.id + "-" + name, v); } catch (e) { return; } }
   function lsDel(name) { try { localStorage.removeItem(D.id + "-" + name); } catch (e) { return; } }
-  function esc(s) { return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); }
   function $(id) { return document.getElementById(id); }
-
-  function clipboard(text, done) {
-    function fallback() {
-      var ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      var ok = false;
-      try { ok = document.execCommand("copy"); /* NOSONAR: legacy fallback when the clipboard API is unavailable */ } catch (e) { ok = false; }
-      ta.remove();
-      done(ok);
-    }
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
-    else fallback();
-  }
-  function save(blob, name) {
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
-  }
 
   InfraDiagram.attachHost = registry.attachHost;
 

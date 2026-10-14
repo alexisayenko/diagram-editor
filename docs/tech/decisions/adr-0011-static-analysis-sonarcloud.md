@@ -23,9 +23,14 @@ so small, plain functions matter.
   dead code, redundant escapes, `data-*` access through `dataset`
   (the test fakes share `engine/test/dataset-stub.mjs`).
 - Intentionally left, with a reason:
-  - **S7721** (move a function to an outer scope): runtime modules
-    are concatenated into one script, so a hoisted name would be
-    shared between modules.
+  - **S7721** (move a function to an outer scope) in the kit
+    functions of `render/geometry.mjs`, `render/auto-layout.mjs` and
+    `render/draw-kit.mjs`: a kit is inlined through
+    `Function.toString()`, so its helpers must stay inside it (each line
+    carries a NOSONAR with that reason). The runtime modules are fixed:
+    the bundler gives every module its own scope (`wrapModule`), their
+    helpers sit at the top of the file, and **S107** on the `define`
+    factories is gone because they take one dependency object.
   - **S1874** on `document.execCommand("copy")`: kept as the
     fallback where the Clipboard API is missing (page opened from
     disk).

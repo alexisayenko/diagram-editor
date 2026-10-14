@@ -1,11 +1,42 @@
-InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], function (core, osIcons, keys) {
+function mdCells(l) { return l.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map(function (c) { return c.trim(); }); }
+
+function mdRun(L, i, test) {
+  var run = [];
+  while (i < L.length && test(L[i])) { run.push(L[i]); i++; }
+  return run;
+}
+
+function confluence(sec) {
+  var url = null;
+  var rest = sec.split("\n").filter(function (l) {
+    var m = l.match(/^\s*\|\s*Confluence\s*\|\s*(.*?)\s*\|\s*$/i), u;
+    if (!m || url) return true;
+    u = m[1].match(/\]\((https?:\/\/[^)\s"]+)\)/) || m[1].match(/^<?(https?:\/\/[^\s>"]+)>?$/);
+    if (!u) return true;
+    url = u[1];
+    return false;
+  }).join("\n");
+  return { url: url, sec: rest };
+}
+
+// Hardware strip (value then label, e.g. "4 cpu · 8G ram", as on the card): after the first table of the section, else after the type tag.
+function hwStrip(pn, cells) {
+  if (!cells?.length) return;
+  var d = document.createElement("div");
+  d.className = "hws";
+  d.textContent = cells.map(function (c) { return c[1] + " " + c[0]; }).join(" · ");
+  var t = pn.querySelector("table");
+  if (t) t.parentNode.insertBefore(d, t.nextSibling);
+  else pn.insertBefore(d, pn.querySelector(".tg").nextSibling);
+}
+
+InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], function ({ core, osIcons, keys }) {
   var D = core.D, esc = core.esc, $ = core.$;
 
   function inline(s) {
     return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/\[([^\]]+)\]\((https?:\/\/[^)\s"]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   }
   var HEADING = /^(#{1,6})\s+(\S.*)?$/, TABLE_ROW = /^\s*\|/, LIST_ITEM = /^\s*[-*]\s+/;
-  function mdCells(l) { return l.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map(function (c) { return c.trim(); }); }
   function mdRow(cs, cell) {
     return "<tr>" + cs.map(function (c) { return "<" + cell + ">" + inline(c) + "</" + cell + ">"; }).join("") + "</tr>";
   }
@@ -15,11 +46,6 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], functio
   }
   function mdList(items) {
     return "<ul>" + items.map(function (l) { return "<li>" + inline(l.replace(LIST_ITEM, "")) + "</li>"; }).join("") + "</ul>";
-  }
-  function mdRun(L, i, test) {
-    var run = [];
-    while (i < L.length && test(L[i])) { run.push(L[i]); i++; }
-    return run;
   }
   function mdParagraphLine(l) { return !!l.trim() && !HEADING.test(l) && !TABLE_ROW.test(l) && !LIST_ITEM.test(l); }
   function md(src) {
@@ -35,19 +61,6 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], functio
       i += run.length;
     }
     return o.join("");
-  }
-
-  function confluence(sec) {
-    var url = null;
-    var rest = sec.split("\n").filter(function (l) {
-      var m = l.match(/^\s*\|\s*Confluence\s*\|\s*(.*?)\s*\|\s*$/i), u;
-      if (!m || url) return true;
-      u = m[1].match(/\]\((https?:\/\/[^)\s"]+)\)/) || m[1].match(/^<?(https?:\/\/[^\s>"]+)>?$/);
-      if (!u) return true;
-      url = u[1];
-      return false;
-    }).join("\n");
-    return { url: url, sec: rest };
   }
 
   function osRow(pn, os) {
@@ -94,17 +107,6 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], functio
       frag.appendChild(document.createTextNode(s.slice(last)));
       tn.parentNode.replaceChild(frag, tn);
     });
-  }
-
-  // Hardware strip (value then label, e.g. "4 cpu · 8G ram", as on the card): after the first table of the section, else after the type tag.
-  function hwStrip(pn, cells) {
-    if (!cells?.length) return;
-    var d = document.createElement("div");
-    d.className = "hws";
-    d.textContent = cells.map(function (c) { return c[1] + " " + c[0]; }).join(" · ");
-    var t = pn.querySelector("table");
-    if (t) t.parentNode.insertBefore(d, t.nextSibling);
-    else pn.insertBefore(d, pn.querySelector(".tg").nextSibling);
   }
 
   // The "Close" button (#pc) is wired once by ui/init.

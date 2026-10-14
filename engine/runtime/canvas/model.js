@@ -1,14 +1,26 @@
-InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "ui/keys", "ui/metrics"], function (core, skins, geometry, keys, metrics) {
+function clone(o) { return structuredClone(o); }
+
+function setXY(el, p) { el.setAttribute("x", p[0]); el.setAttribute("y", p[1]); }
+
+function setRect(el, g) { el.setAttribute("x", g.x); el.setAttribute("y", g.y); el.setAttribute("width", g.w); el.setAttribute("height", g.h); }
+
+function shift(p, dx, dy) { p[0] += dx; p[1] += dy; }
+
+function regionAt(s, p) {
+  var best = null, area = Infinity;
+  Object.keys(s.clusters).forEach(function (id) {
+    var c = s.clusters[id];
+    if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h && c.w * c.h < area) { best = id; area = c.w * c.h; }
+  });
+  return best;
+}
+
+InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "ui/keys", "ui/metrics"], function ({ core, skins, geometry, keys, metrics }) {
   var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx;
   var M = metrics.METRICS;
   var base = D.layout;
   // Shared canvas state: st is the draft layout, on is edit mode.
   var state = { st: clone(base), on: false };
-
-  function clone(o) { return structuredClone(o); }
-  function setXY(el, p) { el.setAttribute("x", p[0]); el.setAttribute("y", p[1]); }
-  function setRect(el, g) { el.setAttribute("x", g.x); el.setAttribute("y", g.y); el.setAttribute("width", g.w); el.setAttribute("height", g.h); }
-  function shift(p, dx, dy) { p[0] += dx; p[1] += dy; }
 
   function move(s, key, dx, dy) {
     var k = keys.parseKey(key), id = k.id, g;
@@ -165,15 +177,6 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "
     p.x = e.clientX; p.y = e.clientY;
     var m = svg.getScreenCTM();
     return m ? p.matrixTransform(m.inverse()) : p;
-  }
-
-  function regionAt(s, p) {
-    var best = null, area = Infinity;
-    Object.keys(s.clusters).forEach(function (id) {
-      var c = s.clusters[id];
-      if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h && c.w * c.h < area) { best = id; area = c.w * c.h; }
-    });
-    return best;
   }
 
   return { base: base, state: state, clone: clone, apply: apply, resize: resize, each: each, render: render, point: point, regionAt: regionAt };

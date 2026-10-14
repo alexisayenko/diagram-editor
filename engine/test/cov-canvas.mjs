@@ -76,13 +76,13 @@ export function makePage({ saved = null, sys = true } = {}) {
 }
 
 export function loadModel(page) {
-  return define("runtime/canvas/model.js", page.g, [page.core, page.skins, geometry, keys, metrics]);
+  return define("runtime/canvas/model.js", page.g, { core: page.core, skins: page.skins, geometry, keys, metrics });
 }
 export function loadZoomPan(page, model) {
-  return define("runtime/canvas/zoom-pan.js", page.g, [page.core, model]);
+  return define("runtime/canvas/zoom-pan.js", page.g, { core: page.core, model });
 }
 export function loadDraw(page, model) {
-  return define("runtime/canvas/draw.js", page.g, [page.core, kit, model]);
+  return define("runtime/canvas/draw.js", page.g, { core: page.core, drawKit: kit, model });
 }
 function makeInit() {
   const self = { init(o) { self.opts = o; }, editChanged(f) { self.flag = f; } };
@@ -90,12 +90,12 @@ function makeInit() {
 }
 
 export function loadEdit(page, model, zoomPan, init = makeInit()) {
-  const mod = define("runtime/canvas/edit-mode.js", page.g, [page.core, init, model, zoomPan, keys]);
+  const mod = define("runtime/canvas/edit-mode.js", page.g, { core: page.core, init, model, zoomPan, keys });
   return { mod, init };
 }
 const makeNetworks = () => ({ editName: () => {} });
 
 export function loadMenu(page, model, networks = makeNetworks()) {
-  return define("runtime/canvas/context-menu.js", page.g, [page.core, model, networks, keys]);
+  return define("runtime/canvas/context-menu.js", page.g, { core: page.core, model, networks, keys });
 }
 export { clone, El } from "./cov-dom.mjs";

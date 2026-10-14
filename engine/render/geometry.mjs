@@ -48,8 +48,8 @@ export function geometryKitOf(sizes, keyset) {
   var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
   var cache = { n: 0 };
 
-  function r1(v) { return Math.round(v * 10) / 10; }
-  function num(a, b) { return a - b; }
+  function r1(v) { return Math.round(v * 10) / 10; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+  function num(a, b) { return a - b; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
 
   // Start of a server header text: TEXT_X from the left, vertically centred in the header bar (CSS dominant-baseline: central); Sketch keeps the saved spot above the box.
   function headerTitle(g, style) {
@@ -63,7 +63,7 @@ export function geometryKitOf(sizes, keyset) {
   }
 
   // Text rows above the IP pills: body lines, hardware strip, OS pill.
-  function rows(t) { return t.nb + (t.hw ? 1 : 0) + (t.os ? 1 : 0); }
+  function rows(t) { return t.nb + (t.hw ? 1 : 0) + (t.os ? 1 : 0); } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
   function needW(t) {
     var osExtra = t.oe ? sizes.eolExtra : sizes.noEolExtra;
     var os = t.os ? TEXT_X + (t.ol + osExtra) * OS_CW + sizes.osExtra : 0;
@@ -160,7 +160,7 @@ export function geometryKitOf(sizes, keyset) {
     });
     return mid;
   }
-  function firstAbove(a, v) {
+  function firstAbove(a, v) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     var lo = 0, hi = a.length;
     while (lo < hi) {
       var m = (lo + hi) >> 1;
@@ -168,7 +168,7 @@ export function geometryKitOf(sizes, keyset) {
     }
     return lo;
   }
-  function firstAtLeast(a, v) {
+  function firstAtLeast(a, v) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     var lo = 0, hi = a.length;
     while (lo < hi) {
       var m = (lo + hi) >> 1;
@@ -176,7 +176,7 @@ export function geometryKitOf(sizes, keyset) {
     }
     return lo;
   }
-  function mids(a) {
+  function mids(a) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     var out = [];
     for (var k = 0; k + 1 < a.length; k++) out.push((a[k] + a[k + 1]) / 2);
     return out;
@@ -342,7 +342,7 @@ export function geometryKitOf(sizes, keyset) {
       a = mm;
     }
   }
-  function markGoal(Q, g) {
+  function markGoal(Q, g) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     if (!Q.goalAt.has(g.p)) Q.goalAt.set(g.p, []);
     Q.goalAt.get(g.p).push(g);
     Q.hx.push([Q.G.xs[Math.floor(g.p / Q.G.ny)], Q.G.ys[g.p % Q.G.ny]]);
@@ -416,14 +416,14 @@ export function geometryKitOf(sizes, keyset) {
     if (sd === 1) return { pt: [v, r.y1], stub: [v, r.y1 + M] };
     return { pt: [v, r.y0], stub: [v, r.y0 - M] };
   }
-  function centre(r, sd) { return Math.round(sd % 2 === 0 ? (r.y0 + r.y1) / 2 : (r.x0 + r.x1) / 2); }
-  function span(r, sd) { return sd % 2 === 0 ? [r.y0, r.y1] : [r.x0, r.x1]; }
+  function centre(r, sd) { return Math.round(sd % 2 === 0 ? (r.y0 + r.y1) / 2 : (r.x0 + r.x1) / 2); } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+  function span(r, sd) { return sd % 2 === 0 ? [r.y0, r.y1] : [r.x0, r.x1]; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
   function facing(r, sd, o) {
     var cx = (o.x0 + o.x1) / 2 - (r.x0 + r.x1) / 2, cy = (o.y0 + o.y1) / 2 - (r.y0 + r.y1) / 2;
     return DX[sd] * cx + DY[sd] * cy > 0;
   }
 
-  function simplify(pts) {
+  function simplify(pts) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     var out = [];
     pts.forEach(function (p) {
       var n = out.length;
@@ -465,11 +465,11 @@ export function geometryKitOf(sizes, keyset) {
     return { d: d, pieces: pieces, len: arc };
   }
 
-  function overlap(a, b) { return Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)); }
+  function overlap(a, b) { return Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)); } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
   // Boxes in a uniform bucket grid, numbered in insertion order; cost() sums the overlaps with a probe box in that order (touching and far boxes add exactly 0, so they are skipped).
   var BUCKET = 64;
-  function boxIndex() { return { map: new Map(), boxes: [], seen: [], tick: 0 }; }
-  function bucketKey(cx, cy) { return cx * 4194304 + cy; }
+  function boxIndex() { return { map: new Map(), boxes: [], seen: [], tick: 0 }; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+  function bucketKey(cx, cy) { return cx * 4194304 + cy; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
   function bucketsOf(b, fn) {
     var x1 = Math.floor(b.x0 / BUCKET), x2 = Math.floor(b.x1 / BUCKET), y1 = Math.floor(b.y0 / BUCKET), y2 = Math.floor(b.y1 / BUCKET);
     for (var cx = x1; cx <= x2; cx++) for (var cy = y1; cy <= y2; cy++) fn(bucketKey(cx, cy));
@@ -497,7 +497,7 @@ export function geometryKitOf(sizes, keyset) {
     return total;
   }
   // Candidate points along straight pieces, nearest the path's arc midpoint first.
-  function stations(sh, margin, ends) {
+  function stations(sh, margin, ends) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     var out = [];
     sh.pieces.forEach(function (pc) {
       for (var t = margin; t <= pc.len - margin; t += 4) {
@@ -553,7 +553,7 @@ export function geometryKitOf(sizes, keyset) {
       });
       return h;
     }
-    function cands(r, other, v) {
+    function cands(r, other, v) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
       return [0, 1, 2, 3].map(function (sd) {
         var p = port(r, sd, v === undefined ? centre(r, sd) : v);
         return { sd: sd, p: p, c: facing(r, sd, other) ? 0 : BEND / 2 };
@@ -568,7 +568,7 @@ export function geometryKitOf(sizes, keyset) {
       var y = lineY(e, end);
       return y === null ? cands(r, other) : cands(r, other, y).filter(function (c) { return c.sd % 2 === 0; });
     }
-    function run(G, A, B, from, to, h) {
+    function run(G, A, B, from, to, h) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
       var st = from.map(function (c) { return { p: at(G, c.p.stub[0], c.p.stub[1]), d: c.sd, c: c.c, cand: c }; }).filter(function (c) { return c.p >= 0 && !G.blk[c.p]; });
       var gl = to.map(function (c) { return { p: at(G, c.p.stub[0], c.p.stub[1]), d: c.sd < 0 ? -1 : (c.sd + 2) % 4, c: c.c, cand: c }; }).filter(function (c) { return c.p >= 0 && !G.blk[c.p]; });
       if (!st.length || !gl.length) return null;
@@ -688,7 +688,7 @@ export function geometryKitOf(sizes, keyset) {
   // Keys ("n:id" / "c:id") of servers and regions breaking the spacing rules (validate.mjs states them for the build).
   function problems(s, meta, w) {
     var S = shapes(s, meta, w), bad = {};
-    function gap(a, b) { return Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b.y1); }
+    function gap(a, b) { return Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b.y1); } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     var nodes = S.nodes;
     function flagPairs(list) {
       for (var i = 0; i < list.length; i++) {

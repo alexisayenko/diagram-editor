@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/copy", ["ui/core"], function (core) {
+InfraDiagram.define("ui/copy", ["ui/core"], function ({ core }) {
   let hintT;
 
   function hint(msg, x, y) {

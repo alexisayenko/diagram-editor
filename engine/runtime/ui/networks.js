@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/networks", ["ui/core", "ui/panels", "ui/keys"], function (core, panels, keys) {
+InfraDiagram.define("ui/networks", ["ui/core", "ui/panels", "ui/keys"], function ({ core, panels, keys }) {
   var D = core.D, ctx = core.ctx, $ = core.$;
 
   function initNetworks() {

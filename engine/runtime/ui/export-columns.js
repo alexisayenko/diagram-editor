@@ -1,4 +1,14 @@
-InfraDiagram.define("ui/export-columns", ["ui/core", "ui/metrics"], function (core, metrics) {
+function wrap(s, max) {
+  var out = [], cur = "";
+  s.split(/\s+/).forEach(function (w) {
+    if (cur && (cur + " " + w).length > max) { out.push(cur); cur = w; }
+    else cur = cur ? cur + " " + w : w;
+  });
+  if (cur) out.push(cur);
+  return out;
+}
+
+InfraDiagram.define("ui/export-columns", ["ui/core", "ui/metrics"], function ({ core, metrics }) {
   var D = core.D, ctx = core.ctx, esc = core.esc;
 
   function legendSvg(x0, y0) {
@@ -39,15 +49,6 @@ InfraDiagram.define("ui/export-columns", ["ui/core", "ui/metrics"], function (co
     return { h: '<g class="xl"><rect class="c" x="' + x0 + '" y="' + y0 + '" width="' + W + '" height="' + H + '" rx="' + (S === "swiss" ? 0 : 6) + '"/>' + h + "</g>", w: W, bottom: y0 + H };
   }
 
-  function wrap(s, max) {
-    var out = [], cur = "";
-    s.split(/\s+/).forEach(function (w) {
-      if (cur && (cur + " " + w).length > max) { out.push(cur); cur = w; }
-      else cur = cur ? cur + " " + w : w;
-    });
-    if (cur) out.push(cur);
-    return out;
-  }
   function notesSvg(x0, y0) {
     var S = ctx.style, CWN = metrics.METRICS.noteCharWidth[S];
     var W = 250, P = 10, LH = 14, h = "", y = y0;

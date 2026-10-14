@@ -34,23 +34,30 @@ const kitSource = (name, { fn, args = [], names }) => {
   return `InfraDiagram.define("${name}", [], function () {\n  var kit = (${indent(fn)})(${args.map(argSource).join(", ")});\n\n  return { ${exportList} };\n});`;
 };
 
-// Each module file is exactly: InfraDiagram.define("<name>", [deps], function (<params>) { ... return { exports }; });
+// Every module runs in its own scope: its top-level helpers are private and InfraDiagram.define is the only export.
+export const wrapModule = (src) => `(function () { ${src}\n})();`;
+
+// Each module file is optional private helpers, then
+// InfraDiagram.define("<name>", [deps], function ({ <params> }) { ... return { exports }; });
 function parseModule(name, src, file) {
   const at = `${file}: `;
   if (/<\/script/i.test(src)) fail(at + 'contains "</script"');
-  const head = src.match(/^InfraDiagram\.define\("([^"]+)", \[([^\]]*)\], function \(([^)]*)\) \{\n/);
-  if (!head) fail(at + 'must start with InfraDiagram.define("<name>", [<deps>], function (<params>) {');
+  const start = src.search(/^InfraDiagram\.define\(/m);
+  if (start < 0) fail(at + 'must contain InfraDiagram.define("<name>", [<deps>], function ({ <params> }) { at the start of a line');
+  const preamble = src.slice(0, start), rest = src.slice(start);
+  const head = rest.match(/^InfraDiagram\.define\("([^"]+)", \[([^\]]*)\], function \((?:\{ ([^}]*) \})?\) \{\n/);
+  if (!head) fail(at + 'must define InfraDiagram.define("<name>", [<deps>], function ({ <params> }) {');
   if (head[1] !== name) fail(at + `defines "${head[1]}", expected "${name}"`);
-  const tail = src.match(/\n {2}return \{([^}]*)\};\n\}\);$/);
+  const tail = rest.match(/\n {2}return \{([^}]*)\};\n\}\);$/);
   if (!tail) fail(at + 'must end with "  return { ... };" and "});"');
   const deps = head[2].trim() ? head[2].split(",").map((d) => d.trim().replace(/^"(.*)"$/, "$1")) : [];
-  const params = head[3].trim() ? head[3].split(",").map((p) => p.trim()) : [];
+  const params = head[3]?.trim() ? head[3].split(",").map((p) => p.trim()) : [];
   if (params.length !== deps.length) fail(at + `${deps.length} dependencies but ${params.length} parameters`);
   deps.forEach((d, i) => {
     if (params[i] !== paramName(d)) fail(at + `parameter for "${d}" must be named ${paramName(d)}, got ${params[i]}`);
   });
   const exports = tail[1].trim() ? tail[1].split(",").map((p) => p.split(":")[0].trim()) : [];
-  const body = src.slice(head[0].length, src.length - tail[0].length).replaceAll(COMMENT, "");
+  const body = (preamble + rest.slice(head[0].length, rest.length - tail[0].length)).replaceAll(COMMENT, "");
   return { name, file, src, deps, exports, body };
 }
 
@@ -91,5 +98,5 @@ export function script() {
   const file = (name) => (KITS[name] ? KITS[name].file : `engine/runtime/${name}.js`);
   const mods = RUNTIME.map((name) => parseModule(name, src(name), file(name)));
   checkModules(mods);
-  return [load("runtime/define.js").trim(), ...mods.map((m) => m.src)].join("\n\n");
+  return [load("runtime/define.js").trim(), ...mods.map((m) => wrapModule(m.src))].join("\n\n");
 }

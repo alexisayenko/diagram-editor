@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], function (core, exportColumns) {
+InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], function ({ core, exportColumns }) {
   var D = core.D, svg = core.svg, ctx = core.ctx;
 
   function resolveCss() {

@@ -1,29 +1,34 @@
-InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics"], function (core, details, keys, metrics) {
+function measure(el, n, cw) {
+  var w = 0;
+  try { w = el.getComputedTextLength(); } catch (e) {}
+  return w > 0 ? w : n * cw;
+}
+
+function icon(kind) {
+  if (kind === "db") return '<ellipse cx="8" cy="3.5" rx="6" ry="2.5"/><path d="M2 3.5V12.5C2 15 14 15 14 12.5V3.5M2 8C2 10.5 14 10.5 14 8"/>';
+  return '<rect x="1" y="1" width="14" height="6" rx="1.5"/><rect x="1" y="9" width="14" height="6" rx="1.5"/><path d="M4 4h.01M4 12h.01"/>';
+}
+
+function frameHtml(S, W, bottom, HH) {
+  if (S === "clean") {
+    return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="10"/><path class="hd" d="M0 0V-10Q0 -20 10 -20H' + (W - 10) + "Q" + W + " -20 " + W + ' -10V0Z"/>';
+  }
+  if (S === "dark") {
+    return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="5"/><rect class="hd" x="0" y="-' + HH + '" width="' + W + '" height="' + HH + '"/><rect class="ab" x="0" y="-' + HH + '" width="3" height="' + HH + '"/>';
+  }
+  return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
+}
+
+function ys(a) { return a.map(function (p) { return p[1]; }); }
+
+function dividerHtml(y, W) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; }
+
+InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics"], function ({ core, details, keys, metrics }) {
   var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx, CW = core.CW, STYLES = core.STYLES, hooks = core.services;
   var M = metrics.METRICS, pillW = {}, boxW = {}, btn = {}, TEXT_X = M.textX;
 
-  function measure(el, n, cw) {
-    var w = 0;
-    try { w = el.getComputedTextLength(); } catch (e) {}
-    return w > 0 ? w : n * cw;
-  }
-  function icon(kind) {
-    if (kind === "db") return '<ellipse cx="8" cy="3.5" rx="6" ry="2.5"/><path d="M2 3.5V12.5C2 15 14 15 14 12.5V3.5M2 8C2 10.5 14 10.5 14 8"/>';
-    return '<rect x="1" y="1" width="14" height="6" rx="1.5"/><rect x="1" y="9" width="14" height="6" rx="1.5"/><path d="M4 4h.01M4 12h.01"/>';
-  }
-
   // Card meta with the system information (OS pill, hardware strip) removed while it is switched off.
   function sysMeta(m) { return ctx.sys ? m : { ...m, hw: "", os: 0 }; }
-  function frameHtml(S, W, bottom, HH) {
-    if (S === "clean") {
-      return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="10"/><path class="hd" d="M0 0V-10Q0 -20 10 -20H' + (W - 10) + "Q" + W + " -20 " + W + ' -10V0Z"/>';
-    }
-    if (S === "dark") {
-      return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="5"/><rect class="hd" x="0" y="-' + HH + '" width="' + W + '" height="' + HH + '"/><rect class="ab" x="0" y="-' + HH + '" width="3" height="' + HH + '"/>';
-    }
-    return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
-  }
-  function dividerHtml(y, W) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; }
   function nodeDividers(m, g, nb, hwY, W) {
     var h = "", below = !!(m.hw || m.os || g.ip.length);
     if (m.nj && nb > m.nj) h += dividerHtml(M.dividerTop + M.line * m.nj, W);
@@ -106,7 +111,6 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
   function placeOs(id, g) {
     var o = D.idx.nodes[id].o;
     if (o === undefined) return;
-    var ys = function (a) { return a.map(function (p) { return p[1]; }); };
     var top = g.ip.length ? Math.min.apply(null, ys(g.ip)) - g.y - 11 : g.h - 3;
     var floor = g.body.length ? Math.max.apply(null, ys(g.body)) - g.y + 4 : 2;
     var lx = g.title[0];

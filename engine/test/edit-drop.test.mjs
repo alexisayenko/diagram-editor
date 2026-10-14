@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { keys } from "./runtime-kits.mjs";
 
-const regionAt = new Function("return " + readFileSync(new URL("../runtime/canvas/model.js", import.meta.url), "utf8").match(/function regionAt[\s\S]*?\n  }\n/)[0])();
+const regionAt = new Function("return " + readFileSync(new URL("../runtime/canvas/model.js", import.meta.url), "utf8").match(/function regionAt[\s\S]*?\n}\n/)[0])();
 
 function harness({ move, cl = "a" } = {}) {
   const el = () => ({ ...dataEl(), listeners: {}, hidden: false, checked: false, textContent: "", classList: { toggle() {} }, addEventListener(t, f) { (this.listeners[t] ||= []).push(f); } });
@@ -20,7 +20,7 @@ function harness({ move, cl = "a" } = {}) {
   let mod;
   runInNewContext(readFileSync(new URL("../runtime/canvas/edit-mode.js", import.meta.url), "utf8"), {
     window: win, location: { search: "" }, requestAnimationFrame: (f) => f(), setTimeout() {},
-    InfraDiagram: { define: (n, d, f) => { mod = f({ svg, els: [], $, D: { meta: { nodes: { s1: { cl } } } }, host, lsGet() {}, lsSet() {}, lsDel() {} }, { init() {}, editChanged() {} }, model, { fit: () => fits.push(1) }, keys); } },
+    InfraDiagram: { define: (n, d, f) => { mod = f({ core: { svg, els: [], $, D: { meta: { nodes: { s1: { cl } } } }, host, lsGet() {}, lsSet() {}, lsDel() {} }, init: { init() {}, editChanged() {} }, model, zoomPan: { fit: () => fits.push(1) }, keys }); } },
   });
   const target = (key) => ({ closest: () => dataEl({ e: key }) });
   const fire = (t, ev) => (svg.listeners[t] || []).forEach((f) => f({ button: 0, pointerId: 1, type: t, preventDefault() {}, ...ev }));

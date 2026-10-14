@@ -1,4 +1,46 @@
-InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, panels) {
+function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+function day(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+
+function stampNow(now) { return day(now) + " " + pad(now.getHours()) + ":" + pad(now.getMinutes()); }
+
+function show(date, now) {
+  if (!date || date === "Note") return "";
+  var m = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?/.exec(date);
+  if (!m) return date;
+  return m[2] && now && m[1] === day(now) ? m[2] : m[1];
+}
+
+function dateLine(text) {
+  var l = text.trim().split("\n")[1] || "";
+  return /^\s*Date:/.test(l) ? l.replace(/^\s*Date:\s*/, "").trim() : null;
+}
+
+function stamped(text, original, isNew, now) {
+  var t = text.trim(), lines = t.split("\n"), had = dateLine(t);
+  if (!isNew && t === original.trim()) return t;
+  if (had !== null && (isNew || had !== dateLine(original))) return t;
+  var line = "Date: " + stampNow(now);
+  if (had !== null) lines[1] = line; else lines.splice(1, 0, line, "");
+  return lines.join("\n");
+}
+
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function button(label, cls, fn) {
+  var b = el("button", cls, label);
+  b.type = "button";
+  b.addEventListener("mousedown", function (e) { e.preventDefault(); });
+  b.addEventListener("click", fn);
+  return b;
+}
+
+InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function ({ core, panels }) {
   var D = core.D, $ = core.$;
   var host = $("nl");
   var enabled = !!window.InfraDiagramFileBacked && !!host;
@@ -6,38 +48,6 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
   var cards = (D.notes || []).slice();
   var baseline = list.slice();
   var edit = null, busy = false;
-
-  function pad(n) { return (n < 10 ? "0" : "") + n; }
-  function day(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
-  function stampNow(now) { return day(now) + " " + pad(now.getHours()) + ":" + pad(now.getMinutes()); }
-
-  function show(date, now) {
-    if (!date || date === "Note") return "";
-    var m = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?/.exec(date);
-    if (!m) return date;
-    return m[2] && now && m[1] === day(now) ? m[2] : m[1];
-  }
-
-  function dateLine(text) {
-    var l = text.trim().split("\n")[1] || "";
-    return /^\s*Date:/.test(l) ? l.replace(/^\s*Date:\s*/, "").trim() : null;
-  }
-
-  function stamped(text, original, isNew, now) {
-    var t = text.trim(), lines = t.split("\n"), had = dateLine(t);
-    if (!isNew && t === original.trim()) return t;
-    if (had !== null && (isNew || had !== dateLine(original))) return t;
-    var line = "Date: " + stampNow(now);
-    if (had !== null) lines[1] = line; else lines.splice(1, 0, line, "");
-    return lines.join("\n");
-  }
-
-  function el(tag, cls, text) {
-    var e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text !== undefined) e.textContent = text;
-    return e;
-  }
 
   function parse(text) {
     if (!text.trim()) throw new Error("The title is empty. Type the title on the first line, then the note text.");
@@ -54,14 +64,6 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
     p = el("time", "", show(n.date, new Date()));
     a.appendChild(p);
     return a;
-  }
-
-  function button(label, cls, fn) {
-    var b = el("button", cls, label);
-    b.type = "button";
-    b.addEventListener("mousedown", function (e) { e.preventDefault(); });
-    b.addEventListener("click", fn);
-    return b;
   }
 
   function editor(i, text) {

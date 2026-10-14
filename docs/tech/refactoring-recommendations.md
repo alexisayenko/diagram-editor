@@ -356,7 +356,7 @@ decision).
 | DK-11 | Two TOML edit helper styles | 3 | open |
 | DK-12 | OS-name logic spread over four files | 3 | open |
 | DK-13 | Speculative config (`legacyId`, `proposedLabel`, constants) | 0 | done |
-| DK-14 | Remaining Sonar smells by rule | 3 | open |
+| DK-14 | Remaining Sonar smells by rule | 3 | partly done (S7721 and S107 in the runtime: per-module scope, one dependency object per factory; kit helpers carry NOSONAR) |
 | DK-15 | Complexity hot spots and flag parameters | 3 | open |
 | DK-16 | Comment and doc rot | 0 | done |
 | DK-17 | 41 needless `export`s | 0 | done |

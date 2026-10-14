@@ -1,4 +1,9 @@
-InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/networks", "ui/keys"], function (core, model, networks, keys) {
+function editable(t) {
+  var tag = t?.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!t?.isContentEditable;
+}
+
+InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/networks", "ui/keys"], function ({ core, model, networks, keys }) {
   var state = model.state;
   var menu = null;
 
@@ -28,11 +33,6 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
     var el = target?.closest?.("[data-ent]"), k = el?.dataset.ent;
     var p = k ? keys.parseKey(k) : null;
     return p?.kind === "server" ? p.id : null;
-  }
-
-  function editable(t) {
-    var tag = t?.tagName;
-    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!t?.isContentEditable;
   }
 
   function show(e, fill) {

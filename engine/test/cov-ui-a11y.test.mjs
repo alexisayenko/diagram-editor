@@ -159,3 +159,10 @@ test("the fake dialog follows the native contract: showModal opens, close closes
   d.close();
   assert.deepEqual(seen, ["close"], "closing twice fires once");
 });
+
+test("a browser that rejects the :focus-visible selector still shows the ring", () => {
+  const t = app();
+  t.server.matches = () => { throw new SyntaxError("unsupported selector"); };
+  t.server.focus();
+  assert.ok(t.ring());
+});

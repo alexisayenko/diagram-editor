@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels", "ui/keys"], function (core, details, panels, keys) {
+InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels", "ui/keys"], function ({ core, details, panels, keys }) {
   var D = core.D, ctx = core.ctx;
 
   function related(key) {

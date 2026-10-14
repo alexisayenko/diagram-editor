@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], function (core, skins, networks) {
+InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], function ({ core, skins, networks }) {
   var D = core.D, svg = core.svg, ctx = core.ctx, esc = core.esc, $ = core.$;
 
   function applyToggles() {

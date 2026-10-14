@@ -485,14 +485,15 @@ svg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}
 <script>
 window.InfraDiagram = { modules: {} };
 InfraDiagram.define = function (name, deps, factory) {
-  const args = deps.map(function (d) {
+  const args = {};
+  deps.forEach(function (d) {
     if (!InfraDiagram.modules[d]) throw new Error("InfraDiagram: " + name + " needs " + d + ", which is not loaded yet");
-    return InfraDiagram.modules[d];
+    args[d.split("/").pop().replace(/-(\w)/g, function (_, c) { return c.toUpperCase(); })] = InfraDiagram.modules[d];
   });
-  InfraDiagram.modules[name] = factory(...args);
+  InfraDiagram.modules[name] = factory(args);
 };
 
-InfraDiagram.define("ui/keys", [], function () {
+(function () { InfraDiagram.define("ui/keys", [], function () {
   var kit = (function keysKit() {
     const PREFIX = { server: "n", region: "c", edge: "e", group: "g", level: "lv" };
     const KIND = {};
@@ -517,14 +518,45 @@ InfraDiagram.define("ui/keys", [], function () {
 
   return { nodeKey: kit.nodeKey, parseKey: kit.parseKey, isKind: kit.isKind };
 });
+})();
 
-InfraDiagram.define("ui/metrics", [], function () {
+(function () { InfraDiagram.define("ui/metrics", [], function () {
   var kit = ((metrics) => ({ METRICS: metrics }))({"head":20,"sketchTitleDy":6,"textX":10,"line":16,"bodyTop":18,"ipTop":22,"ipLine":18,"boxPad":20,"dividerTop":8,"titleCw":6.6,"bodyCw":6.6,"ipCw":7,"osCw":5.6,"hwCw":5.6,"titleExtra":28,"ipExtra":26,"osExtra":26,"eolExtra":4,"noEolExtra":1,"regionTitleHalfCw":3.9,"regionTitleHalfPad":4,"band":30,"bandGap":10,"minGap":20,"pad":16,"minW":100,"minH":60,"regionTop":40,"gap":20,"regionGap":60,"origin":20,"maxRowW":1200,"cols":3,"emptyW":220,"emptyH":120,"ipPill":{"dx":-5,"dy":-11,"h":15,"extraW":10},"osPill":{"h":12,"textX":16,"textY":9,"iconX":2.5,"iconY":0.5,"iconScale":0.786,"extraW":20,"eolGap":4},"netButton":{"w":14,"h":13},"cardIcon":{"dx":22.8,"dy":-16.8,"scale":0.85},"charWidth":{"sketch":7,"clean":6,"dark":6.6,"swiss":6.6},"noteCharWidth":{"sketch":6.6,"clean":5.6,"dark":6.4,"swiss":5.7},"osCharWidth":{"sketch":5.6,"other":5.2}});
 
   return { METRICS: kit.METRICS };
 });
+})();
 
-InfraDiagram.define("ui/core", ["ui/metrics"], function (metrics) {
+(function () { function esc(s) { return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); }
+
+function clipboard(text, done) {
+  function fallback() {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); /* NOSONAR: legacy fallback when the clipboard API is unavailable */ } catch (e) { ok = false; }
+    ta.remove();
+    done(ok);
+  }
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+  else fallback();
+}
+
+function save(blob, name) {
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+}
+
+InfraDiagram.define("ui/core", ["ui/metrics"], function ({ metrics }) {
   var STYLES = ["sketch", "clean", "dark", "swiss"];
   var CW = metrics.METRICS.charWidth;
   var BG = { clean: "#F3F5F9", dark: "#0A1020", swiss: "#FFFFFF" };
@@ -603,41 +635,15 @@ InfraDiagram.define("ui/core", ["ui/metrics"], function (metrics) {
   }
   function lsSet(name, v) { try { localStorage.setItem(D.id + "-" + name, v); } catch (e) { return; } }
   function lsDel(name) { try { localStorage.removeItem(D.id + "-" + name); } catch (e) { return; } }
-  function esc(s) { return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); }
   function $(id) { return document.getElementById(id); }
-
-  function clipboard(text, done) {
-    function fallback() {
-      var ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      var ok = false;
-      try { ok = document.execCommand("copy"); /* NOSONAR: legacy fallback when the clipboard API is unavailable */ } catch (e) { ok = false; }
-      ta.remove();
-      done(ok);
-    }
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
-    else fallback();
-  }
-  function save(blob, name) {
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
-  }
 
   InfraDiagram.attachHost = registry.attachHost;
 
   return { STYLES: STYLES, CW: CW, BG: BG, D: D, svg: svg, els: els, ents: ents, ctx: ctx, services: registry.services, provide: registry.provide, revoke: registry.revoke, on: registry.on, emit: registry.emit, host: registry.host, attachHost: registry.attachHost, detachHost: registry.detachHost, createRegistry: createRegistry, SERVICES: SERVICES, EVENTS: EVENTS, lsGet: lsGet, lsSet: lsSet, lsDel: lsDel, esc: esc, $: $, clipboard: clipboard, save: save };
 });
+})();
 
-InfraDiagram.define("ui/os-icons", [], function () {
+(function () { InfraDiagram.define("ui/os-icons", [], function () {
   var kit = (function osIconKit() {
     const ICONS = {
       debian: { s: "M10.2 3.6A4.6 4.6 0 1 0 11.4 8.6C11.4 6.4 9.8 5.4 8.2 5.4S5.6 7 6.6 8.2 9.2 8.6 9.2 7.4" },
@@ -668,15 +674,47 @@ InfraDiagram.define("ui/os-icons", [], function () {
 
   return { ICONS: kit.ICONS, glyph: kit.glyph, iconSvg: kit.iconSvg };
 });
+})();
 
-InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], function (core, osIcons, keys) {
+(function () { function mdCells(l) { return l.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map(function (c) { return c.trim(); }); }
+
+function mdRun(L, i, test) {
+  var run = [];
+  while (i < L.length && test(L[i])) { run.push(L[i]); i++; }
+  return run;
+}
+
+function confluence(sec) {
+  var url = null;
+  var rest = sec.split("\n").filter(function (l) {
+    var m = l.match(/^\s*\|\s*Confluence\s*\|\s*(.*?)\s*\|\s*$/i), u;
+    if (!m || url) return true;
+    u = m[1].match(/\]\((https?:\/\/[^)\s"]+)\)/) || m[1].match(/^<?(https?:\/\/[^\s>"]+)>?$/);
+    if (!u) return true;
+    url = u[1];
+    return false;
+  }).join("\n");
+  return { url: url, sec: rest };
+}
+
+// Hardware strip (value then label, e.g. "4 cpu · 8G ram", as on the card): after the first table of the section, else after the type tag.
+function hwStrip(pn, cells) {
+  if (!cells?.length) return;
+  var d = document.createElement("div");
+  d.className = "hws";
+  d.textContent = cells.map(function (c) { return c[1] + " " + c[0]; }).join(" · ");
+  var t = pn.querySelector("table");
+  if (t) t.parentNode.insertBefore(d, t.nextSibling);
+  else pn.insertBefore(d, pn.querySelector(".tg").nextSibling);
+}
+
+InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], function ({ core, osIcons, keys }) {
   var D = core.D, esc = core.esc, $ = core.$;
 
   function inline(s) {
     return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/\[([^\]]+)\]\((https?:\/\/[^)\s"]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   }
   var HEADING = /^(#{1,6})\s+(\S.*)?$/, TABLE_ROW = /^\s*\|/, LIST_ITEM = /^\s*[-*]\s+/;
-  function mdCells(l) { return l.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map(function (c) { return c.trim(); }); }
   function mdRow(cs, cell) {
     return "<tr>" + cs.map(function (c) { return "<" + cell + ">" + inline(c) + "</" + cell + ">"; }).join("") + "</tr>";
   }
@@ -686,11 +724,6 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], functio
   }
   function mdList(items) {
     return "<ul>" + items.map(function (l) { return "<li>" + inline(l.replace(LIST_ITEM, "")) + "</li>"; }).join("") + "</ul>";
-  }
-  function mdRun(L, i, test) {
-    var run = [];
-    while (i < L.length && test(L[i])) { run.push(L[i]); i++; }
-    return run;
   }
   function mdParagraphLine(l) { return !!l.trim() && !HEADING.test(l) && !TABLE_ROW.test(l) && !LIST_ITEM.test(l); }
   function md(src) {
@@ -706,19 +739,6 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], functio
       i += run.length;
     }
     return o.join("");
-  }
-
-  function confluence(sec) {
-    var url = null;
-    var rest = sec.split("\n").filter(function (l) {
-      var m = l.match(/^\s*\|\s*Confluence\s*\|\s*(.*?)\s*\|\s*$/i), u;
-      if (!m || url) return true;
-      u = m[1].match(/\]\((https?:\/\/[^)\s"]+)\)/) || m[1].match(/^<?(https?:\/\/[^\s>"]+)>?$/);
-      if (!u) return true;
-      url = u[1];
-      return false;
-    }).join("\n");
-    return { url: url, sec: rest };
   }
 
   function osRow(pn, os) {
@@ -767,17 +787,6 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], functio
     });
   }
 
-  // Hardware strip (value then label, e.g. "4 cpu · 8G ram", as on the card): after the first table of the section, else after the type tag.
-  function hwStrip(pn, cells) {
-    if (!cells?.length) return;
-    var d = document.createElement("div");
-    d.className = "hws";
-    d.textContent = cells.map(function (c) { return c[1] + " " + c[0]; }).join(" · ");
-    var t = pn.querySelector("table");
-    if (t) t.parentNode.insertBefore(d, t.nextSibling);
-    else pn.insertBefore(d, pn.querySelector(".tg").nextSibling);
-  }
-
   // The "Close" button (#pc) is wired once by ui/init.
   function renderPanel(key) {
     var e = D.ent[key], pn = $("pn");
@@ -806,33 +815,39 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], functio
 
   return { md: md, renderPanel: renderPanel };
 });
+})();
 
-InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics"], function (core, details, keys, metrics) {
+(function () { function measure(el, n, cw) {
+  var w = 0;
+  try { w = el.getComputedTextLength(); } catch (e) {}
+  return w > 0 ? w : n * cw;
+}
+
+function icon(kind) {
+  if (kind === "db") return '<ellipse cx="8" cy="3.5" rx="6" ry="2.5"/><path d="M2 3.5V12.5C2 15 14 15 14 12.5V3.5M2 8C2 10.5 14 10.5 14 8"/>';
+  return '<rect x="1" y="1" width="14" height="6" rx="1.5"/><rect x="1" y="9" width="14" height="6" rx="1.5"/><path d="M4 4h.01M4 12h.01"/>';
+}
+
+function frameHtml(S, W, bottom, HH) {
+  if (S === "clean") {
+    return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="10"/><path class="hd" d="M0 0V-10Q0 -20 10 -20H' + (W - 10) + "Q" + W + " -20 " + W + ' -10V0Z"/>';
+  }
+  if (S === "dark") {
+    return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="5"/><rect class="hd" x="0" y="-' + HH + '" width="' + W + '" height="' + HH + '"/><rect class="ab" x="0" y="-' + HH + '" width="3" height="' + HH + '"/>';
+  }
+  return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
+}
+
+function ys(a) { return a.map(function (p) { return p[1]; }); }
+
+function dividerHtml(y, W) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; }
+
+InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics"], function ({ core, details, keys, metrics }) {
   var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx, CW = core.CW, STYLES = core.STYLES, hooks = core.services;
   var M = metrics.METRICS, pillW = {}, boxW = {}, btn = {}, TEXT_X = M.textX;
 
-  function measure(el, n, cw) {
-    var w = 0;
-    try { w = el.getComputedTextLength(); } catch (e) {}
-    return w > 0 ? w : n * cw;
-  }
-  function icon(kind) {
-    if (kind === "db") return '<ellipse cx="8" cy="3.5" rx="6" ry="2.5"/><path d="M2 3.5V12.5C2 15 14 15 14 12.5V3.5M2 8C2 10.5 14 10.5 14 8"/>';
-    return '<rect x="1" y="1" width="14" height="6" rx="1.5"/><rect x="1" y="9" width="14" height="6" rx="1.5"/><path d="M4 4h.01M4 12h.01"/>';
-  }
-
   // Card meta with the system information (OS pill, hardware strip) removed while it is switched off.
   function sysMeta(m) { return ctx.sys ? m : { ...m, hw: "", os: 0 }; }
-  function frameHtml(S, W, bottom, HH) {
-    if (S === "clean") {
-      return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="10"/><path class="hd" d="M0 0V-10Q0 -20 10 -20H' + (W - 10) + "Q" + W + " -20 " + W + ' -10V0Z"/>';
-    }
-    if (S === "dark") {
-      return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="5"/><rect class="hd" x="0" y="-' + HH + '" width="' + W + '" height="' + HH + '"/><rect class="ab" x="0" y="-' + HH + '" width="3" height="' + HH + '"/>';
-    }
-    return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
-  }
-  function dividerHtml(y, W) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; }
   function nodeDividers(m, g, nb, hwY, W) {
     var h = "", below = !!(m.hw || m.os || g.ip.length);
     if (m.nj && nb > m.nj) h += dividerHtml(M.dividerTop + M.line * m.nj, W);
@@ -915,7 +930,6 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
   function placeOs(id, g) {
     var o = D.idx.nodes[id].o;
     if (o === undefined) return;
-    var ys = function (a) { return a.map(function (p) { return p[1]; }); };
     var top = g.ip.length ? Math.min.apply(null, ys(g.ip)) - g.y - 11 : g.h - 3;
     var floor = g.body.length ? Math.max.apply(null, ys(g.body)) - g.y + 4 : 2;
     var lx = g.title[0];
@@ -1001,8 +1015,9 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
 
   return { rebuildChrome: rebuildChrome, sync: sync, setStyle: setStyle, widths: widths, labelWidths: labelWidths };
 });
+})();
 
-InfraDiagram.define("ui/panels", ["ui/core"], function (core) {
+(function () { InfraDiagram.define("ui/panels", ["ui/core"], function ({ core }) {
   var $ = core.$;
   var PANELS = { np: ["nh", "nl", "notes-collapsed"], dp: ["dh", "dl", "docs-collapsed"], lp: ["lh", "lb", "legend-collapsed"], wp: ["wh", "wb", "networks-collapsed"] };
 
@@ -1043,8 +1058,9 @@ InfraDiagram.define("ui/panels", ["ui/core"], function (core) {
 
   return { placeChrome: placeChrome, initPanels: initPanels, setPanel: setPanel };
 });
+})();
 
-InfraDiagram.define("ui/networks", ["ui/core", "ui/panels", "ui/keys"], function (core, panels, keys) {
+(function () { InfraDiagram.define("ui/networks", ["ui/core", "ui/panels", "ui/keys"], function ({ core, panels, keys }) {
   var D = core.D, ctx = core.ctx, $ = core.$;
 
   function initNetworks() {
@@ -1111,8 +1127,9 @@ InfraDiagram.define("ui/networks", ["ui/core", "ui/panels", "ui/keys"], function
 
   return { initNetworks: initNetworks, setNet: setNet, toggleNet: toggleNet, editName: editName };
 });
+})();
 
-InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], function (core, skins, networks) {
+(function () { InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], function ({ core, skins, networks }) {
   var D = core.D, svg = core.svg, ctx = core.ctx, esc = core.esc, $ = core.$;
 
   function applyToggles() {
@@ -1188,8 +1205,9 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
 
   return { initLegend: initLegend, toggle: toggle, showAll: showAll };
 });
+})();
 
-InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels", "ui/keys"], function (core, details, panels, keys) {
+(function () { InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels", "ui/keys"], function ({ core, details, panels, keys }) {
   var D = core.D, ctx = core.ctx;
 
   function related(key) {
@@ -1228,8 +1246,9 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels", "ui/k
 
   return { related: related, select: select };
 });
+})();
 
-InfraDiagram.define("ui/clear-click", ["ui/core", "ui/selection", "ui/networks"], function (core, selection, networks) {
+(function () { InfraDiagram.define("ui/clear-click", ["ui/core", "ui/selection", "ui/networks"], function ({ core, selection, networks }) {
   var ctx = core.ctx, hooks = core.services, svg = core.svg;
   var BLOCK = "a,button,input,textarea,select,label,summary,[role=dialog],[role=menu],[role=menuitem],[contenteditable],.dlg,[data-ent],[data-e],[data-rc],.nwb,.nwd,.nw,#ta";
   var CONTAINERS = { rc: 1, wb: 1, wl: 1, pn: 1, nl: 1, dl: 1 };
@@ -1275,8 +1294,19 @@ InfraDiagram.define("ui/clear-click", ["ui/core", "ui/selection", "ui/networks"]
 
   return { isEmptyTarget: isEmptyTarget, isEmptyClick: isEmptyClick, clearSelection: clearSelection };
 });
+})();
 
-InfraDiagram.define("ui/export-columns", ["ui/core", "ui/metrics"], function (core, metrics) {
+(function () { function wrap(s, max) {
+  var out = [], cur = "";
+  s.split(/\s+/).forEach(function (w) {
+    if (cur && (cur + " " + w).length > max) { out.push(cur); cur = w; }
+    else cur = cur ? cur + " " + w : w;
+  });
+  if (cur) out.push(cur);
+  return out;
+}
+
+InfraDiagram.define("ui/export-columns", ["ui/core", "ui/metrics"], function ({ core, metrics }) {
   var D = core.D, ctx = core.ctx, esc = core.esc;
 
   function legendSvg(x0, y0) {
@@ -1317,15 +1347,6 @@ InfraDiagram.define("ui/export-columns", ["ui/core", "ui/metrics"], function (co
     return { h: '<g class="xl"><rect class="c" x="' + x0 + '" y="' + y0 + '" width="' + W + '" height="' + H + '" rx="' + (S === "swiss" ? 0 : 6) + '"/>' + h + "</g>", w: W, bottom: y0 + H };
   }
 
-  function wrap(s, max) {
-    var out = [], cur = "";
-    s.split(/\s+/).forEach(function (w) {
-      if (cur && (cur + " " + w).length > max) { out.push(cur); cur = w; }
-      else cur = cur ? cur + " " + w : w;
-    });
-    if (cur) out.push(cur);
-    return out;
-  }
   function notesSvg(x0, y0) {
     var S = ctx.style, CWN = metrics.METRICS.noteCharWidth[S];
     var W = 250, P = 10, LH = 14, h = "", y = y0;
@@ -1348,8 +1369,9 @@ InfraDiagram.define("ui/export-columns", ["ui/core", "ui/metrics"], function (co
 
   return { legendSvg: legendSvg, notesSvg: notesSvg };
 });
+})();
 
-InfraDiagram.define("ui/copy", ["ui/core"], function (core) {
+(function () { InfraDiagram.define("ui/copy", ["ui/core"], function ({ core }) {
   let hintT;
 
   function hint(msg, x, y) {
@@ -1367,8 +1389,9 @@ InfraDiagram.define("ui/copy", ["ui/core"], function (core) {
 
   return { copyText: copyText };
 });
+})();
 
-InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], function (core, exportColumns) {
+(function () { InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], function ({ core, exportColumns }) {
   var D = core.D, svg = core.svg, ctx = core.ctx;
 
   function resolveCss() {
@@ -1439,8 +1462,24 @@ InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], functio
 
   return { exportSvg: exportSvg, downloadSvg: downloadSvg, downloadPng: downloadPng };
 });
+})();
 
-InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/networks", "ui/legend", "ui/panels", "ui/selection", "ui/copy", "ui/export-image", "ui/keys"], function (core, details, skins, networks, legend, panels, selection, copy, exportImage, keys) {
+(function () { function markFocusable(el, kind) {
+  el.setAttribute("tabindex", "0");
+  el.setAttribute("role", "button");
+  el.setAttribute("aria-pressed", "false");
+  el.setAttribute("aria-label", kind + " " + el.textContent);
+}
+
+function setAttrs(el, attrs) {
+  if (el) Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+}
+
+function keyboardFocused(el) {
+  try { return el.matches(":focus-visible"); } catch (error_) { return true; }
+}
+
+InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/networks", "ui/legend", "ui/panels", "ui/selection", "ui/copy", "ui/export-image", "ui/keys"], function ({ core, details, skins, networks, legend, panels, selection, copy, exportImage, keys }) {
   const { D, svg, els, ctx, STYLES, $ } = core, hooks = core.services;
 
   function ipText(tg, id) {
@@ -1490,25 +1529,15 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
   }
 
   function makeFocusable() {
-    function mark(el, kind) {
-      el.setAttribute("tabindex", "0");
-      el.setAttribute("role", "button");
-      el.setAttribute("aria-pressed", "false");
-      el.setAttribute("aria-label", kind + " " + el.textContent);
-    }
-    Object.keys(D.idx.nodes).forEach(function (id) { mark(els[D.idx.nodes[id].t], "Server"); });
-    Object.keys(D.idx.clusters).forEach(function (id) { mark(els[D.idx.clusters[id][1]], "Region"); });
+    Object.keys(D.idx.nodes).forEach(function (id) { markFocusable(els[D.idx.nodes[id].t], "Server"); });
+    Object.keys(D.idx.clusters).forEach(function (id) { markFocusable(els[D.idx.clusters[id][1]], "Region"); });
   }
 
   function labelControls() {
-    function name(id, attrs) {
-      const el = $(id);
-      if (el) Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
-    }
-    name("ta", { role: "toolbar", "aria-label": "Diagram tools" });
-    name("tx", { role: "group", "aria-label": "Layout editing" });
-    name("tm", { role: "status", "aria-live": "polite" });
-    name("dpo", { role: "group", "aria-label": "Pen options" });
+    setAttrs($("ta"), { role: "toolbar", "aria-label": "Diagram tools" });
+    setAttrs($("tx"), { role: "group", "aria-label": "Layout editing" });
+    setAttrs($("tm"), { role: "status", "aria-live": "polite" });
+    setAttrs($("dpo"), { role: "group", "aria-label": "Pen options" });
     svg.setAttribute("role", "group");
     svg.setAttribute("aria-label", "Diagram. Tab to a server or region, Enter selects it, Escape clears the selection.");
   }
@@ -1540,9 +1569,6 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
   function dropRing() {
     ring?.remove();
     ring = null;
-  }
-  function keyboardFocused(el) {
-    try { return el.matches(":focus-visible"); } catch (error_) { return true; }
   }
   function onFocusIn(e) {
     const key = focusKey(e.target);
@@ -1605,8 +1631,51 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
 
   return { init: init, editChanged: editChanged };
 });
+})();
 
-InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, panels) {
+(function () { function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+function day(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+
+function stampNow(now) { return day(now) + " " + pad(now.getHours()) + ":" + pad(now.getMinutes()); }
+
+function show(date, now) {
+  if (!date || date === "Note") return "";
+  var m = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?/.exec(date);
+  if (!m) return date;
+  return m[2] && now && m[1] === day(now) ? m[2] : m[1];
+}
+
+function dateLine(text) {
+  var l = text.trim().split("\n")[1] || "";
+  return /^\s*Date:/.test(l) ? l.replace(/^\s*Date:\s*/, "").trim() : null;
+}
+
+function stamped(text, original, isNew, now) {
+  var t = text.trim(), lines = t.split("\n"), had = dateLine(t);
+  if (!isNew && t === original.trim()) return t;
+  if (had !== null && (isNew || had !== dateLine(original))) return t;
+  var line = "Date: " + stampNow(now);
+  if (had !== null) lines[1] = line; else lines.splice(1, 0, line, "");
+  return lines.join("\n");
+}
+
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function button(label, cls, fn) {
+  var b = el("button", cls, label);
+  b.type = "button";
+  b.addEventListener("mousedown", function (e) { e.preventDefault(); });
+  b.addEventListener("click", fn);
+  return b;
+}
+
+InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function ({ core, panels }) {
   var D = core.D, $ = core.$;
   var host = $("nl");
   var enabled = !!window.InfraDiagramFileBacked && !!host;
@@ -1614,38 +1683,6 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
   var cards = (D.notes || []).slice();
   var baseline = list.slice();
   var edit = null, busy = false;
-
-  function pad(n) { return (n < 10 ? "0" : "") + n; }
-  function day(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
-  function stampNow(now) { return day(now) + " " + pad(now.getHours()) + ":" + pad(now.getMinutes()); }
-
-  function show(date, now) {
-    if (!date || date === "Note") return "";
-    var m = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?/.exec(date);
-    if (!m) return date;
-    return m[2] && now && m[1] === day(now) ? m[2] : m[1];
-  }
-
-  function dateLine(text) {
-    var l = text.trim().split("\n")[1] || "";
-    return /^\s*Date:/.test(l) ? l.replace(/^\s*Date:\s*/, "").trim() : null;
-  }
-
-  function stamped(text, original, isNew, now) {
-    var t = text.trim(), lines = t.split("\n"), had = dateLine(t);
-    if (!isNew && t === original.trim()) return t;
-    if (had !== null && (isNew || had !== dateLine(original))) return t;
-    var line = "Date: " + stampNow(now);
-    if (had !== null) lines[1] = line; else lines.splice(1, 0, line, "");
-    return lines.join("\n");
-  }
-
-  function el(tag, cls, text) {
-    var e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text !== undefined) e.textContent = text;
-    return e;
-  }
 
   function parse(text) {
     if (!text.trim()) throw new Error("The title is empty. Type the title on the first line, then the note text.");
@@ -1662,14 +1699,6 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
     p = el("time", "", show(n.date, new Date()));
     a.appendChild(p);
     return a;
-  }
-
-  function button(label, cls, fn) {
-    var b = el("button", cls, label);
-    b.type = "button";
-    b.addEventListener("mousedown", function (e) { e.preventDefault(); });
-    b.addEventListener("click", fn);
-    return b;
   }
 
   function editor(i, text) {
@@ -1805,8 +1834,9 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
 
   return { isDirty: isDirty, finish: finishEdit, texts: texts, markSaved: markSaved, show: show, stamped: stamped };
 });
+})();
 
-InfraDiagram.define("ui/server-fields", [], function () {
+(function () { InfraDiagram.define("ui/server-fields", [], function () {
   var kit = (function serverFieldsKit() {
     const FIELDS = [
       { key: "id", type: "single", label: "ID" },
@@ -1834,8 +1864,45 @@ InfraDiagram.define("ui/server-fields", [], function () {
 
   return { FIELDS: kit.FIELDS };
 });
+})();
 
-InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "ui/server-fields", "ui/keys"], function (core, selection, panels, serverFields, keys) {
+(function () { function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function button(label, cls, fn) {
+  var b = el("button", cls, label);
+  b.type = "button";
+  b.addEventListener("click", fn);
+  return b;
+}
+
+function textInput(value, placeholder, label) {
+  var i = el("input");
+  i.type = "text";
+  i.value = value;
+  i.placeholder = placeholder;
+  i.spellcheck = false;
+  i.setAttribute("aria-label", label);
+  return i;
+}
+
+function addRow(box, value, placeholder, label) {
+  var row = el("div", "sfr"), input = textInput(value, placeholder, label);
+  row.appendChild(input);
+  row.appendChild(button("×", "sfx", function () { row.remove(); }));
+  box.appendChild(row);
+  return input;
+}
+
+function trimmed(list) {
+  return list.map(function (s) { return s.trim(); }).filter(Boolean);
+}
+
+InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "ui/server-fields", "ui/keys"], function ({ core, selection, panels, serverFields, keys }) {
   var $ = core.$;
   var TEXTS = serverFields.FIELDS.filter(function (f) { return f.row; }).map(function (f) { return [f.key, f.formLabel || f.label, f.placeholder]; });
   var LISTS = serverFields.FIELDS.filter(function (f) { return f.type === "list" && f.form; }).map(function (f) { return [f.key, f.label, f.add, f.placeholder]; });
@@ -1843,42 +1910,6 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
 
   function bridge() { return core.host.serverEditor || null; }
   function enabled() { return !!window.InfraDiagramFileBacked && !!bridge(); }
-
-  function el(tag, cls, text) {
-    var e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text !== undefined) e.textContent = text;
-    return e;
-  }
-
-  function button(label, cls, fn) {
-    var b = el("button", cls, label);
-    b.type = "button";
-    b.addEventListener("click", fn);
-    return b;
-  }
-
-  function textInput(value, placeholder, label) {
-    var i = el("input");
-    i.type = "text";
-    i.value = value;
-    i.placeholder = placeholder;
-    i.spellcheck = false;
-    i.setAttribute("aria-label", label);
-    return i;
-  }
-
-  function addRow(box, value, placeholder, label) {
-    var row = el("div", "sfr"), input = textInput(value, placeholder, label);
-    row.appendChild(input);
-    row.appendChild(button("×", "sfx", function () { row.remove(); }));
-    box.appendChild(row);
-    return input;
-  }
-
-  function trimmed(list) {
-    return list.map(function (s) { return s.trim(); }).filter(Boolean);
-  }
 
   function norm(f) {
     var o = { name: f.name.trim(), server_type: f.server_type, details: (f.details || "").trimEnd() };
@@ -2054,8 +2085,9 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
 
   return { isDirty: isDirty, finish: finish };
 });
+})();
 
-InfraDiagram.define("canvas/geometry", [], function () {
+(function () { InfraDiagram.define("canvas/geometry", [], function () {
   var kit = (function geometryKitOf(sizes, keyset) {
     var HEAD = sizes.head, TITLE_CW = sizes.titleCw, BODY_CW = sizes.bodyCw, IP_CW = sizes.ipCw, OS_CW = sizes.osCw, HW_CW = sizes.hwCw, TEXT_X = sizes.textX;
     var BAND = sizes.band, BAND_GAP = sizes.bandGap, MIN_GAP = sizes.minGap, PAD = sizes.pad, MIN_W = sizes.minW, MIN_H = sizes.minH;
@@ -2063,8 +2095,8 @@ InfraDiagram.define("canvas/geometry", [], function () {
     var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
     var cache = { n: 0 };
 
-    function r1(v) { return Math.round(v * 10) / 10; }
-    function num(a, b) { return a - b; }
+    function r1(v) { return Math.round(v * 10) / 10; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    function num(a, b) { return a - b; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
 
     // Start of a server header text: TEXT_X from the left, vertically centred in the header bar (CSS dominant-baseline: central); Sketch keeps the saved spot above the box.
     function headerTitle(g, style) {
@@ -2078,7 +2110,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
     }
 
     // Text rows above the IP pills: body lines, hardware strip, OS pill.
-    function rows(t) { return t.nb + (t.hw ? 1 : 0) + (t.os ? 1 : 0); }
+    function rows(t) { return t.nb + (t.hw ? 1 : 0) + (t.os ? 1 : 0); } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     function needW(t) {
       var osExtra = t.oe ? sizes.eolExtra : sizes.noEolExtra;
       var os = t.os ? TEXT_X + (t.ol + osExtra) * OS_CW + sizes.osExtra : 0;
@@ -2175,7 +2207,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
       });
       return mid;
     }
-    function firstAbove(a, v) {
+    function firstAbove(a, v) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
       var lo = 0, hi = a.length;
       while (lo < hi) {
         var m = (lo + hi) >> 1;
@@ -2183,7 +2215,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
       }
       return lo;
     }
-    function firstAtLeast(a, v) {
+    function firstAtLeast(a, v) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
       var lo = 0, hi = a.length;
       while (lo < hi) {
         var m = (lo + hi) >> 1;
@@ -2191,7 +2223,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
       }
       return lo;
     }
-    function mids(a) {
+    function mids(a) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
       var out = [];
       for (var k = 0; k + 1 < a.length; k++) out.push((a[k] + a[k + 1]) / 2);
       return out;
@@ -2357,7 +2389,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
         a = mm;
       }
     }
-    function markGoal(Q, g) {
+    function markGoal(Q, g) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
       if (!Q.goalAt.has(g.p)) Q.goalAt.set(g.p, []);
       Q.goalAt.get(g.p).push(g);
       Q.hx.push([Q.G.xs[Math.floor(g.p / Q.G.ny)], Q.G.ys[g.p % Q.G.ny]]);
@@ -2431,14 +2463,14 @@ InfraDiagram.define("canvas/geometry", [], function () {
       if (sd === 1) return { pt: [v, r.y1], stub: [v, r.y1 + M] };
       return { pt: [v, r.y0], stub: [v, r.y0 - M] };
     }
-    function centre(r, sd) { return Math.round(sd % 2 === 0 ? (r.y0 + r.y1) / 2 : (r.x0 + r.x1) / 2); }
-    function span(r, sd) { return sd % 2 === 0 ? [r.y0, r.y1] : [r.x0, r.x1]; }
+    function centre(r, sd) { return Math.round(sd % 2 === 0 ? (r.y0 + r.y1) / 2 : (r.x0 + r.x1) / 2); } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    function span(r, sd) { return sd % 2 === 0 ? [r.y0, r.y1] : [r.x0, r.x1]; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     function facing(r, sd, o) {
       var cx = (o.x0 + o.x1) / 2 - (r.x0 + r.x1) / 2, cy = (o.y0 + o.y1) / 2 - (r.y0 + r.y1) / 2;
       return DX[sd] * cx + DY[sd] * cy > 0;
     }
 
-    function simplify(pts) {
+    function simplify(pts) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
       var out = [];
       pts.forEach(function (p) {
         var n = out.length;
@@ -2480,11 +2512,11 @@ InfraDiagram.define("canvas/geometry", [], function () {
       return { d: d, pieces: pieces, len: arc };
     }
 
-    function overlap(a, b) { return Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)); }
+    function overlap(a, b) { return Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)); } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     // Boxes in a uniform bucket grid, numbered in insertion order; cost() sums the overlaps with a probe box in that order (touching and far boxes add exactly 0, so they are skipped).
     var BUCKET = 64;
-    function boxIndex() { return { map: new Map(), boxes: [], seen: [], tick: 0 }; }
-    function bucketKey(cx, cy) { return cx * 4194304 + cy; }
+    function boxIndex() { return { map: new Map(), boxes: [], seen: [], tick: 0 }; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    function bucketKey(cx, cy) { return cx * 4194304 + cy; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     function bucketsOf(b, fn) {
       var x1 = Math.floor(b.x0 / BUCKET), x2 = Math.floor(b.x1 / BUCKET), y1 = Math.floor(b.y0 / BUCKET), y2 = Math.floor(b.y1 / BUCKET);
       for (var cx = x1; cx <= x2; cx++) for (var cy = y1; cy <= y2; cy++) fn(bucketKey(cx, cy));
@@ -2512,7 +2544,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
       return total;
     }
     // Candidate points along straight pieces, nearest the path's arc midpoint first.
-    function stations(sh, margin, ends) {
+    function stations(sh, margin, ends) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
       var out = [];
       sh.pieces.forEach(function (pc) {
         for (var t = margin; t <= pc.len - margin; t += 4) {
@@ -2568,7 +2600,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
         });
         return h;
       }
-      function cands(r, other, v) {
+      function cands(r, other, v) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
         return [0, 1, 2, 3].map(function (sd) {
           var p = port(r, sd, v === undefined ? centre(r, sd) : v);
           return { sd: sd, p: p, c: facing(r, sd, other) ? 0 : BEND / 2 };
@@ -2583,7 +2615,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
         var y = lineY(e, end);
         return y === null ? cands(r, other) : cands(r, other, y).filter(function (c) { return c.sd % 2 === 0; });
       }
-      function run(G, A, B, from, to, h) {
+      function run(G, A, B, from, to, h) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
         var st = from.map(function (c) { return { p: at(G, c.p.stub[0], c.p.stub[1]), d: c.sd, c: c.c, cand: c }; }).filter(function (c) { return c.p >= 0 && !G.blk[c.p]; });
         var gl = to.map(function (c) { return { p: at(G, c.p.stub[0], c.p.stub[1]), d: c.sd < 0 ? -1 : (c.sd + 2) % 4, c: c.c, cand: c }; }).filter(function (c) { return c.p >= 0 && !G.blk[c.p]; });
         if (!st.length || !gl.length) return null;
@@ -2703,7 +2735,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
     // Keys ("n:id" / "c:id") of servers and regions breaking the spacing rules (validate.mjs states them for the build).
     function problems(s, meta, w) {
       var S = shapes(s, meta, w), bad = {};
-      function gap(a, b) { return Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b.y1); }
+      function gap(a, b) { return Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b.y1); } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
       var nodes = S.nodes;
       function flagPairs(list) {
         for (var i = 0; i < list.length; i++) {
@@ -2752,12 +2784,13 @@ InfraDiagram.define("canvas/geometry", [], function () {
 
   return { headerTitle: kit.headerTitle, boxExtent: kit.boxExtent, boxFor: kit.boxFor, rows: kit.rows, fitBox: kit.fitBox, fitRegion: kit.fitRegion, regionBounds: kit.regionBounds, resizeRegion: kit.resizeRegion, route: kit.route, problems: kit.problems };
 });
+})();
 
-InfraDiagram.define("canvas/draw-kit", [], function () {
+(function () { InfraDiagram.define("canvas/draw-kit", [], function () {
   var kit = (function drawKit() {
     var COLOR = /^#[0-9a-fA-F]{6}$/, ID = /^[A-Za-z0-9_-]{1,40}$/, MIN_STEP = 0.8, MAX_POINTS = 5000;
 
-    function round1(v) { return Math.round(v * 10) / 10; }
+    function round1(v) { return Math.round(v * 10) / 10; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     function fmt(v) { return String(round1(v)); }
 
     // Rounds to 1 decimal and drops points closer than `step` to the last kept one; the last point always stays.
@@ -2789,7 +2822,7 @@ InfraDiagram.define("canvas/draw-kit", [], function () {
       return d + "L" + fmt(p[n - 1][0]) + " " + fmt(p[n - 1][1]);
     }
 
-    function segDist(px, py, ax, ay, bx, by) {
+    function segDist(px, py, ax, ay, bx, by) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
       var dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
       var t = l2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) : 0;
       return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
@@ -2809,7 +2842,7 @@ InfraDiagram.define("canvas/draw-kit", [], function () {
     }
 
     // Snapshot history: push after each change, undo / redo return the list to show.
-    function history(initial) {
+    function history(initial) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
       var states = [initial], at = 0;
       return {
         current: function () { return states[at]; },
@@ -2853,7 +2886,7 @@ InfraDiagram.define("canvas/draw-kit", [], function () {
     }
     function markup(list) { return list.map(pathMarkup).join(""); }
 
-    function newId(list) {
+    function newId(list) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
       var used = {}, n = list.length + 1;
       list.forEach(function (s) { used[s.id] = true; });
       while (used["d" + n]) n++;
@@ -2865,18 +2898,31 @@ InfraDiagram.define("canvas/draw-kit", [], function () {
 
   return { decimate: kit.decimate, smoothPath: kit.smoothPath, distToStroke: kit.distToStroke, hits: kit.hits, hitIndex: kit.hitIndex, history: kit.history, validate: kit.validate, pathMarkup: kit.pathMarkup, markup: kit.markup, newId: kit.newId };
 });
+})();
 
-InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "ui/keys", "ui/metrics"], function (core, skins, geometry, keys, metrics) {
+(function () { function clone(o) { return structuredClone(o); }
+
+function setXY(el, p) { el.setAttribute("x", p[0]); el.setAttribute("y", p[1]); }
+
+function setRect(el, g) { el.setAttribute("x", g.x); el.setAttribute("y", g.y); el.setAttribute("width", g.w); el.setAttribute("height", g.h); }
+
+function shift(p, dx, dy) { p[0] += dx; p[1] += dy; }
+
+function regionAt(s, p) {
+  var best = null, area = Infinity;
+  Object.keys(s.clusters).forEach(function (id) {
+    var c = s.clusters[id];
+    if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h && c.w * c.h < area) { best = id; area = c.w * c.h; }
+  });
+  return best;
+}
+
+InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "ui/keys", "ui/metrics"], function ({ core, skins, geometry, keys, metrics }) {
   var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx;
   var M = metrics.METRICS;
   var base = D.layout;
   // Shared canvas state: st is the draft layout, on is edit mode.
   var state = { st: clone(base), on: false };
-
-  function clone(o) { return structuredClone(o); }
-  function setXY(el, p) { el.setAttribute("x", p[0]); el.setAttribute("y", p[1]); }
-  function setRect(el, g) { el.setAttribute("x", g.x); el.setAttribute("y", g.y); el.setAttribute("width", g.w); el.setAttribute("height", g.h); }
-  function shift(p, dx, dy) { p[0] += dx; p[1] += dy; }
 
   function move(s, key, dx, dy) {
     var k = keys.parseKey(key), id = k.id, g;
@@ -3035,19 +3081,18 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "
     return m ? p.matrixTransform(m.inverse()) : p;
   }
 
-  function regionAt(s, p) {
-    var best = null, area = Infinity;
-    Object.keys(s.clusters).forEach(function (id) {
-      var c = s.clusters[id];
-      if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h && c.w * c.h < area) { best = id; area = c.w * c.h; }
-    });
-    return best;
-  }
-
   return { base: base, state: state, clone: clone, apply: apply, resize: resize, each: each, render: render, point: point, regionAt: regionAt };
 });
+})();
 
-InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (core, model) {
+(function () { function clampAxis(c, view, lo, hi, k) {
+  var keep = Math.min(100 / k, 0.15 * (hi - lo));
+  return Math.min(hi - keep + view / 2, Math.max(lo + keep - view / 2, c));
+}
+
+function round2(v) { return Math.round(v * 100) / 100; }
+
+InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function ({ core, model }) {
   var svg = core.svg;
 
   var PAD = 20;
@@ -3062,11 +3107,6 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
   }
 
   var Z = { base: svg.getAttribute("viewBox").split(/\s+/).map(Number), z: 1, cx: 0, cy: 0, free: false, pan: null, panned: false };
-  function clampAxis(c, view, lo, hi, k) {
-    var keep = Math.min(100 / k, 0.15 * (hi - lo));
-    return Math.min(hi - keep + view / 2, Math.max(lo + keep - view / 2, c));
-  }
-  function round2(v) { return Math.round(v * 100) / 100; }
   function applyZoom() {
     var b = Z.base;
     var w = b[2] / Z.z, h = b[3] / Z.z, r = round2;
@@ -3145,8 +3185,14 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
 
   return { fit: fit };
 });
+})();
 
-InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"], function (core, drawKit, model) {
+(function () { function inField(t) {
+  var tag = t?.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!t?.isContentEditable;
+}
+
+InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"], function ({ core, drawKit, model }) {
   var svg = core.svg, $ = core.$, D = core.D;
   var COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#a855f7"], WIDTHS = [2, 4, 8];
   var STEP = 0.8, MAX_POINTS = 5000, ERASER_PX = 6;
@@ -3160,11 +3206,6 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     var p = JSON.parse(core.lsGet("pen"));
     if (p && COLORS.includes(p.color) && WIDTHS.includes(p.width)) pen = p;
   } catch (e) { /* unreadable stored pen: keep the default */ }
-
-  function inField(t) {
-    var tag = t?.tagName;
-    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!t?.isContentEditable;
-  }
 
   function list() { return hist.current(); }
   function currentTool() { return tool; }
@@ -3325,18 +3366,23 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
 
   return { list: list, isDirty: isDirty, markSaved: markSaved, undo: undo, redo: redo, setTool: setTool, tool: currentTool };
 });
+})();
 
-InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "canvas/zoom-pan", "ui/keys"], function (core, init, model, zoomPan, keys) {
+(function () { function hash(s) {
+  var h = 5381;
+  for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+function toJson(s) {
+  return JSON.stringify(s, null, 2) + "\n";
+}
+
+InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "canvas/zoom-pan", "ui/keys"], function ({ core, init, model, zoomPan, keys }) {
   var svg = core.svg, els = core.els, $ = core.$, state = model.state, base = model.base, fit = zoomPan.fit;
   var GRID = 5;
   var drag = null, frame = 0;
   var KEY = "layout-draft:" + hash(JSON.stringify(base) + svg.textContent.replace(/\s+/g, " "));
-
-  function hash(s) {
-    var h = 5381;
-    for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
-    return h.toString(36);
-  }
 
   function loadDraft() {
     if (window.InfraDiagramFileBacked) return null;
@@ -3347,10 +3393,6 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     return null;
   }
   function saveDraft() { if (!window.InfraDiagramFileBacked) core.lsSet(KEY, JSON.stringify(state.st)); }
-
-  function toJson(s) {
-    return JSON.stringify(s, null, 2) + "\n";
-  }
 
   function currentLayout() { return model.clone(state.on ? state.st : base); }
   function isDirty() { return state.on && JSON.stringify(state.st) !== JSON.stringify(base); }
@@ -3505,8 +3547,14 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
 
   return { currentLayout: currentLayout, isDirty: isDirty, commit: commit };
 });
+})();
 
-InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/networks", "ui/keys"], function (core, model, networks, keys) {
+(function () { function editable(t) {
+  var tag = t?.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!t?.isContentEditable;
+}
+
+InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/networks", "ui/keys"], function ({ core, model, networks, keys }) {
   var state = model.state;
   var menu = null;
 
@@ -3536,11 +3584,6 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
     var el = target?.closest?.("[data-ent]"), k = el?.dataset.ent;
     var p = k ? keys.parseKey(k) : null;
     return p?.kind === "server" ? p.id : null;
-  }
-
-  function editable(t) {
-    var tag = t?.tagName;
-    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!t?.isContentEditable;
   }
 
   function show(e, fill) {
@@ -3609,6 +3652,7 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
 
   return { close: close };
 });
+})();
 </script>
 </body>
 </html>

@@ -11,12 +11,13 @@ test("define registers a module under its name with the factory result", () => {
   assert.deepEqual({ ...I.modules.a }, { n: 1 });
 });
 
-test("define passes dependencies positionally, in order", () => {
+test("define passes dependencies as one object keyed by parameter name", () => {
   const I = load().window.InfraDiagram;
   I.define("a", [], () => "A");
   I.define("b", [], () => "B");
-  I.define("c", ["b", "a"], (b, a) => b + a);
-  assert.equal(I.modules.c, "BA");
+  I.define("ui/export-image", [], () => "E");
+  I.define("c", ["b", "a", "ui/export-image"], ({ b, a, exportImage }) => b + a + exportImage);
+  assert.equal(I.modules.c, "BAE");
 });
 
 test("define throws naming both modules when a dependency is not loaded yet", () => {

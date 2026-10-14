@@ -1,4 +1,40 @@
-InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "ui/server-fields", "ui/keys"], function (core, selection, panels, serverFields, keys) {
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function button(label, cls, fn) {
+  var b = el("button", cls, label);
+  b.type = "button";
+  b.addEventListener("click", fn);
+  return b;
+}
+
+function textInput(value, placeholder, label) {
+  var i = el("input");
+  i.type = "text";
+  i.value = value;
+  i.placeholder = placeholder;
+  i.spellcheck = false;
+  i.setAttribute("aria-label", label);
+  return i;
+}
+
+function addRow(box, value, placeholder, label) {
+  var row = el("div", "sfr"), input = textInput(value, placeholder, label);
+  row.appendChild(input);
+  row.appendChild(button("×", "sfx", function () { row.remove(); }));
+  box.appendChild(row);
+  return input;
+}
+
+function trimmed(list) {
+  return list.map(function (s) { return s.trim(); }).filter(Boolean);
+}
+
+InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "ui/server-fields", "ui/keys"], function ({ core, selection, panels, serverFields, keys }) {
   var $ = core.$;
   var TEXTS = serverFields.FIELDS.filter(function (f) { return f.row; }).map(function (f) { return [f.key, f.formLabel || f.label, f.placeholder]; });
   var LISTS = serverFields.FIELDS.filter(function (f) { return f.type === "list" && f.form; }).map(function (f) { return [f.key, f.label, f.add, f.placeholder]; });
@@ -6,42 +42,6 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
 
   function bridge() { return core.host.serverEditor || null; }
   function enabled() { return !!window.InfraDiagramFileBacked && !!bridge(); }
-
-  function el(tag, cls, text) {
-    var e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text !== undefined) e.textContent = text;
-    return e;
-  }
-
-  function button(label, cls, fn) {
-    var b = el("button", cls, label);
-    b.type = "button";
-    b.addEventListener("click", fn);
-    return b;
-  }
-
-  function textInput(value, placeholder, label) {
-    var i = el("input");
-    i.type = "text";
-    i.value = value;
-    i.placeholder = placeholder;
-    i.spellcheck = false;
-    i.setAttribute("aria-label", label);
-    return i;
-  }
-
-  function addRow(box, value, placeholder, label) {
-    var row = el("div", "sfr"), input = textInput(value, placeholder, label);
-    row.appendChild(input);
-    row.appendChild(button("×", "sfx", function () { row.remove(); }));
-    box.appendChild(row);
-    return input;
-  }
-
-  function trimmed(list) {
-    return list.map(function (s) { return s.trim(); }).filter(Boolean);
-  }
 
   function norm(f) {
     var o = { name: f.name.trim(), server_type: f.server_type, details: (f.details || "").trimEnd() };

@@ -1,4 +1,5 @@
 // Browser stubs for loading runtime modules with the real source (filename set, so coverage is measured).
+import { wrapModule } from "../page/assets.mjs";
 import { readFileSync } from "node:fs";
 import { Script, createContext } from "node:vm";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -98,18 +99,18 @@ export const flush = async (n = 8) => {
   await p;
 };
 
-export function run(rel, globals, base = ENGINE) {
+export function run(rel, globals, base = ENGINE, wrap = (src) => src) {
   const file = base + rel;
   const ctx = createContext(globals);
-  new Script(readFileSync(file, "utf8"), { filename: pathToFileURL(file).href }).runInContext(ctx); // NOSONAR: test harness evaluates this repository's own sources to measure coverage
+  new Script(wrap(readFileSync(file, "utf8")), { filename: pathToFileURL(file).href }).runInContext(ctx); // NOSONAR: test harness evaluates this repository's own sources to measure coverage
   return ctx;
 }
 
-export function define(rel, globals, deps = []) {
+export function define(rel, globals, deps = {}) {
   let mod;
   const InfraDiagram = globals.InfraDiagram ||= {};
-  InfraDiagram.define = (n, d, f) => { mod = f(...deps); };
-  run(rel, globals);
+  InfraDiagram.define = (n, d, f) => { mod = f(deps); };
+  run(rel, globals, ENGINE, wrapModule);
   return mod;
 }
 

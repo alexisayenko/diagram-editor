@@ -3,7 +3,7 @@
 export function drawKit() {
   var COLOR = /^#[0-9a-fA-F]{6}$/, ID = /^[A-Za-z0-9_-]{1,40}$/, MIN_STEP = 0.8, MAX_POINTS = 5000;
 
-  function round1(v) { return Math.round(v * 10) / 10; }
+  function round1(v) { return Math.round(v * 10) / 10; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
   function fmt(v) { return String(round1(v)); }
 
   // Rounds to 1 decimal and drops points closer than `step` to the last kept one; the last point always stays.
@@ -35,7 +35,7 @@ export function drawKit() {
     return d + "L" + fmt(p[n - 1][0]) + " " + fmt(p[n - 1][1]);
   }
 
-  function segDist(px, py, ax, ay, bx, by) {
+  function segDist(px, py, ax, ay, bx, by) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     var dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
     var t = l2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) : 0;
     return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
@@ -55,7 +55,7 @@ export function drawKit() {
   }
 
   // Snapshot history: push after each change, undo / redo return the list to show.
-  function history(initial) {
+  function history(initial) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     var states = [initial], at = 0;
     return {
       current: function () { return states[at]; },
@@ -99,7 +99,7 @@ export function drawKit() {
   }
   function markup(list) { return list.map(pathMarkup).join(""); }
 
-  function newId(list) {
+  function newId(list) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     var used = {}, n = list.length + 1;
     list.forEach(function (s) { used[s.id] = true; });
     while (used["d" + n]) n++;

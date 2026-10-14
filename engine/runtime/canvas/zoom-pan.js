@@ -1,4 +1,11 @@
-InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (core, model) {
+function clampAxis(c, view, lo, hi, k) {
+  var keep = Math.min(100 / k, 0.15 * (hi - lo));
+  return Math.min(hi - keep + view / 2, Math.max(lo + keep - view / 2, c));
+}
+
+function round2(v) { return Math.round(v * 100) / 100; }
+
+InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function ({ core, model }) {
   var svg = core.svg;
 
   var PAD = 20;
@@ -13,11 +20,6 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
   }
 
   var Z = { base: svg.getAttribute("viewBox").split(/\s+/).map(Number), z: 1, cx: 0, cy: 0, free: false, pan: null, panned: false };
-  function clampAxis(c, view, lo, hi, k) {
-    var keep = Math.min(100 / k, 0.15 * (hi - lo));
-    return Math.min(hi - keep + view / 2, Math.max(lo + keep - view / 2, c));
-  }
-  function round2(v) { return Math.round(v * 100) / 100; }
   function applyZoom() {
     var b = Z.base;
     var w = b[2] / Z.z, h = b[3] / Z.z, r = round2;

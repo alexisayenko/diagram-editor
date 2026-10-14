@@ -1,4 +1,9 @@
-InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"], function (core, drawKit, model) {
+function inField(t) {
+  var tag = t?.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!t?.isContentEditable;
+}
+
+InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"], function ({ core, drawKit, model }) {
   var svg = core.svg, $ = core.$, D = core.D;
   var COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#a855f7"], WIDTHS = [2, 4, 8];
   var STEP = 0.8, MAX_POINTS = 5000, ERASER_PX = 6;
@@ -12,11 +17,6 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     var p = JSON.parse(core.lsGet("pen"));
     if (p && COLORS.includes(p.color) && WIDTHS.includes(p.width)) pen = p;
   } catch (e) { /* unreadable stored pen: keep the default */ }
-
-  function inField(t) {
-    var tag = t?.tagName;
-    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!t?.isContentEditable;
-  }
 
   function list() { return hist.current(); }
   function currentTool() { return tool; }

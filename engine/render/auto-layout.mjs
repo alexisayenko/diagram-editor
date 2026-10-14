@@ -9,8 +9,8 @@ export function autoLayoutKit(geometry) {
   var HEAD = METRICS.head, PAD = METRICS.pad, TOP = METRICS.regionTop, GAP = METRICS.gap, RGAP = METRICS.regionGap, ORIGIN = METRICS.origin;
   var MAXW = METRICS.maxRowW, COLS = METRICS.cols, EMPTY_W = METRICS.emptyW, EMPTY_H = METRICS.emptyH;
 
-  function r1(v) { return Math.round(v * 10) / 10; }
-  function dup(o) { return structuredClone(o); }
+  function r1(v) { return Math.round(v * 10) / 10; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+  function dup(o) { return structuredClone(o); } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
 
   // Server whose drawn box (incl. header) has its top-left corner at x, y.
   function box(t, x, y) { return geometry.boxFor(t, x, y + HEAD); }
@@ -31,11 +31,11 @@ export function autoLayoutKit(geometry) {
   }
 
   function ext(s, meta, id) { return geometry.boxExtent(s.nodes[id], meta.nodes[id].tl); }
-  function rect(c) { return { x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.h }; }
-  function union(a) {
+  function rect(c) { return { x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.h }; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+  function union(a) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     return a.reduce(function (u, r) { return u ? { x0: Math.min(u.x0, r.x0), y0: Math.min(u.y0, r.y0), x1: Math.max(u.x1, r.x1), y1: Math.max(u.y1, r.y1) } : r; }, null);
   }
-  function placed(s, meta) {
+  function placed(s, meta) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
     var nodes = Object.keys(meta.nodes).filter(function (id) { return s.nodes[id] && !s.nodes[id].hidden; });
     var clusters = Object.keys(meta.clusters).filter(function (id) { return s.clusters[id]; });
     return { nodes: nodes, clusters: clusters };
@@ -44,7 +44,7 @@ export function autoLayoutKit(geometry) {
     var p = placed(s, meta);
     return union(p.clusters.map(function (id) { return rect(s.clusters[id]); }).concat(p.nodes.map(function (id) { return ext(s, meta, id); })));
   }
-  function gap(a, b) { return Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b.y1); }
+  function gap(a, b) { return Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b.y1); } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
 
   // Spacing clashes of region cid (and its servers ids) with every other placed region and server.
   function clashes(s, meta, cid, ids) {
