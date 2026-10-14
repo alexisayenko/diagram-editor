@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { runInNewContext } from "node:vm";
+import { createSaver } from "../browser/save.mjs";
 import { setNetworkName, normalizeName, MAX_NAME } from "../parse/networks-name.mjs";
 import { appendNetworks } from "../parse/networks-append.mjs";
 import { parseNetworksFile } from "../parse/shared-networks.mjs";
@@ -58,25 +58,25 @@ test("naming a derived network and the automatic append do not double-add the sa
   assert.deepEqual(parseNetworksFile(res.text).map((n) => [n.cidr, n.name]), [[A, "Office"], [B, ""]]);
 });
 
-const app = readFileSync(new URL("../browser/app.js", import.meta.url), "utf8");
+
+const read = (name) => readFileSync(new URL("../browser/" + name, import.meta.url), "utf8");
 
 test("Save writes pending network names with the append in one base-checked put, retrying once on 409", async () => {
-  const start = app.indexOf("async function syncNetworks()"), fn = app.slice(start, app.indexOf("\n}\n", start) + 2);
   const run = async (store, conflicts) => {
     const puts = [];
-    const ctx = { NETWORKS_FILE: "networks.toml", setNetworkName, appendNetworks, tomlModel: () => ({ model: { nodes: new Map([["a", { ip: ["192.0.2.10/24", "198.51.100.5/24"] }]]) } }),
-      stored: async () => store.text, putFiles: async (f) => { puts.push(f[0]); if (conflicts-- > 0) { store.text = (store.text ?? "") + "# edited elsewhere\n"; throw Object.assign(new Error("conflict"), { status: 409 }); } store.text = f[0].text; },
-      active: { folder: "d", source: new Map(), work: new Map(), netNames: new Map([[A, "Office"]]) } };
-    const out = await runInNewContext(`${fn}\nsyncNetworks()`, ctx);
-    return { out, puts, active: ctx.active };
+    const server = 'id = "a"\nname = "a.example.test"\nserver_type = "web"\nips = ["192.0.2.10/24", "198.51.100.5/24"]\n';
+    const session = { folder: "d", source: new Map(), work: new Map([["topology.toml", 'id = "d"\ntitle = "d"\n'], ["servers/a.toml", server]]), netNames: new Map([[A, "Office"]]) };
+    const api = { stored: async () => store.text, putFiles: async (f) => { puts.push(f[0]); if (conflicts-- > 0) { store.text = (store.text ?? "") + "# edited elsewhere\n"; throw Object.assign(new Error("conflict"), { status: 409 }); } store.text = f[0].text; } };
+    const saver = createSaver({ sessions: { current: () => session }, bridge: {}, api, confirmer: {}, isServerUp: () => true, message() {}, download() {} });
+    return { out: await saver.syncNetworks(), puts, session };
   };
   const ok = await run({ text: null }, 0);
   assert.equal(ok.puts.length, 1);
   assert.equal(ok.puts[0].base, null);
   assert.equal(ok.puts[0].text, `[[networks]]\ncidr = "${A}"\nname = "Office"\n\n[[networks]]\ncidr = "${B}"\n`);
   assert.deepEqual([ok.out.count, ok.out.renamed], [1, 1]);
-  assert.equal(ok.active.netNames.size, 0);
-  assert.equal(ok.active.source.get("networks.toml"), ok.puts[0].text);
+  assert.equal(ok.session.netNames.size, 0);
+  assert.equal(ok.session.source.get("networks.toml"), ok.puts[0].text);
   const retry = await run({ text: `[[networks]]\ncidr = "${A}"\n` }, 1);
   assert.equal(retry.puts.length, 2);
   assert.match(retry.puts[1].text, /name = "Office"[\s\S]*# edited elsewhere/);
@@ -85,7 +85,7 @@ test("Save writes pending network names with the append in one base-checked put,
 });
 
 test("renamed networks.toml is dirty work for Save, Export and the discard guards, and written only through the network sync", () => {
-  assert.match(app, /const renameNetwork = guarded\(editBlocked, \(cidr, name\)[\s\S]*?rerenderMany\(new Map\(\[\[NETWORKS_FILE, next\]\]\)/);
-  assert.match(app, /\(p !== NETWORKS_FILE \|\| active\.fresh\)/);
-  assert.match(app, /renameNetwork \};/);
+  assert.match(read("edits.mjs"), /const renameNetwork = guarded\(editBlocked, \(cidr, name\)[\s\S]*?rerenderMany\(new Map\(\[\[NETWORKS_FILE, next\]\]\)/);
+  assert.match(read("save.mjs"), /\(p !== NETWORKS_FILE \|\| session\.fresh\)/);
+  assert.match(read("edits.mjs"), /renameNetwork \} \};/);
 });

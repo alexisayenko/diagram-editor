@@ -18,7 +18,7 @@ test("ipv4CidrProblem checks the shape only", () => {
 test("contains respects family and range", () => {
   const net = parseCidr("192.0.2.0/24");
   assert.ok(contains(net, parseIp("192.0.2.200")));
-  assert.ok(!contains(net, parseIp("192.0.3.1")));
+  assert.ok(!contains(net, parseIp("198.51.100.1")));
   assert.ok(!contains(net, parseIp("::1")));
 });
 

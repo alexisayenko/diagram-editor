@@ -2,72 +2,105 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
+import { boot, demoFiles, file, flush } from "./cov-app.mjs";
 
-const app = readFileSync(new URL("../browser/app.js", import.meta.url), "utf8");
+const flushed = async (h) => { await h.tick(); return h; };
 
-test("Save follows the dirty state: notes and layout enable it, clean or no server disables it", () => {
-  const lines = app.split("\n").filter((l) => /^const (editor|notesApi|serverApi|drawApi|unsaved|dirty) = /.test(l)).join("\n");
-  const start = app.indexOf("function controls()"), fn = app.slice(start, app.indexOf("\n}\n", start) + 2);
-  assert.match(app, /setInterval\(\(\) => \{ if \(!busy\) controls\(\); \}/);
-  const run = (state, mods) => {
-    const el = () => ({ disabled: null });
-    const ctx = { newButton: el(), openButton: el(), diagButton: el(), select: { ...el(), options: [1, 2] }, reloadButton: el(), saveButton: el(), exportButton: el(), importButton: el(), impPanel: { hidden: true }, frame: { contentWindow: { InfraDiagram: { modules: mods } } } };
-    runInNewContext(`let busy = false, serverOk = true, ready = true, active = { work: new Map(), source: new Map(), notes: [], carryLayout: false };\n${state}\n${lines}\n${fn}\ncontrols()`, ctx);
-    return ctx.saveButton.disabled;
-  };
-  const clean = { "canvas/edit-mode": { isDirty: () => false }, "ui/notes-edit": { isDirty: () => false, texts: () => [] } };
-  const notes = { ...clean, "ui/notes-edit": { isDirty: () => true, texts: () => [] } };
-  assert.equal(run("", clean), true);
-  assert.equal(run("", notes), false);
-  assert.equal(run("", { ...clean, "canvas/edit-mode": { isDirty: () => true } }), false);
-  assert.equal(run("serverOk = false;", notes), true);
-  assert.equal(run("busy = true;", notes), true);
+test("Save follows the dirty state: notes and layout enable it, clean or no server disables it", async () => {
+  const h = await boot({ files: demoFiles("demo") });
+  const saveOff = async () => { await h.tick(); return h.$("save").disabled; };
+  assert.equal(await saveOff(), true);
+  h.ctl.notesDirty = true;
+  assert.equal(await saveOff(), false);
+  h.ctl.notesDirty = false;
+  h.ctl.editDirty = true;
+  assert.equal(await saveOff(), false);
+  h.ctl.editDirty = false;
+  assert.equal(await saveOff(), true);
+  const offline = await boot({ server: false });
+  await offline.click("new");
+  await offline.click("nwok");
+  offline.ctl.notesDirty = true;
+  assert.equal(await (async () => { await offline.tick(); return offline.$("save").disabled; })(), true);
 });
 
-test("discard prompt and beforeunload guard both use the combined dirty state", () => {
-  assert.match(app, /const dirty = \(\) => editor\(\)\?\.isDirty\(\) \|\| notesApi\(\)\?\.isDirty\(\)/);
-  assert.match(app, /function discard\(\) \{ return !dirty\(\)/);
-  assert.match(app, /beforeunload", \(e\) => \{ if \(dirty\(\)\)/);
+test("Save is disabled while a save is running", async () => {
+  const h = await boot({ files: demoFiles("demo") });
+  let release;
+  h.override = (path, options) => (options.method === "PUT" ? new Promise((resolve) => { release = resolve; }) : null);
+  h.ctl.editDirty = true;
+  await flushed(h);
+  h.$("save").fire("click");
+  await flush();
+  assert.equal(h.$("save").disabled, true);
+  assert.equal(h.frame.inert, true);
+  release();
+  await h.until(() => !h.frame.inert);
 });
 
-test("drawing changes enable Save and the discard guards", () => {
-  const lines = app.split("\n").filter((l) => /^const (editor|notesApi|serverApi|drawApi|unsaved|dirty) = /.test(l)).join("\n");
-  const run = (draw) => {
-    const mods = { "canvas/edit-mode": { isDirty: () => false }, "ui/notes-edit": { isDirty: () => false, texts: () => [] }, "canvas/draw": draw };
-    const ctx = { frame: { contentWindow: { InfraDiagram: { modules: mods } } } };
-    return runInNewContext(`let ready = true, active = { work: new Map(), source: new Map(), notes: [], carryLayout: false };\n${lines}\ndirty()`, ctx);
-  };
-  assert.equal(run({ isDirty: () => false }), false);
-  assert.equal(run({ isDirty: () => true }), true);
+test("the discard prompt and the beforeunload guard both use the combined dirty state", async () => {
+  const h = await boot({ files: demoFiles("demo"), confirmAnswer: false });
+  const unload = () => { const e = { preventDefault() { this.prevented = true; } }; h.listeners.beforeunload.forEach((f) => f(e)); return !!e.prevented; };
+  assert.equal(unload(), false);
+  h.ctl.notesDirty = true;
+  assert.equal(unload(), true);
+  await h.click("new");
+  h.$("nwname").value = "other";
+  h.$("nwname").fire("input");
+  await h.click("nwok");
+  assert.deepEqual(h.confirms, ["Discard unsaved changes?"]);
+  assert.equal(h.$("nw").hidden, false);
+});
+
+test("drawing changes enable Save and the discard guards", async () => {
+  const h = await boot({ files: demoFiles("demo") });
+  h.ctl.drawDirty = true;
+  await h.tick();
+  assert.equal(h.$("save").disabled, false);
+  const e = { preventDefault() { this.prevented = true; } };
+  h.listeners.beforeunload.forEach((f) => f(e));
+  assert.equal(e.prevented, true);
 });
 
 test("Host script panel embeds tools/host-probe.sh byte-for-byte", () => {
   const html = readFileSync(new URL("../../diagram.html", import.meta.url), "utf8");
-  const file = readFileSync(new URL("../../tools/host-probe.sh", import.meta.url), "utf8");
+  const probe = readFileSync(new URL("../../tools/host-probe.sh", import.meta.url), "utf8");
   const m = html.match(/^const HOST_SCRIPT = (.*);$/m);
   assert.ok(m, "HOST_SCRIPT line");
-  assert.equal(runInNewContext(m[1]), file);
+  assert.equal(runInNewContext(m[1]), probe);
   assert.ok(!m[1].includes("<"));
   assert.match(html, /id="hostscript"/);
   assert.match(html, /id="hs" class="dlg" hidden/);
-  assert.match(app, /e\.key === "Escape" && !hostPanel\.hidden/);
-  assert.match(app, /e\.target === hostPanel/);
-  assert.match(app, /execCommand\("copy"\)/);
+  assert.match(readFileSync(new URL("../browser/dialog-flows.mjs", import.meta.url), "utf8"), /execCommand\("copy"\)/);
 });
 
-test("Import servers is enabled with an open diagram and adds files as unsaved work", () => {
-  const lines = app.split("\n").filter((l) => /^const (editor|notesApi|serverApi|drawApi|unsaved|dirty) = /.test(l)).join("\n");
-  const start = app.indexOf("function controls()"), fn = app.slice(start, app.indexOf("\n}\n", start) + 2);
-  const run = (ready, busy, panelHidden = true) => {
-    const el = () => ({ disabled: null });
-    const ctx = { newButton: el(), openButton: el(), diagButton: el(), saveButton: el(), exportButton: el(), importButton: el(), impPanel: { hidden: panelHidden }, frame: { contentWindow: { InfraDiagram: { modules: {} } } } };
-    runInNewContext(`let busy = ${busy}, serverOk = true, ready = ${ready}, active = { work: new Map(), source: new Map(), notes: [], carryLayout: false };\n${lines}\n${fn}\ncontrols()`, ctx);
-    return ctx.importButton.disabled;
-  };
-  assert.equal(run(true, false), false);
-  assert.equal(run(false, false), true);
-  assert.equal(run(true, true), true);
-  const confirm = app.slice(app.indexOf("function impConfirm()"), app.indexOf("importButton.addEventListener"));
-  assert.match(confirm, /rerenderMany\(files, places, ids, null\)/);
-  assert.match(app, /unsaved = \(\) => !!active && \(JSON\.stringify\(\[\.\.\.active\.work\]\) !== JSON\.stringify\(\[\.\.\.active\.source\]\)/);
+test("Host script panel closes on Escape, Close and an outside click", async () => {
+  const h = await boot();
+  const escape = () => h.docListeners.keydown.forEach((f) => f({ key: "Escape", preventDefault() {} }));
+  await h.click("hostscript");
+  escape();
+  assert.equal(h.$("hs").hidden, true);
+  await h.click("hostscript");
+  h.$("hs").fire("mousedown", { target: h.$("hs") });
+  assert.equal(h.$("hs").hidden, true);
+  await h.click("hostscript");
+  await h.click("hsclose");
+  assert.equal(h.$("hs").hidden, true);
+});
+
+test("Import servers is enabled with an open diagram and adds files as unsaved work", async () => {
+  const idle = await boot();
+  assert.equal(idle.$("import").disabled, true);
+  const h = await boot({ files: demoFiles("demo") });
+  assert.equal(h.$("import").disabled, false);
+  h.$("impfiles").files = [file("alpha.toml", 'id = "alpha"\nname = "alpha.example.test"\nserver_type = "web"\nips = ["198.51.100.25/24"]\n')];
+  h.$("import").fire("click");
+  h.$("impfiles").fire("change");
+  await flush();
+  assert.equal(h.$("import").disabled, true);
+  await h.click("impok");
+  await h.until(() => h.frame.srcdoc.includes("alpha"));
+  assert.equal(h.$("import").disabled, false);
+  assert.equal(h.$("save").disabled, false);
+  assert.ok(h.files("demo")["demo/servers/alpha.toml"] === undefined, "nothing is written before Save");
 });

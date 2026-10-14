@@ -25,7 +25,7 @@ test("Save follows every source of unsaved work, the server being reachable and 
   h.ctl.notesTexts = ["changed note"];
   assert.equal(await saveOff(), false);
   h.ctl.notesTexts = null;
-  assert.equal(h.intervals[0][1], 250);
+  assert.equal(h.intervals.length, 0);
 });
 
 test("with no reachable server Save stays disabled however much is changed", async () => {

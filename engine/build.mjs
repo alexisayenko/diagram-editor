@@ -7,19 +7,12 @@ import { fail } from "./parse/errors.mjs";
 import { parseLayout } from "./parse/layout.mjs";
 import { parseNotes } from "./parse/notes.mjs";
 import { parseDocuments } from "./parse/documents.mjs";
-import { osOf, parseDetails } from "./parse/details.mjs";
-import { osInfo } from "./parse/os-eol.mjs";
 import { edgeKey, parseMmd } from "./parse/mmd.mjs";
-import { ipNetworks, networkMembers, parseNetworks } from "./parse/networks.mjs";
-import { validateGeometry } from "./parse/validate.mjs";
-import { resolveTypes } from "./parse/types.mjs";
-import { renderSvg } from "./render/svg.mjs";
-import { buildEdgeKey, groupAssets } from "./render/edge-key.mjs";
+import { parseNetworks } from "./parse/networks.mjs";
 import { geometryKit, geometryMeta } from "./render/geometry.mjs";
-import { computeViewBox } from "./render/viewbox.mjs";
+import { parseDetails } from "./parse/details.mjs";
+import { renderModel } from "./render/pipeline.mjs";
 import { css, script } from "./page/assets.mjs";
-import { buildDataJson } from "./page/data.mjs";
-import { renderLayoutHtml } from "./page/layout-html.mjs";
 import { renderIndexHtml } from "./page/index-html.mjs";
 import { checkConnections, parseConfig } from "./parse/config.mjs";
 import { autoLayoutKit } from "./render/auto-layout.mjs";
@@ -50,37 +43,16 @@ runCli("build", () => {
   const meta = geometryMeta(model, config.groups, config.processes);
   const kit = geometryKit();
   if (!hasLayout) autoLayoutKit(kit).fill(layout, meta);
-  validateGeometry(model, layout, meta);
-  const routes = kit.route(layout, meta);
   const netItems = existsSync(join(dir, "networks.md")) ? parseNetworks(read("networks.md")) : null;
-  const nets = netItems && networkMembers(netItems, model, layout);
-  const ipNet = netItems ? ipNetworks(netItems, [...[...model.nodes.values()].flatMap((n) => n.ip), details]) : {};
-  const { ent, typeList, typeCss } = resolveTypes(model, layout, config.proposedLabel);
-  const sections = parseDetails(details);
-  for (const n of model.nodes.values()) if (ent["n:" + n.id]) ent["n:" + n.id].os = osInfo(osOf(sections[n.title]));
-
-  const { body: svgBody, idx } = renderSvg({ model, layout, ent, nets, ipNet, routes, groups: config.groups, meta });
-  const viewBox = computeViewBox(model, layout, routes);
-  const groupKit = groupAssets(config.groups);
-  const edgeKeys = buildEdgeKey(model, config.edgeLabels, config.groups);
-  const html = renderLayoutHtml({
-    title: config.title,
-    cssSvg: css("svg") + "\n" + typeCss.trim() + (groupKit.css ? "\n" + groupKit.css : ""),
-    cssPage: css("page"),
-    viewBox,
-    svgBody,
-    drawings,
-    markers: groupKit.markers,
-    edgeKeyHtml: edgeKeys.html,
-    notes,
-    docs,
-    nets,
-    dataJson: buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes, nets, ipNet, edgeKeyRows: edgeKeys.rows, drawings }),
-    js: script(),
+  const out = renderModel({
+    config, model, layout, meta, kit, sections: parseDetails(details), notes, docs, drawings, validate: true,
+    networks: netItems && { kind: "tree", items: netItems, texts: [details] },
+    assets: { cssSvg: css("svg"), cssPage: css("page"), js: script() },
   });
+  const { routes, ent, viewBox, edgeKeys } = out;
 
   const outputs = {
-    "layout.html": html,
+    "layout.html": out.html,
     "index.html": renderIndexHtml({ title: config.title, mmd, details, notes, edgeKinds: edgeKeys.kinds }),
     [config.id + ".excalidraw"]: renderExcalidraw({ config, model, layout, meta, routes, ent, notes, edgeLabels: config.edgeLabels, viewBox, drawings }),
   };

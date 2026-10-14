@@ -86,14 +86,16 @@ test("layout round-trip: old layouts load, drawings survive page and TOML re-ren
 });
 
 test("Save and Export write drawings and keep unknown layout keys", () => {
-  const app = readFileSync(new URL("../browser/app.js", import.meta.url), "utf8");
-  assert.match(app, /\.\.\.active\.extra, \.\.\.layout, \.\.\.\(drawings\.length \|\| active\.hadDrawings \? \{ drawings \} : \{\}\)/);
-  assert.match(app, /drawApi\(\)\?\.isDirty\(\)/);
-  assert.match(app, /drawApi\(\)\.markSaved\(\)/);
-  assert.match(app, /drawings: drawApi\(\)\.list\(\)/);
-  assert.equal((app.match(/layoutText: JSON\.stringify/g) || []).length, 1);
-  assert.match(app, /packDiagram\(p\.files, active\.layoutLocked \? active\.text : p\.layoutText\)/);
-  assert.match(app, /text: p\.layoutText/);
+  const read = (f) => readFileSync(new URL("../browser/" + f, import.meta.url), "utf8");
+  const save = read("save.mjs");
+  assert.match(save, /\.\.\.session\.extra, \.\.\.layout, \.\.\.\(drawings\.length \|\| session\.hadDrawings \? \{ drawings \} : \{\}\)/);
+  assert.match(read("frame-bridge.mjs"), /mod\("draw"\)\?\.isDirty\(\)/);
+  assert.match(save, /bridge\.draw\(\)\.markSaved\(\)/);
+  assert.match(save, /drawings = bridge\.draw\(\)\.list\(\)/);
+  assert.match(read("edits.mjs"), /drawings: draw\.list\(\)/);
+  assert.equal((save.match(/layoutText: JSON\.stringify/g) || []).length, 1);
+  assert.match(save, /packDiagram\(p\.files, session\.layoutLocked \? session\.text : p\.layoutText\)/);
+  assert.match(save, /text: p\.layoutText/);
 });
 
 test("exports carry the strokes: SVG/PNG clone the live SVG, build writes them into layout.html and Excalidraw", () => {

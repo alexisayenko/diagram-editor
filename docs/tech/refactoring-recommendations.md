@@ -148,17 +148,17 @@ stay byte-identical unless the item says otherwise.
 
 ### Wave 2: structural refactors (after D1 and D6)
 
-| IDs | What | Why | Effort / risk | Protected by | Needs |
-| --- | --- | --- | --- | --- | --- |
-| AR-01, CD-02, DK-01 (pipeline), AR-03, DK-09 | `renderModel(...)` in one pipeline module; `build.mjs` and `render.mjs` become loaders; one networks implementation | Every feature otherwise built twice | L / medium | `build --check`, `diagram.html --check`, `cov-app-render` | Wave 1 bundler, D1 |
-| AR-02, DK-01 (legacy) | Move `edgeKey`, config normalise, OS, notes text into a model layer; then convert-and-delete or keep import-only | Legacy modules are load-bearing utilities | M then L / low then medium | `cov-parse-legacy`, `cov-cli-build-new` | D1 |
-| AR-08 | Layered folders (`source`, `edit`, `model`, `layout`, `render`, `page`, `app`, `server`) enforced by an import-direction test | `parse/validate.mjs` imports the render kit | M / low | new `layering.test.mjs` | AR-02 |
-| CD-01, AR-07, DK-08, DM-15 | Split `app.js`: `api`, `session`, `dialogs`, `frame-bridge`, wiring; host interface instead of module lookups; event instead of the 250 ms poll | God-script, invisible state shape | L / medium | `cov-app-*` (5 files) | AR-04 |
-| CD-03 | `core.host` and `core.on/emit` instead of 11 overwritable hooks and the `window.InfraDiagram.*` globals | Second writer silently overwrites the first | M / medium | `cov-ui-*`, `context-menu.test` | none |
-| DM-03, DM-04 | Structural server model; card and details markdown become render functions; one documented IR vocabulary | OS is parsed back out of generated markdown | M / medium | card, details, exports tests | AR-01 |
-| CD-04, CD-06, DK-10 | `kit.boxFor`, one `METRICS`, `keys.mjs` (`nodeKey`, `parseKey`), readable meta field names, in one regeneration window | Metrics in 3 places; `"n:"` built 30 times, parsed 26 | M-L / medium | `region*.test`, `--check` diffs | none |
-| AR-06, AR-13 | Measure first (300 servers, 600 connections), then page shell plus scene swap, then incremental routing | Every edit reloads about 300 KB and loses zoom and selection | M-L / medium | new perf test | D6 |
-| BP-14 | Native `<dialog>`, keyboard on server and region nodes, arrow-key nudge | No focus trap; selection looks mouse-only (reported) | M / medium | fake DOM gains `dialog` | CD-01 |
+| IDs | What | Why | Effort / risk | Protected by | Needs | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| AR-01, CD-02, DK-01 (pipeline), AR-03, DK-09 | `renderModel(...)` in one pipeline module; `build.mjs` and `render.mjs` become loaders; one networks implementation | Every feature otherwise built twice | L / medium | `build --check`, `diagram.html --check`, `cov-app-render` | Wave 1 bundler, D1 | Done: `render/pipeline.mjs` (`renderModel`); `build.mjs` and `browser/render.mjs` are loaders. The `networks.md` tree stays a separate parser (different nesting and host-count rules); CIDR parsing is shared (`lib/net.mjs`). |
+| AR-02, DK-01 (legacy) | Move `edgeKey`, config normalise, OS, notes text into a model layer; then convert-and-delete or keep import-only | Legacy modules are load-bearing utilities | M then L / low then medium | `cov-parse-legacy`, `cov-cli-build-new` | D1 | |
+| AR-08 | Layered folders (`source`, `edit`, `model`, `layout`, `render`, `page`, `app`, `server`) enforced by an import-direction test | `parse/validate.mjs` imports the render kit | M / low | new `layering.test.mjs` | AR-02 | |
+| CD-01, AR-07, DK-08, DM-15 | Split `app.js`: `api`, `session`, `dialogs`, `frame-bridge`, wiring; host interface instead of module lookups; event instead of the 250 ms poll | God-script, invisible state shape | L / medium | `cov-app-*` (5 files) | AR-04 | Done: `app.js` is wiring (about 170 lines, was 522); `api`, `session`, `frame-bridge`, `dialogs`, `dialog-flows`, `edits`, `save`, `messages` in `engine/browser/`. The runtime gets an explicit host object from the bridge; the toolbar state follows frame activity events instead of a poll. `engine/test/browser-modules.test.mjs` covers the new modules. |
+| CD-03 | `core.host` and `core.on/emit` instead of 11 overwritable hooks and the `window.InfraDiagram.*` globals | Second writer silently overwrites the first | M / medium | `cov-ui-*`, `context-menu.test` | none | |
+| DM-03, DM-04 | Structural server model; card and details markdown become render functions; one documented IR vocabulary | OS is parsed back out of generated markdown | M / medium | card, details, exports tests | AR-01 | |
+| CD-04, CD-06, DK-10 | `kit.boxFor`, one `METRICS`, `keys.mjs` (`nodeKey`, `parseKey`), readable meta field names, in one regeneration window | Metrics in 3 places; `"n:"` built 30 times, parsed 26 | M-L / medium | `region*.test`, `--check` diffs | none | |
+| AR-06, AR-13 | Measure first (300 servers, 600 connections), then page shell plus scene swap, then incremental routing | Every edit reloads about 300 KB and loses zoom and selection | M-L / medium | new perf test | D6 | |
+| BP-14 | Native `<dialog>`, keyboard on server and region nodes, arrow-key nudge | No focus trap; selection looks mouse-only (reported) | M / medium | fake DOM gains `dialog` | CD-01 | |
 
 ### Wave 3: nice to have (opportunistic)
 

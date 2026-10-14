@@ -8,7 +8,8 @@ import { addServer } from "../parse/toml-write.mjs";
 import { mergeFolder } from "../parse/toml.mjs";
 import { validName } from "../lib/names.mjs";
 
-const app = readFileSync(new URL("../browser/app.js", import.meta.url), "utf8");
+const read = (f) => readFileSync(new URL("../browser/" + f, import.meta.url), "utf8");
+const app = read("app.js"), flows = read("dialog-flows.mjs"), edits = read("edits.mjs");
 
 test("a new diagram is the full folder format and opens empty", () => {
   const files = newDiagram("my-diagram");
@@ -36,9 +37,9 @@ test("diagram names follow the id rule", () => {
 });
 
 test("New diagram is guarded by the discard prompt and refuses stored names live", () => {
-  const start = app.indexOf("function nwCreate()"), body = app.slice(start, app.indexOf("\n}\n", start));
-  assert.match(body, /nameProblem\(folder, nwTaken\) \|\| !discard\(\)/);
-  assert.match(body, /active\.source = new Map\(\)/);
-  assert.match(app, /nwName\.addEventListener\("input", nwCheck\)/);
-  assert.match(app, /add: addNewServer/);
+  const start = flows.indexOf("function create()"), body = flows.slice(start, flows.indexOf("\n  }\n", start));
+  assert.match(body, /nameProblem\(folder, taken\) \|\| !discard\(\)/);
+  assert.match(app, /markNew\(sessions\.current\(\)\)/);
+  assert.match(flows, /name\.addEventListener\("input", check\)/);
+  assert.match(edits, /serverEditor: \{ source: serverSource, apply: applyServer, add,/);
 });

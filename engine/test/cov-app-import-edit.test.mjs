@@ -343,7 +343,7 @@ test("an import waits for an unfinished server or note edit and shows why", asyn
 test("a failure while applying an import keeps the dialog open with the message", async () => {
   const h = await boot({ files: demoFiles("demo") });
   await openImport(h, [file("alpha.toml", serverToml("alpha"))]);
-  h.win.ASSETS = null;
+  h.failRender();
   await h.click("impok");
   assert.equal(h.$("imp").hidden, false);
   assert.ok(h.$("impinfo").textContent.length > 0);

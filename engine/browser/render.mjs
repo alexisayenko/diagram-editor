@@ -1,19 +1,12 @@
 import { tomlModel } from "../parse/toml.mjs";
 import { NETWORKS_FILE } from "../lib/files.mjs";
-import { assignNetwork, buildNetworks, parseNetworksFile, withDerived } from "../parse/shared-networks.mjs";
+import { assignNetwork, parseNetworksFile, withDerived } from "../parse/shared-networks.mjs";
 import { parseConfig, checkConnections } from "../parse/config.mjs";
-import { resolveTypes } from "../parse/types.mjs";
-import { osOf } from "../parse/details.mjs";
-import { osInfo } from "../parse/os-eol.mjs";
 import { edgeKey } from "../parse/mmd.mjs";
 import { geometryKit, geometryMeta } from "../render/geometry.mjs";
 import { drawKit } from "../render/draw-kit.mjs";
 import { autoLayoutKit } from "../render/auto-layout.mjs";
-import { renderSvg } from "../render/svg.mjs";
-import { computeViewBox } from "../render/viewbox.mjs";
-import { buildEdgeKey, groupAssets } from "../render/edge-key.mjs";
-import { buildDataJson } from "../page/data.mjs";
-import { renderLayoutHtml } from "../page/layout-html.mjs";
+import { renderModel } from "../render/pipeline.mjs";
 import { LAYOUT_VERSION } from "../parse/layout-version.mjs";
 
 const point = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
@@ -97,15 +90,6 @@ export function prepareDiagram(files, folder, saved = null, refit = []) {
 
 export function renderDiagram(files, folder, saved, assets, refit = []) {
   const { config, model, sections, notes, docs, meta, layout, kit, drawings, networks, warnings } = prepareDiagram(files, folder, saved, refit);
-  const { nets, ipNet } = networks ? buildNetworks(networks, model, layout) : { nets: null, ipNet: {} };
-  const routes = kit.route(layout, meta);
-  const { ent, typeList, typeCss } = resolveTypes(model, layout, config.proposedLabel);
-  for (const n of model.nodes.values()) ent["n:" + n.id].os = osInfo(osOf(sections[n.title]));
-  const { body: svgBody, idx } = renderSvg({ model, layout, ent, nets, ipNet, routes, groups: config.groups, meta });
-  const edgeKeys = buildEdgeKey(model, config.edgeLabels, config.groups), groupKit = groupAssets(config.groups);
-  const viewBox = computeViewBox(model, layout, routes);
-  const dataJson = buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes, nets, ipNet, edgeKeyRows: edgeKeys.rows, drawings });
-  const html = renderLayoutHtml({ title: config.title, cssSvg: assets.cssSvg + "\n" + typeCss + groupKit.css, cssPage: assets.cssPage,
-    viewBox, svgBody, drawings, markers: groupKit.markers, edgeKeyHtml: edgeKeys.html, notes, docs, nets, dataJson, js: assets.js });
+  const { html } = renderModel({ config, model, layout, meta, kit, sections, notes, docs, drawings, assets, networks: networks && { kind: "shared", items: networks } });
   return { html, layout, id: config.id, notes: notes.map((n) => n.text), problems: Object.keys(kit.problems(layout, meta)).length, warnings };
 }

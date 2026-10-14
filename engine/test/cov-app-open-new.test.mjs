@@ -308,7 +308,7 @@ test("a render failure while creating a diagram shows the error instead of openi
   h.$("nwname").value = "ok-name";
   h.$("nwname").fire("input");
   const original = h.frame.srcdoc;
-  h.win.ASSETS = null;
+  h.failRender();
   await h.click("nwok");
   assert.equal(h.statusError(), true);
   assert.equal(h.frame.srcdoc, original);

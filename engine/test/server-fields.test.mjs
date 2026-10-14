@@ -8,7 +8,7 @@ import { KITS } from "../page/kits.mjs";
 import { mini } from "./helpers.mjs";
 
 const docs = readFileSync(new URL("../../docs/tech/authoring.md", import.meta.url), "utf8");
-const app = readFileSync(new URL("../browser/app.js", import.meta.url), "utf8");
+const edits = readFileSync(new URL("../browser/edits.mjs", import.meta.url), "utf8");
 
 test("the table is well formed", () => {
   assert.equal(new Set(SERVER_KEYS).size, SERVER_KEYS.length);
@@ -43,6 +43,6 @@ test("docs/tech/authoring.md names every server key", () => {
 });
 
 test("the bridge functions share one guarded wrapper", () => {
-  assert.equal([...app.matchAll(/= guarded\(/g)].length, 6);
-  assert.equal([...app.matchAll(/^const editBlocked|^const noteBlocked/gm)].length, 2);
+  assert.equal([...edits.matchAll(/= guarded\(/g)].length, 6);
+  assert.equal([...edits.matchAll(/^\s*const editBlocked|^\s*const noteBlocked/gm)].length, 2);
 });

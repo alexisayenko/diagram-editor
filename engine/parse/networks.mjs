@@ -1,15 +1,15 @@
 import { fail } from "./errors.mjs";
-import { ipv4Number, ipv4Text } from "../lib/net.mjs";
+import { ipv4Number, ipv4Text, parseCidr } from "../lib/net.mjs";
 
 const ITEM = /^(\s*)[-*]\s+(?:`([^`]+)`\s+)?(\S.*)$/;
 
-function parseCidr(s, at) {
+function parseTreeCidr(s, at) {
   const m = s.match(/^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/);
   const addr = m && ipv4Number(m[1]);
   if (addr === null || !m || +m[2] > 32) fail(`${at}: invalid CIDR "${s}"; expected a.b.c.d/nn`);
-  const size = 2 ** (32 - +m[2]);
-  if (addr % size) fail(`${at}: "${s}" has host bits set; network address is ${ipv4Text(addr - (addr % size))}/${m[2]}`);
-  return { lo: addr, hi: addr + size - 1 };
+  const c = parseCidr(s);
+  if (c.error) fail(`${at}: "${s}" has host bits set; network address is ${ipv4Text(addr - (addr % 2 ** (32 - +m[2])))}/${m[2]}`);
+  return { lo: Number(c.lo), hi: Number(c.hi) };
 }
 
 export function parseNetworks(src) {
@@ -26,7 +26,7 @@ export function parseNetworks(src) {
     if (parent < 0 && ind > 0) fail(`${at}: top-level item must not be indented`);
     const it = { cidr: m[2] || "", name: m[3].trim(), depth: stack.length, parent, line: i + 1 };
     if (it.cidr) {
-      Object.assign(it, parseCidr(it.cidr, at));
+      Object.assign(it, parseTreeCidr(it.cidr, at));
       const anc = stack.map((s) => items[s.i]).reverse().find((a) => a.cidr);
       if (anc && (it.lo < anc.lo || it.hi > anc.hi)) fail(`${at}: ${it.cidr} is not inside its parent ${anc.cidr} (${anc.name})`);
       const dup = items.find((x) => x.cidr === it.cidr);

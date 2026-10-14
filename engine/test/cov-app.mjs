@@ -16,16 +16,26 @@ import * as diagrams from "../lib/diagrams.mjs";
 import * as zip from "../lib/zip.mjs";
 import * as files from "../lib/files.mjs";
 import * as layoutVersion from "../parse/layout-version.mjs";
+import * as browserApi from "../browser/api.mjs";
+import * as browserSession from "../browser/session.mjs";
+import * as browserFrameBridge from "../browser/frame-bridge.mjs";
+import * as browserDialogs from "../browser/dialogs.mjs";
+import * as browserDialogFlows from "../browser/dialog-flows.mjs";
+import * as browserEdits from "../browser/edits.mjs";
+import * as browserSave from "../browser/save.mjs";
 import { El, run, flush } from "./cov-dom.mjs";
 import { dataOf } from "./cov-canvas.mjs";
 import { demo } from "./helpers.mjs";
 
 export { flush };
 
+let renderFailure = null;
 const MODS = {
   "parse/toml-write.mjs": tomlWrite, "parse/networks-append.mjs": networksAppend, "parse/networks-name.mjs": networksName, "parse/toml.mjs": toml,
   "parse/types.mjs": types, "parse/new-diagram.mjs": newDiagram, "parse/import-servers.mjs": importServers, "lib/names.mjs": names, "lib/diagrams.mjs": diagrams,
-  "lib/zip.mjs": zip, "lib/files.mjs": files, "browser/render.mjs": { renderDiagram }, "parse/layout-version.mjs": layoutVersion,
+  "lib/zip.mjs": zip, "lib/files.mjs": files, "browser/render.mjs": { renderDiagram: (...args) => { if (renderFailure) throw renderFailure; return renderDiagram(...args); } }, "parse/layout-version.mjs": layoutVersion,
+  "browser/api.mjs": browserApi, "browser/session.mjs": browserSession, "browser/frame-bridge.mjs": browserFrameBridge, "browser/dialogs.mjs": browserDialogs,
+  "browser/dialog-flows.mjs": browserDialogFlows, "browser/edits.mjs": browserEdits, "browser/save.mjs": browserSave,
 };
 const IDS = ["new", "open", "importdiag", "diagfile", "save", "export", "import", "status", "view", "welcome", "op", "oplist", "opq", "opnote", "opclose", "nw", "nwname", "nwmsg", "nwlist", "nwok", "nwtaken", "nwcancel",
   "imp", "impfiles", "implist", "imptype", "impregion", "impinfo", "impok", "impcancel", "hs", "hstext", "hsnote", "hostscript", "hsd", "hsclose"];
@@ -35,6 +45,7 @@ export const file = (name, text, size) => ({ name, size: size ?? text.length, te
 export const binFile = (name, bytes) => ({ name, size: bytes.length, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) });
 
 export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoot = true, autoLoad = true, confirmAnswer = true } = {}) {
+  renderFailure = null;
   const dir = mkdtempSync(join(tmpdir(), "diag-app-"));
   const put = (name, text, mtime) => { const p = join(dir, ...name.split("/")); mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, text); if (mtime) utimesSync(p, mtime / 1000, mtime / 1000); };
   for (const [name, text] of Object.entries(files)) put(name, text, mtimes[name.split("/")[0]]);
@@ -77,7 +88,8 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
   const frame = els.view;
   frame.inert = false;
   let srcdoc = "";
-  const iframeDoc = { getElementById: (id) => ({ click: () => { h.ctl.editClicked++; } }) };
+  h.frameListeners = [];
+  const iframeDoc = { getElementById: (id) => ({ click: () => { h.ctl.editClicked++; } }), addEventListener: (type, f, capture) => { h.frameListeners.push({ type, f, capture }); } };
   frame.contentDocument = iframeDoc;
   const mkModules = (D) => ({
     "canvas/edit-mode": { isDirty: () => h.ctl.editDirty, currentLayout: () => structuredClone(h.ctl.layout ?? D.layout), commit: (l) => { h.ctl.commits.push(l); h.ctl.editDirty = false; } },
@@ -133,6 +145,7 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
     ASSETS: { cssSvg: "", cssPage: "", js: "" }, HOST_SCRIPT: "#!/bin/sh\necho probe\n", Option: class { constructor(text, value) { this.text = text; this.value = value; } }, structuredClone,
   });
   h.win = win;
+  h.failRender = (error = new Error("render failed")) => { renderFailure = error; };
   h.$ = (id) => els[id];
   h.status = () => els.status.textContent;
   h.statusError = () => els.status.classes.has("error");
@@ -154,7 +167,7 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
   h.start = async () => { run("browser/app.js", win); await flush(); };
   h.files = (folder) => Object.fromEntries(store.list().filter((f) => f.name.startsWith(folder + "/")).map((f) => [f.name, h.read(f.name)]));
   h.serverEditor = () => frame.contentWindow.InfraDiagram.serverEditor;
-  h.tick = async () => { h.intervals.forEach(([f]) => f()); await flush(); };
+  h.tick = async () => { h.frameListeners.filter((l) => l.type === "click").slice(-1).forEach((l) => l.f({})); await new Promise((r) => setTimeout(r, 5)); await flush(); };
   if (doBoot) await h.start();
   return h;
 }

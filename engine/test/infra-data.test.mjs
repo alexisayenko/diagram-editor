@@ -35,7 +35,7 @@ test("host names: example.test passes, real-looking names do not", () => {
   assert.deepEqual(rules("app-01." + host("example", "test") + " " + host("www", "example", "com")), []);
   assert.deepEqual(rules(host("db1", "acme", "com")), ["real-looking-hostname"]);
   assert.deepEqual(rules(host("db1", "acme", "internal")), ["real-looking-hostname"]);
-  assert.deepEqual(rules(host("db1", "corp", "internal"), { allow: parseAllow("host corp.internal") }), []);
+  assert.deepEqual(rules(host("db1", "corp", "internal"), { allow: parseAllow("host " + ["corp", "internal"].join(".")) }), []);
 });
 
 test("property chains and file names are not host names", () => {

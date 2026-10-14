@@ -6,6 +6,7 @@ import { prepareDiagram, renderDiagram } from "../browser/render.mjs";
 import { validateGeometry } from "../parse/validate.mjs";
 import { css, script } from "../page/assets.mjs";
 import { runInNewContext } from "node:vm";
+import { createFrameBridge } from "../browser/frame-bridge.mjs";
 import { demo as loadDemo, mod, withFile, without, mini } from "./helpers.mjs";
 
 const demo = loadDemo();
@@ -77,10 +78,14 @@ test("browser bundle uses the real renderer and embeds text safely", () => {
   assert.ok(!rendered.html.includes("<script>alert(1)</script>"));
 });
 test("browser app dirty check is safe before a diagram is ready", () => {
-  const app = readFileSync(new URL("../browser/app.js", import.meta.url), "utf8");
-  const src = app.split("\n").filter((l) => /^const (editor|notesApi|serverApi|drawApi|unsaved|dirty) = /.test(l)).join("\n");
-  const check = (ready, mods) => runInNewContext("let active = null;\n" + src + "\ndirty()", { ready, frame: { contentWindow: { InfraDiagram: { modules: mods } } } });
-  assert.equal(check(false, {}), false);
+  const check = (loaded, mods) => {
+    const handlers = [], frame = { addEventListener: (t, f) => handlers.push(f), contentWindow: { InfraDiagram: { modules: mods } }, contentDocument: { addEventListener() {} } };
+    const bridge = createFrameBridge(frame, { host: {}, onLoad() {}, onChange() {} });
+    bridge.show("<html>");
+    if (loaded) handlers.forEach((f) => f());
+    return bridge.isDirty();
+  };
+  assert.equal(check(false, { "canvas/edit-mode": { isDirty: () => true } }), false);
   assert.equal(check(true, {}), false);
   assert.equal(check(true, { "canvas/edit-mode": { isDirty: () => true } }), true);
 });
