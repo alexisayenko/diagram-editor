@@ -24,13 +24,18 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
     return b;
   }
 
+  function textInput(value, placeholder, label) {
+    var i = el("input");
+    i.type = "text";
+    i.value = value;
+    i.placeholder = placeholder;
+    i.spellcheck = false;
+    i.setAttribute("aria-label", label);
+    return i;
+  }
+
   function addRow(box, value, placeholder, label) {
-    var row = el("div", "sfr"), input = el("input");
-    input.type = "text";
-    input.value = value;
-    input.placeholder = placeholder;
-    input.spellcheck = false;
-    input.setAttribute("aria-label", label);
+    var row = el("div", "sfr"), input = textInput(value, placeholder, label);
     row.appendChild(input);
     row.appendChild(button("×", "sfx", function () { row.remove(); }));
     box.appendChild(row);
@@ -65,6 +70,67 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
     return l;
   }
 
+  function buildPicker(raw, pn, tg) {
+    var pick = el("div", "sfp");
+    pick.hidden = true;
+    (raw.types || []).forEach(function (t) {
+      var b = button(t.label.toUpperCase(), "tg", function (e) {
+        e.stopPropagation();
+        edit.type = t.id;
+        tg.setAttribute("data-ty", t.id);
+        pn.setAttribute("data-ty", t.id);
+        tg.textContent = t.label.toUpperCase() + edit.suffix;
+        pick.hidden = true;
+      });
+      b.setAttribute("data-ty", t.id);
+      pick.appendChild(b);
+    });
+    return pick;
+  }
+
+  function buildTexts(raw) {
+    TEXTS.forEach(function (t) {
+      field(t[1]);
+      var i = textInput(raw[t[0]] || "", t[2], t[1]);
+      edit.texts[t[0]] = i;
+      edit.form.appendChild(i);
+    });
+  }
+
+  function buildLists(raw) {
+    LISTS.forEach(function (l) {
+      field(l[1]);
+      var box = el("div", "sfb");
+      edit.lists[l[0]] = box;
+      (raw[l[0]] || []).forEach(function (v) { addRow(box, v, l[3], l[1]); });
+      edit.form.appendChild(box);
+      edit.form.appendChild(button(l[2], "sfa", function () { addRow(box, "", l[3], l[1]).focus(); }));
+    });
+  }
+
+  function buildNotes(raw) {
+    if (!raw.details) return;
+    field("Notes");
+    edit.notes = el("textarea");
+    edit.notes.value = raw.details;
+    edit.notes.rows = Math.min(14, Math.max(5, raw.details.split("\n").length + 1));
+    edit.notes.spellcheck = false;
+    edit.notes.setAttribute("aria-label", "Notes");
+    edit.form.appendChild(edit.notes);
+  }
+
+  function buildActions() {
+    var row = el("div", "sfrow");
+    edit.err = el("div", "sferr");
+    edit.err.setAttribute("role", "alert");
+    edit.err.hidden = true;
+    row.appendChild(button("Done", "sfd", commit));
+    row.appendChild(button("Cancel", "", cancel));
+    row.appendChild(el("span", "sfh", "Enter saves, Esc cancels"));
+    edit.form.appendChild(edit.err);
+    edit.form.appendChild(row);
+  }
+
   function openForm(key) {
     var raw = bridge().source(key.slice(2)), pn = $("pn");
     if (!raw) return;
@@ -74,61 +140,15 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
     tg.setAttribute("role", "button");
     tg.setAttribute("tabindex", "0");
     tg.title = "Click to change the server type";
-    edit.pick = el("div", "sfp");
-    edit.pick.hidden = true;
-    (raw.types || []).forEach(function (t) {
-      var b = button(t.label.toUpperCase(), "tg", function (e) {
-        e.stopPropagation();
-        edit.type = t.id;
-        tg.setAttribute("data-ty", t.id);
-        pn.setAttribute("data-ty", t.id);
-        tg.textContent = t.label.toUpperCase() + edit.suffix;
-        edit.pick.hidden = true;
-      });
-      b.setAttribute("data-ty", t.id);
-      edit.pick.appendChild(b);
-    });
+    edit.pick = buildPicker(raw, pn, tg);
     edit.name = el("input", "sname");
     edit.name.type = "text";
     edit.name.value = raw.name;
     edit.name.setAttribute("aria-label", "Server name");
-    TEXTS.forEach(function (t) {
-      field(t[1]);
-      var i = el("input");
-      i.type = "text";
-      i.value = raw[t[0]] || "";
-      i.placeholder = t[2];
-      i.spellcheck = false;
-      i.setAttribute("aria-label", t[1]);
-      edit.texts[t[0]] = i;
-      edit.form.appendChild(i);
-    });
-    LISTS.forEach(function (l) {
-      field(l[1]);
-      var box = el("div", "sfb");
-      edit.lists[l[0]] = box;
-      (raw[l[0]] || []).forEach(function (v) { addRow(box, v, l[3], l[1]); });
-      edit.form.appendChild(box);
-      edit.form.appendChild(button(l[2], "sfa", function () { addRow(box, "", l[3], l[1]).focus(); }));
-    });
-    if (raw.details) {
-      field("Notes");
-      edit.notes = el("textarea");
-      edit.notes.value = raw.details;
-      edit.notes.rows = Math.min(14, Math.max(5, raw.details.split("\n").length + 1));
-      edit.notes.spellcheck = false;
-      edit.notes.setAttribute("aria-label", "Notes");
-      edit.form.appendChild(edit.notes);
-    }
-    edit.err = el("div", "sferr");
-    edit.err.setAttribute("role", "alert");
-    edit.err.hidden = true;
-    var row = el("div", "sfrow");
-    row.appendChild(button("Done", "sfd", commit));
-    row.appendChild(button("Cancel", "", cancel));
-    row.appendChild(el("span", "sfh", "Enter saves, Esc cancels"));
-    edit.form.appendChild(edit.err);
-    edit.form.appendChild(row);
+    buildTexts(raw);
+    buildLists(raw);
+    buildNotes(raw);
+    buildActions();
     pn.replaceChildren(close, edit.name, tg, edit.pick, edit.form);
     edit.name.focus();
     panels.placeChrome();

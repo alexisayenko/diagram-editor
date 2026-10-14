@@ -622,31 +622,35 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
   function inline(s) {
     return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/\[([^\]]+)\]\((https?:\/\/[^)\s"]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   }
+  var HEADING = /^(#{1,6})\s+(\S.*)?$/, TABLE_ROW = /^\s*\|/, LIST_ITEM = /^\s*[-*]\s+/;
+  function mdCells(l) { return l.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map(function (c) { return c.trim(); }); }
+  function mdRow(cs, cell) {
+    return "<tr>" + cs.map(function (c) { return "<" + cell + ">" + inline(c) + "</" + cell + ">"; }).join("") + "</tr>";
+  }
+  function mdTable(rows) {
+    var body = rows.slice(/^[\s|:-]+$/.test(rows[1] || "") ? 2 : 1);
+    return "<table><thead>" + mdRow(mdCells(rows[0]), "th") + "</thead><tbody>" + body.map(function (r) { return mdRow(mdCells(r), "td"); }).join("") + "</tbody></table>";
+  }
+  function mdList(items) {
+    return "<ul>" + items.map(function (l) { return "<li>" + inline(l.replace(LIST_ITEM, "")) + "</li>"; }).join("") + "</ul>";
+  }
+  function mdRun(L, i, test) {
+    var run = [];
+    while (i < L.length && test(L[i])) { run.push(L[i]); i++; }
+    return run;
+  }
+  function mdParagraphLine(l) { return !!l.trim() && !HEADING.test(l) && !TABLE_ROW.test(l) && !LIST_ITEM.test(l); }
   function md(src) {
-    var L = src.split("\n"), o = [], i = 0;
-    function cells(l) { return l.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map(function (c) { return c.trim(); }); }
+    var L = src.split("\n"), o = [], i = 0, l, m, run;
     while (i < L.length) {
-      var l = L[i], m;
+      l = L[i];
       if (!l.trim()) { i++; continue; }
-      m = l.match(/^(#{1,6})\s+(.*)$/);
-      if (m) { o.push("<h" + m[1].length + ">" + inline(m[2]) + "</h" + m[1].length + ">"); i++; continue; }
-      if (/^\s*\|/.test(l)) {
-        var rows = [];
-        while (i < L.length && /^\s*\|/.test(L[i])) { rows.push(L[i]); i++; }
-        var h = cells(rows[0]), t = "<table><thead><tr>" + h.map(function (c) { return "<th>" + inline(c) + "</th>"; }).join("") + "</tr></thead><tbody>";
-        rows.slice(/^[\s|:-]+$/.test(rows[1] || "") ? 2 : 1).forEach(function (r) { t += "<tr>" + cells(r).map(function (c) { return "<td>" + inline(c) + "</td>"; }).join("") + "</tr>"; });
-        o.push(t + "</tbody></table>");
-        continue;
-      }
-      if (/^\s*[-*]\s+/.test(l)) {
-        var u = "<ul>";
-        while (i < L.length && /^\s*[-*]\s+/.test(L[i])) { u += "<li>" + inline(L[i].replace(/^\s*[-*]\s+/, "")) + "</li>"; i++; }
-        o.push(u + "</ul>");
-        continue;
-      }
-      var p = [];
-      while (i < L.length && L[i].trim() && !/^(#|\s*\||\s*[-*]\s)/.test(L[i])) { p.push(L[i]); i++; }
-      o.push("<p>" + inline(p.join(" ")) + "</p>");
+      m = l.match(HEADING);
+      if (m) { o.push("<h" + m[1].length + ">" + inline(m[2] || "") + "</h" + m[1].length + ">"); i++; continue; }
+      if (TABLE_ROW.test(l)) { run = mdRun(L, i, function (x) { return TABLE_ROW.test(x); }); o.push(mdTable(run)); }
+      else if (LIST_ITEM.test(l)) { run = mdRun(L, i, function (x) { return LIST_ITEM.test(x); }); o.push(mdList(run)); }
+      else { run = mdRun(L, i, mdParagraphLine); o.push("<p>" + inline(run.join(" ")) + "</p>"); }
+      i += run.length;
     }
     return o.join("");
   }
@@ -713,7 +717,7 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
     if (!cells?.length) return;
     var d = document.createElement("div");
     d.className = "hws";
-    d.textContent = cells.map(function (c) { return c[1] + " " + c[0]; }).join(" 00b7 ");
+    d.textContent = cells.map(function (c) { return c[1] + " " + c[0]; }).join(" · ");
     var t = pn.querySelector("table");
     if (t) t.parentNode.insertBefore(d, t.nextSibling);
     else pn.insertBefore(d, pn.querySelector(".tg").nextSibling);
@@ -773,6 +777,20 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     }
     return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
   }
+  function dividerHtml(y, W) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; }
+  function nodeDividers(m, g, nb, hwY, W) {
+    var h = "", below = !!(m.hw || m.os || g.ip.length);
+    if (m.nj && nb > m.nj) h += dividerHtml(8 + 16 * m.nj, W);
+    if (nb && below) h += dividerHtml(8 + 16 * nb, W);
+    if (m.hw && (m.os || g.ip.length)) h += dividerHtml(hwY + 6, W);
+    if (m.os && g.ip.length) h += dividerHtml(g.ip[0][1] - g.y - 12.5, W);
+    return h;
+  }
+  function ipPills(g, ipw, S) {
+    return g.ip.map(function (p, k) {
+      return '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x - 5) + '" y="' + (p[1] - g.y - 11) + '" width="' + Math.round(ipw[k] + 10) + '" height="15" rx="' + ({ clean: 8, dark: 3 }[S] ?? 0) + '"/>';
+    }).join("");
+  }
   function nodeChrome(id) {
     var S = ctx.style, g = hooks.viewNode ? hooks.viewNode(id, D.layout.nodes[id]) : D.layout.nodes[id], e = D.ent["n:" + id], ix = D.idx.nodes[id];
     var tl = TEXT_X;
@@ -790,16 +808,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     var h = frameHtml(S, W, bottom, HH);
     h += '<g class="ic" transform="translate(' + (W - 22.8) + ' -16.8) scale(.85)">' + icon(e.db ? "db" : "server") + "</g>";
     h += hw;
-    var dv = function (y) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; };
-    var below = !!(m.hw || m.os || g.ip.length);
-    if (m.nj && nb > m.nj) h += dv(8 + 16 * m.nj);
-    if (nb && below) h += dv(8 + 16 * nb);
-    if (m.hw && (m.os || g.ip.length)) h += dv(hwY + 6);
-    if (m.os && g.ip.length) h += dv(g.ip[0][1] - g.y - 12.5);
-    g.ip.forEach(function (p, k) {
-      var w = Math.round(ipw[k] + 10);
-      h += '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x - 5) + '" y="' + (p[1] - g.y - 11) + '" width="' + w + '" height="15" rx="' + ({ clean: 8, dark: 3 }[S] ?? 0) + '"/>';
-    });
+    h += nodeDividers(m, g, nb, hwY, W) + ipPills(g, ipw, S);
     return h;
   }
 
@@ -1673,13 +1682,18 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
     return b;
   }
 
+  function textInput(value, placeholder, label) {
+    var i = el("input");
+    i.type = "text";
+    i.value = value;
+    i.placeholder = placeholder;
+    i.spellcheck = false;
+    i.setAttribute("aria-label", label);
+    return i;
+  }
+
   function addRow(box, value, placeholder, label) {
-    var row = el("div", "sfr"), input = el("input");
-    input.type = "text";
-    input.value = value;
-    input.placeholder = placeholder;
-    input.spellcheck = false;
-    input.setAttribute("aria-label", label);
+    var row = el("div", "sfr"), input = textInput(value, placeholder, label);
     row.appendChild(input);
     row.appendChild(button("×", "sfx", function () { row.remove(); }));
     box.appendChild(row);
@@ -1714,6 +1728,67 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
     return l;
   }
 
+  function buildPicker(raw, pn, tg) {
+    var pick = el("div", "sfp");
+    pick.hidden = true;
+    (raw.types || []).forEach(function (t) {
+      var b = button(t.label.toUpperCase(), "tg", function (e) {
+        e.stopPropagation();
+        edit.type = t.id;
+        tg.setAttribute("data-ty", t.id);
+        pn.setAttribute("data-ty", t.id);
+        tg.textContent = t.label.toUpperCase() + edit.suffix;
+        pick.hidden = true;
+      });
+      b.setAttribute("data-ty", t.id);
+      pick.appendChild(b);
+    });
+    return pick;
+  }
+
+  function buildTexts(raw) {
+    TEXTS.forEach(function (t) {
+      field(t[1]);
+      var i = textInput(raw[t[0]] || "", t[2], t[1]);
+      edit.texts[t[0]] = i;
+      edit.form.appendChild(i);
+    });
+  }
+
+  function buildLists(raw) {
+    LISTS.forEach(function (l) {
+      field(l[1]);
+      var box = el("div", "sfb");
+      edit.lists[l[0]] = box;
+      (raw[l[0]] || []).forEach(function (v) { addRow(box, v, l[3], l[1]); });
+      edit.form.appendChild(box);
+      edit.form.appendChild(button(l[2], "sfa", function () { addRow(box, "", l[3], l[1]).focus(); }));
+    });
+  }
+
+  function buildNotes(raw) {
+    if (!raw.details) return;
+    field("Notes");
+    edit.notes = el("textarea");
+    edit.notes.value = raw.details;
+    edit.notes.rows = Math.min(14, Math.max(5, raw.details.split("\n").length + 1));
+    edit.notes.spellcheck = false;
+    edit.notes.setAttribute("aria-label", "Notes");
+    edit.form.appendChild(edit.notes);
+  }
+
+  function buildActions() {
+    var row = el("div", "sfrow");
+    edit.err = el("div", "sferr");
+    edit.err.setAttribute("role", "alert");
+    edit.err.hidden = true;
+    row.appendChild(button("Done", "sfd", commit));
+    row.appendChild(button("Cancel", "", cancel));
+    row.appendChild(el("span", "sfh", "Enter saves, Esc cancels"));
+    edit.form.appendChild(edit.err);
+    edit.form.appendChild(row);
+  }
+
   function openForm(key) {
     var raw = bridge().source(key.slice(2)), pn = $("pn");
     if (!raw) return;
@@ -1723,61 +1798,15 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
     tg.setAttribute("role", "button");
     tg.setAttribute("tabindex", "0");
     tg.title = "Click to change the server type";
-    edit.pick = el("div", "sfp");
-    edit.pick.hidden = true;
-    (raw.types || []).forEach(function (t) {
-      var b = button(t.label.toUpperCase(), "tg", function (e) {
-        e.stopPropagation();
-        edit.type = t.id;
-        tg.setAttribute("data-ty", t.id);
-        pn.setAttribute("data-ty", t.id);
-        tg.textContent = t.label.toUpperCase() + edit.suffix;
-        edit.pick.hidden = true;
-      });
-      b.setAttribute("data-ty", t.id);
-      edit.pick.appendChild(b);
-    });
+    edit.pick = buildPicker(raw, pn, tg);
     edit.name = el("input", "sname");
     edit.name.type = "text";
     edit.name.value = raw.name;
     edit.name.setAttribute("aria-label", "Server name");
-    TEXTS.forEach(function (t) {
-      field(t[1]);
-      var i = el("input");
-      i.type = "text";
-      i.value = raw[t[0]] || "";
-      i.placeholder = t[2];
-      i.spellcheck = false;
-      i.setAttribute("aria-label", t[1]);
-      edit.texts[t[0]] = i;
-      edit.form.appendChild(i);
-    });
-    LISTS.forEach(function (l) {
-      field(l[1]);
-      var box = el("div", "sfb");
-      edit.lists[l[0]] = box;
-      (raw[l[0]] || []).forEach(function (v) { addRow(box, v, l[3], l[1]); });
-      edit.form.appendChild(box);
-      edit.form.appendChild(button(l[2], "sfa", function () { addRow(box, "", l[3], l[1]).focus(); }));
-    });
-    if (raw.details) {
-      field("Notes");
-      edit.notes = el("textarea");
-      edit.notes.value = raw.details;
-      edit.notes.rows = Math.min(14, Math.max(5, raw.details.split("\n").length + 1));
-      edit.notes.spellcheck = false;
-      edit.notes.setAttribute("aria-label", "Notes");
-      edit.form.appendChild(edit.notes);
-    }
-    edit.err = el("div", "sferr");
-    edit.err.setAttribute("role", "alert");
-    edit.err.hidden = true;
-    var row = el("div", "sfrow");
-    row.appendChild(button("Done", "sfd", commit));
-    row.appendChild(button("Cancel", "", cancel));
-    row.appendChild(el("span", "sfh", "Enter saves, Esc cancels"));
-    edit.form.appendChild(edit.err);
-    edit.form.appendChild(row);
+    buildTexts(raw);
+    buildLists(raw);
+    buildNotes(raw);
+    buildActions();
     pn.replaceChildren(close, edit.name, tg, edit.pick, edit.form);
     edit.name.focus();
     panels.placeChrome();
@@ -2063,17 +2092,45 @@ InfraDiagram.define("canvas/geometry", [], function () {
       return st;
     }
 
-    // A* over (grid point, heading); cost = length (x region / hug penalties) + bends. starts / goals: {p, d, c}.
-    function search(G, starts, goals, home) {
-      var n = G.nx * G.ny * 4;
+    function searchBuffers(n) {
       if (cache.n < n) {
         cache.n = n;
         cache.dist = new Float64Array(n);
         cache.prev = new Int32Array(n);
       }
+      cache.dist.fill(Infinity, 0, n);
+      cache.prev.fill(-1, 0, n);
+    }
+    // Relaxes the moves out of state st (point p, heading d, cost d0): improved neighbours are queued.
+    function expand(G, st, d0, h, heap, home) {
+      var dist = cache.dist, prev = cache.prev, p = Math.floor(st / 4), d = st % 4, i = Math.floor(p / G.ny), j = p % G.ny;
+      for (var d2 = 0; d2 < 4; d2++) {
+        if (d2 === (d + 2) % 4) continue;
+        var mv = step(G, p, i, j, d, d2, home);
+        if (!mv) continue;
+        var st2 = mv.p2 * 4 + d2, nd = d0 + mv.cost;
+        if (nd < dist[st2]) {
+          dist[st2] = nd;
+          prev[st2] = st;
+          heapPush(heap, nd + h(mv.p2), st2);
+        }
+      }
+    }
+    function traceBack(G, starts, best) {
+      var prev = cache.prev, pts = [];
+      for (var s2 = best.st; s2 >= 0; s2 = prev[s2]) {
+        var pp = Math.floor(s2 / 4);
+        pts.unshift([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]);
+      }
+      var origin = firstState(prev, best.st);
+      var first = starts.find(function (s) { return s.p * 4 + s.d === origin; });
+      return { pts: pts, start: first, goal: best.goal, cost: best.cost };
+    }
+
+    // A* over (grid point, heading); cost = length (x region / hug penalties) + bends. starts / goals: {p, d, c}.
+    function search(G, starts, goals, home) {
+      searchBuffers(G.nx * G.ny * 4);
       var dist = cache.dist, prev = cache.prev;
-      dist.fill(Infinity, 0, n);
-      prev.fill(-1, 0, n);
       var goalAt = {}, hx = [], heap = [];
       goals.forEach(function (g) {
         goalAt[g.p] = goalAt[g.p] || [];
@@ -2098,28 +2155,9 @@ InfraDiagram.define("canvas/geometry", [], function () {
           var total = d0 + turnCost(g.d, d) + g.c;
           if (total < best.cost) best = { cost: total, st: st, goal: g };
         }
-        var i = Math.floor(p / G.ny), j = p % G.ny;
-        for (var d2 = 0; d2 < 4; d2++) {
-          if (d2 === (d + 2) % 4) continue;
-          var mv = step(G, p, i, j, d, d2, home);
-          if (!mv) continue;
-          var st2 = mv.p2 * 4 + d2, nd = d0 + mv.cost;
-          if (nd < dist[st2]) {
-            dist[st2] = nd;
-            prev[st2] = st;
-            heapPush(heap, nd + h(mv.p2), st2);
-          }
-        }
+        expand(G, st, d0, h, heap, home);
       }
-      if (best.st < 0) return null;
-      var pts = [];
-      for (var s2 = best.st; s2 >= 0; s2 = prev[s2]) {
-        var pp = Math.floor(s2 / 4);
-        pts.unshift([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]);
-      }
-      var origin = firstState(prev, best.st);
-      var first = starts.find(function (s) { return s.p * 4 + s.d === origin; });
-      return { pts: pts, start: first, goal: best.goal, cost: best.cost };
+      return best.st < 0 ? null : traceBack(G, starts, best);
     }
 
     // Port on side sd (0 right, 1 bottom, 2 left, 3 top; = outward heading) at position v along the side.
@@ -2546,7 +2584,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     var s = clone(from), id = key.slice(2), m = D.meta.nodes[id];
     move(s, key, dx, dy);
     if (key.charAt(0) === "c") (D.kids[id] || []).forEach(function (n) { move(s, "n:" + n, dx, dy); });
-    else if (m && m.cl) geometry.fitRegion(s, D.meta, m.cl, from.clusters[m.cl], skins.widths());
+    else if (m?.cl) geometry.fitRegion(s, D.meta, m.cl, from.clusters[m.cl], skins.widths());
     return s;
   }
 
@@ -3074,27 +3112,32 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     try { svg.setPointerCapture(e.pointerId); } catch (error_) { /* capture is optional */ }
   });
 
+  function snapSide(r, side, dx, dy) {
+    if (side.includes("w")) dx = snapDelta(r.x, dx);
+    if (side.includes("e")) dx = snapDelta(r.x + r.w, dx);
+    if (side.includes("n")) dy = snapDelta(r.y, dy);
+    if (side.includes("s")) dy = snapDelta(r.y + r.h, dy);
+    return [dx, dy];
+  }
+
+  function dragState(e, dx, dy) {
+    var snap = $("ts").checked && !e.shiftKey, regionId = drag.key.slice(2);
+    if (drag.side) {
+      if (snap) [dx, dy] = snapSide(drag.from.clusters[regionId], drag.side, dx, dy);
+      return model.resize(drag.from, regionId, drag.side, dx, dy);
+    }
+    if (snap) {
+      var o = origin(drag.from, drag.key);
+      dx = snapDelta(o.x, dx);
+      dy = snapDelta(o.y, dy);
+    }
+    return model.apply(drag.from, drag.key, dx, dy);
+  }
+
   svg.addEventListener("pointermove", function (e) {
     if (!drag || e.pointerId !== drag.id) return;
     var p = model.point(e);
-    var dx = Math.round(p.x - drag.x), dy = Math.round(p.y - drag.y);
-    if (drag.side) {
-      var r = drag.from.clusters[drag.key.slice(2)], sn = $("ts").checked && !e.shiftKey, sd = drag.side;
-      if (sn) {
-        if (sd.includes("w")) dx = snapDelta(r.x, dx);
-        if (sd.includes("e")) dx = snapDelta(r.x + r.w, dx);
-        if (sd.includes("n")) dy = snapDelta(r.y, dy);
-        if (sd.includes("s")) dy = snapDelta(r.y + r.h, dy);
-      }
-      state.st = model.resize(drag.from, drag.key.slice(2), sd, dx, dy);
-    } else {
-      if ($("ts").checked && !e.shiftKey) {
-        var o = origin(drag.from, drag.key);
-        dx = snapDelta(o.x, dx);
-        dy = snapDelta(o.y, dy);
-      }
-      state.st = model.apply(drag.from, drag.key, dx, dy);
-    }
+    state.st = dragState(e, Math.round(p.x - drag.x), Math.round(p.y - drag.y));
     // Routing runs once per frame, not per pointer event.
     if (!frame) frame = requestAnimationFrame(function () { frame = 0; model.render(state.st); });
   });

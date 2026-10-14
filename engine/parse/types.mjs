@@ -27,8 +27,7 @@ export function mergeTypes(custom = []) {
   return out;
 }
 
-export function resolveTypes({ clusters, nodes, classDefs, classes, types }, layout, proposedLabel) {
-  const TYPES = mergeTypes(types);
+function classDefColors(classDefs, TYPES) {
   const typeColors = {};
   for (const [name, def] of classDefs) {
     if (MODS.has(name)) continue;
@@ -37,20 +36,32 @@ export function resolveTypes({ clusters, nodes, classDefs, classes, types }, lay
     if (!m) fail(`classDef "${name}" has no stroke:#rrggbb colour`);
     typeColors[name] = m[1];
   }
+  return typeColors;
+}
+
+function classProblems(key, cls, TYPES, typeColors) {
+  const problems = [], tys = cls.filter((c) => TYPES[c]), unknown = cls.filter((c) => !TYPES[c] && !MODS.has(c));
+  if (unknown.length) problems.push(`${key}: unknown class ${unknown.join(", ")}`);
+  if (tys.length !== 1) {
+    const has = tys.length ? tys.join(",") : "none";
+    problems.push(`${key}: needs exactly one server type class (${Object.keys(TYPES).join("/")}), has ${has}`);
+  }
+  if (tys[0] && !typeColors[tys[0]]) problems.push(`${key}: server type "${tys[0]}" has no classDef in diagram.mmd`);
+  return problems;
+}
+
+export function resolveTypes({ clusters, nodes, classDefs, classes, types }, layout, proposedLabel) {
+  const TYPES = mergeTypes(types);
+  const typeColors = classDefColors(classDefs, TYPES);
 
   if (types) for (const k of Object.keys(TYPES)) typeColors[k] ||= TYPES[k].color;
   const ent = {};
   const typeProblems = [];
   const addEnt = (key, id, base) => {
     const cls = classes.get(id) || [];
-    const tys = cls.filter((c) => TYPES[c]);
-    const mods = cls.filter((c) => MODS.has(c));
-    const unknown = cls.filter((c) => !TYPES[c] && !MODS.has(c));
-    if (unknown.length) typeProblems.push(`${key}: unknown class ${unknown.join(", ")}`);
-    if (tys.length !== 1) typeProblems.push(`${key}: needs exactly one server type class (${Object.keys(TYPES).join("/")}), has ${tys.length ? tys.join(",") : "none"}`);
-    const ty = tys[0];
-    if (ty && !typeColors[ty]) typeProblems.push(`${key}: server type "${ty}" has no classDef in diagram.mmd`);
-    const prop = mods.includes("proposed");
+    typeProblems.push(...classProblems(key, cls, TYPES, typeColors));
+    const ty = cls.filter((c) => TYPES[c])[0];
+    const prop = cls.includes("proposed");
     const tag = ty ? TYPES[ty].tag + (prop ? " · PROPOSED" : "") : "";
     ent[key] = { ...base, ty, prop, tk: prop ? "proposed" : ty, tag };
   };

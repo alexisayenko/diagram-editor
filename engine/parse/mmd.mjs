@@ -4,9 +4,25 @@ const IP = /^(\d{1,3}(?:\.\d{1,3}){3}\/\d+)/;
 const FW = /·\s*firewall$/;
 const ENT = { quot: '"', amp: "&", lt: "<", gt: ">" };
 // Mermaid entity codes (#quot;, #35;) become plain characters in the view and details.
-const decode = (s) => s.replace(/#(\w+);/g, (m, c) => (/^\d+$/.test(c) ? String.fromCharCode(+c) : ENT[c] ?? m));
+const decode = (s) => s.replace(/#(\w+);/g, (m, c) => (/^\d+$/.test(c) ? String.fromCodePoint(+c) : ENT[c] ?? m));
 
 export const edgeKey = (e) => `${e.from}>${e.to}`;
+
+function nodeEntry(line, lineNo, cluster) {
+  const m = /^(\w+)(\[\(|\[)"(.*)"(\)\]|\])$/.exec(line);
+  if (!m) fail(`diagram.mmd:${lineNo}: unsupported syntax: ${line}`);
+  const parts = m[3].split(/<br\s*\/?>/).map(decode);
+  const title = parts.shift();
+  const body = [];
+  const ip = [];
+  for (const p of parts) {
+    const mm = IP.exec(p);
+    if (mm) ip.push(mm[1]);
+    else if (ip.length) fail(`diagram.mmd:${lineNo}: text line "${p}" after IP lines in node ${m[1]}`);
+    else body.push(p);
+  }
+  return [m[1], { id: m[1], db: m[2] === "[(", title, body, ip, cluster }];
+}
 
 export function parseMmd(src) {
   const clusters = new Map();
@@ -52,19 +68,7 @@ export function parseMmd(src) {
       edges.push({ from: m[1], to: m[4], label: fw ? label.slice(0, fw.index).trimEnd() : label, fw: !!fw, dashed: m[2] === "-.->" });
       return;
     }
-    m = /^(\w+)(\[\(|\[)"(.*)"(\)\]|\])$/.exec(line);
-    if (!m) fail(`diagram.mmd:${i + 1}: unsupported syntax: ${line}`);
-    const parts = m[3].split(/<br\s*\/?>/).map(decode);
-    const title = parts.shift();
-    const body = [];
-    const ip = [];
-    for (const p of parts) {
-      const mm = IP.exec(p);
-      if (mm) ip.push(mm[1]);
-      else if (ip.length) fail(`diagram.mmd:${i + 1}: text line "${p}" after IP lines in node ${m[1]}`);
-      else body.push(p);
-    }
-    nodes.set(m[1], { id: m[1], db: m[2] === "[(", title, body, ip, cluster: current });
+    nodes.set(...nodeEntry(line, i + 1, current));
   });
   return { clusters, nodes, edges, linkStyles, classDefs, classes };
 }

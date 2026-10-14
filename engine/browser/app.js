@@ -27,6 +27,7 @@ const serverApi = () => ready ? frame.contentWindow.InfraDiagram?.modules["ui/se
 const drawApi = () => ready ? frame.contentWindow.InfraDiagram?.modules["canvas/draw"] : null;
 const unsaved = () => !!active && (JSON.stringify([...active.work]) !== JSON.stringify([...active.source]) || active.carryLayout || (notesApi() ? JSON.stringify(notesApi().texts()) !== JSON.stringify(active.notes) : false));
 const dirty = () => editor()?.isDirty() || notesApi()?.isDirty() || serverApi()?.isDirty() || drawApi()?.isDirty() || unsaved() || false;
+const notesEdited = (texts) => JSON.stringify(texts) !== JSON.stringify(active.notes);
 const plural = (n) => (n === 1 ? "" : "s");
 function message(text, error = false) { status.textContent = text; status.classList.toggle("error", error); }
 function controls() {
@@ -183,21 +184,18 @@ async function importArchive(file) {
   } catch (e) { message(e.message, true); }
   finally { busy = false; controls(); }
 }
+const openArchive = (file) => importArchive(file).catch((e) => message(e.message, true));
 diagButton.addEventListener("click", () => diagFile.click());
 diagFile.addEventListener("change", () => {
   const f = diagFile.files[0];
   diagFile.value = "";
-  if (f) {
-    importArchive(f).catch((e) => message(e.message, true));
-  }
+  if (f) openArchive(f);
 });
 window.addEventListener("dragover", (e) => { if (e.dataTransfer?.types?.includes("Files")) e.preventDefault(); });
 window.addEventListener("drop", (e) => {
   if (!e.dataTransfer?.files?.length) return;
   e.preventDefault();
-  if (!busy) {
-    importArchive(e.dataTransfer.files[0]).catch((err) => message(err.message, true));
-  }
+  if (!busy) openArchive(e.dataTransfer.files[0]);
 });
 const serverPath = (id) => `servers/${id}.toml`;
 function serverSource(id) {
@@ -207,7 +205,7 @@ function serverSource(id) {
   return { ...s, name: s.name ?? s.id, server_type: s.server_type ?? region?.server_type, types: Object.entries(types).map(([tid, t]) => ({ id: tid, label: t.label })) };
 }
 function applyServer(id, fields) {
-  const open = notesApi().finish();
+  const open = notesApi()?.finish();
   if (open) return "Fix the note first: " + open;
   try {
     const path = serverPath(id), text = active.work.get(path);
@@ -217,10 +215,14 @@ function applyServer(id, fields) {
     return null;
   } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
 }
-function addNewServer(region, x, y) {
-  const open = notesApi().finish() || serverApi().finish();
-  if (open) return "Fix the open edit first: " + open;
+const editBlocked = () => {
   if (!ready) return "Try again once the diagram has reloaded.";
+  const open = notesApi().finish() || serverApi().finish();
+  return open ? "Fix the open edit first: " + open : null;
+};
+function addNewServer(region, x, y) {
+  const blocked = editBlocked();
+  if (blocked) return blocked;
   try {
     const generic = mergeTypes(mergeFolder(active.work).server_types).server ? "server" : undefined;
     const { path, text, id } = addServer(active.work, region ? { region } : { server_type: generic });
@@ -229,9 +231,8 @@ function addNewServer(region, x, y) {
   } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
 }
 function duplicateExisting(id) {
-  const open = notesApi().finish() || serverApi().finish();
-  if (open) return "Fix the open edit first: " + open;
-  if (!ready) return "Try again once the diagram has reloaded.";
+  const blocked = editBlocked();
+  if (blocked) return blocked;
   try {
     const { path, text, id: copy } = duplicateServer(active.work, id), from = editor().currentLayout().nodes[id];
     rerender(path, text, copy, from ? [Math.round(from.x) + 30, Math.round(from.y) + 30] : undefined);
@@ -240,9 +241,8 @@ function duplicateExisting(id) {
 }
 function regionTypes() { return freeRegionTypes(active.work); }
 function addNewRegion(type, x, y) {
-  const open = notesApi().finish() || serverApi().finish();
-  if (open) return "Fix the open edit first: " + open;
-  if (!ready) return "Try again once the diagram has reloaded.";
+  const blocked = editBlocked();
+  if (blocked) return blocked;
   try {
     const { path, text, id } = addRegion(active.work, { server_type: type });
     rerender(path, text, id, null, { key: "c:" + id, region: { x, y, w: REGION_W, h: REGION_H, title: [x + REGION_W / 2, y + 20] } });
@@ -250,9 +250,8 @@ function addNewRegion(type, x, y) {
   } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
 }
 function moveToRegion(id, region) {
-  const open = notesApi().finish() || serverApi().finish();
-  if (open) return "Fix the open edit first: " + open;
-  if (!ready) return "Try again once the diagram has reloaded.";
+  const blocked = editBlocked();
+  if (blocked) return blocked;
   try {
     const { path, text } = moveServer(active.work, id, region);
     if (text !== active.work.get(path)) rerender(path, text, id);
@@ -260,9 +259,8 @@ function moveToRegion(id, region) {
   } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
 }
 function renameNetwork(cidr, name) {
-  const open = notesApi().finish() || serverApi().finish();
-  if (open) return "Fix the open edit first: " + open;
-  if (!ready) return "Try again once the diagram has reloaded.";
+  const blocked = editBlocked();
+  if (blocked) return blocked;
   try {
     const clean = normalizeName(name), prev = active.work.get(NETWORKS) ?? null, next = setNetworkName(prev, cidr, clean);
     if (next === prev) return null;
@@ -281,7 +279,7 @@ function rerender(path, next, id, at, extra = {}) {
 }
 function rerenderMany(added, places, ids, key, extra = {}) {
   const api = editor(), notes = notesApi(), texts = notes.texts();
-  const edited = JSON.stringify(texts) !== JSON.stringify(active.notes);
+  const edited = notesEdited(texts);
   const work = new Map([...active.work, ...added]);
   const layout = { ...api.currentLayout(), drawings: drawApi().list() };
   for (const [id, at] of Object.entries(places)) layout.nodes[id] = { x: at[0], y: at[1], w: 1, h: 1, title: at.slice() };
@@ -304,7 +302,7 @@ function pending() {
   const api = editor(), notes = notesApi();
   const open = notes.finish();
   if (open) throw new Error("Fix the note first: " + open);
-  const texts = notes.texts(), notesChanged = JSON.stringify(texts) !== JSON.stringify(active.notes);
+  const texts = notes.texts(), notesChanged = notesEdited(texts);
   const layout = api.currentLayout(), drawings = drawApi().list();
   const files = notesChanged ? withNotes(active.work, texts) : active.work;
   const changed = [...files].filter(([p, t]) => active.source.get(p) !== t && (p !== NETWORKS || active.fresh)).map(([p]) => p);
@@ -333,38 +331,50 @@ async function syncNetworks() {
     } catch (e) { if (e.status !== 409 || attempt) return { count: 0, renamed: 0, error: e.message }; }
   }
 }
-saveButton.addEventListener("click", async () => {
+async function confirmReplace() {
+  if (!active.fresh || !serverOk || await stored(active.folder + "/topology.toml") === null) return false;
+  return window.confirm(`Replace the saved diagram ${active.folder}?`) ? true : null;
+}
+function saveFiles(p, replace) {
+  const prefix = active.folder + "/";
+  const guard = (base) => replace ? { overwrite: true } : { base };
+  const files = [{ name: active.layoutName, text: p.layoutText, ...guard(active.text) }];
+  for (const path of p.changed) files.push({ name: prefix + path, text: p.files.get(path), ...guard(active.source.get(path) ?? null) });
+  return files;
+}
+function saveMessage(p, net) {
+  const saved = p.changed.length ? `Saved ${active.layoutName} and ${p.changed.length} file(s) in local/${active.folder}/` : `Saved ${active.layoutName} in local/`;
+  const added = net.count ? ` · ${net.count} new networks added to networks.toml` : "";
+  const renamedNote = net.renamed ? ` · ${net.renamed} network name${plural(net.renamed)} saved to networks.toml` : "";
+  const failed = net.error ? ` · networks.toml not updated: ${net.error}` : "";
+  return saved + added + renamedNote + failed;
+}
+function saveFailure(p, e) {
+  if (!p || !e.saved?.length) { message("Save failed: " + e.message, true); return; }
+  afterSave(p, e.saved);
+  const left = [active.layoutName, ...p.changed.map((c) => active.folder + "/" + c)].filter((n) => !e.saved.includes(n));
+  message(`Saved ${e.saved.join(", ")}. ${e.message} Not saved: ${left.join(", ")}.`, true);
+}
+async function runSave(ctx) {
+  await settle();
+  const p = ctx.p = pending(), replace = await confirmReplace();
+  if (replace === null) return;
+  const files = saveFiles(p, replace);
+  await putFiles(files);
+  active.fresh = false;
+  afterSave(p, files.map((f) => f.name));
+  const net = await syncNetworks().catch((e) => ({ count: 0, error: e.message }));
+  message(saveMessage(p, net), !!net.error);
+}
+async function saveClick() {
   if (!editor()) return;
   busy = true; controls();
-  let p = null;
-  try {
-    await settle();
-    p = pending();
-    let replace = false;
-    if (active.fresh && serverOk && await stored(active.folder + "/topology.toml") !== null) {
-      if (!window.confirm(`Replace the saved diagram ${active.folder}?`)) return;
-      replace = true;
-    }
-    const prefix = active.folder + "/", files = [replace ? { name: active.layoutName, text: p.layoutText, overwrite: true } : { name: active.layoutName, text: p.layoutText, base: active.text }];
-    for (const path of p.changed) files.push(replace ? { name: prefix + path, text: p.files.get(path), overwrite: true } : { name: prefix + path, text: p.files.get(path), base: active.source.get(path) ?? null });
-    await putFiles(files);
-    active.fresh = false;
-    afterSave(p, files.map((f) => f.name));
-    const net = await syncNetworks().catch((e) => ({ count: 0, error: e.message }));
-    const saved = p.changed.length ? `Saved ${active.layoutName} and ${p.changed.length} file(s) in local/${active.folder}/` : `Saved ${active.layoutName} in local/`;
-    const added = net.count ? ` · ${net.count} new networks added to networks.toml` : "";
-    const renamedNote = net.renamed ? ` · ${net.renamed} network name${plural(net.renamed)} saved to networks.toml` : "";
-    const failed = net.error ? ` · networks.toml not updated: ${net.error}` : "";
-    message(saved + added + renamedNote + failed, !!net.error);
-  } catch (e) {
-    if (p && e.saved?.length) {
-      afterSave(p, e.saved);
-      const left = [active.layoutName, ...p.changed.map((c) => active.folder + "/" + c)].filter((n) => !e.saved.includes(n));
-      message(`Saved ${e.saved.join(", ")}. ${e.message} Not saved: ${left.join(", ")}.`, true);
-    } else message("Save failed: " + e.message, true);
-  }
+  const ctx = { p: null };
+  try { await runSave(ctx); }
+  catch (e) { saveFailure(ctx.p, e); }
   finally { busy = false; controls(); }
-});
+}
+saveButton.addEventListener("click", saveClick);
 function afterSave(p, names) {
   if (names.includes(active.layoutName)) { active.text = p.layoutText; p.api.commit(p.layout); drawApi().markSaved(); active.hadDrawings = active.hadDrawings || p.drawings.length > 0; active.carryLayout = false; }
   for (const path of p.changed) {
@@ -380,7 +390,7 @@ function download(name, bytes, type) {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
-exportButton.addEventListener("click", async () => {
+async function exportClick() {
   if (!editor()) return;
   try {
     await settle();
@@ -388,7 +398,8 @@ exportButton.addEventListener("click", async () => {
     download(name, await packDiagram(p.files, p.layoutText), "application/zip");
     message(`Exported ${name} (${p.files.size + 1} files) to your downloads`);
   } catch (e) { message("Export failed: " + e.message, true); }
-});
+}
+exportButton.addEventListener("click", exportClick);
 const impPanel = document.querySelector("#imp"), impFiles = document.querySelector("#impfiles"), impList = document.querySelector("#implist"), impType = document.querySelector("#imptype"), impRegion = document.querySelector("#impregion"), impInfo = document.querySelector("#impinfo"), impOk = document.querySelector("#impok");
 let impEntries = [], impPlan = null;
 function impClose() { impPanel.hidden = true; impPlan = null; controls(); importButton.focus(); }
@@ -399,7 +410,15 @@ function impRender() {
   impPlan = planImport(active.work, impEntries, { server_type: impType.value, region: region || undefined, skip });
   impList.textContent = "";
   for (const row of impPlan.rows) {
-    const li = document.createElement("li"), label = document.createElement("label"), box = document.createElement("input"), text = document.createElement("span");
+    impList.append(impRow(row));
+  }
+  const n = impPlan.files.size;
+  impInfo.textContent = n ? `${n} server${plural(n)} will be added` : "Nothing selected";
+  impOk.disabled = !n;
+}
+function impRow(row) {
+  const li = document.createElement("li"), label = document.createElement("label"), box = document.createElement("input"), text = document.createElement("span");
+  {
     box.type = "checkbox"; box.dataset.file = row.file; box.checked = row.included && !row.error; box.disabled = !!row.error;
     box.addEventListener("change", impRender);
     const ipLabel = `${row.ips} IP${plural(row.ips)}`;
@@ -412,11 +431,9 @@ function impRender() {
       tag.textContent = `renamed to ${row.id}${nameNote}`;
       label.append(tag);
     }
-    li.append(label); impList.append(li);
+    li.append(label);
   }
-  const n = impPlan.files.size;
-  impInfo.textContent = n ? `${n} server${plural(n)} will be added` : "Nothing selected";
-  impOk.disabled = !n;
+  return li;
 }
 function impOpen(entries) {
   const root = mergeFolder(active.work), types = Object.entries(mergeTypes(root.server_types));
@@ -432,18 +449,22 @@ function impOpen(entries) {
   controls();
   impRender();
 }
+function impPlaces(ids, layout) {
+  const regionId = impRegion.value, box = regionId ? layout.clusters[regionId] : null;
+  const occupied = Object.values(layout.nodes);
+  if (!box) occupied.push(...Object.values(layout.clusters));
+  const origin = box ? { x: box.x + 20, y: box.y + 50, cols: Math.max(1, Math.floor((box.w - 20) / 240)) } : { x: 40, y: 40, cols: 4 };
+  const spots = gridPlacements(ids.length, occupied, origin), places = {};
+  ids.forEach((id, i) => { places[id] = spots[i]; });
+  return places;
+}
 function impConfirm() {
   const open = notesApi().finish() || serverApi().finish();
   if (open) { impInfo.textContent = "Fix the open edit first: " + open; return; }
   if (!ready || !impPlan?.files.size) return;
   try {
-    const { rows, files } = impPlan, ids = rows.filter((r) => r.path && r.included).map((r) => r.id), layout = editor().currentLayout();
-    const regionId = impRegion.value, box = regionId ? layout.clusters[regionId] : null;
-    const occupied = Object.values(layout.nodes);
-    if (!box) occupied.push(...Object.values(layout.clusters));
-    const origin = box ? { x: box.x + 20, y: box.y + 50, cols: Math.max(1, Math.floor((box.w - 20) / 240)) } : { x: 40, y: 40, cols: 4 };
-    const spots = gridPlacements(ids.length, occupied, origin), places = {};
-    ids.forEach((id, i) => { places[id] = spots[i]; });
+    const { rows, files } = impPlan, ids = rows.filter((r) => r.path && r.included).map((r) => r.id);
+    const places = impPlaces(ids, editor().currentLayout());
     const text = summary(rows);
     impPanel.hidden = true;
     rerenderMany(files, places, ids, null);

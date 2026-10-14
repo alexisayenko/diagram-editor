@@ -251,17 +251,45 @@ export function geometryKit() {
     return st;
   }
 
-  // A* over (grid point, heading); cost = length (x region / hug penalties) + bends. starts / goals: {p, d, c}.
-  function search(G, starts, goals, home) {
-    var n = G.nx * G.ny * 4;
+  function searchBuffers(n) {
     if (cache.n < n) {
       cache.n = n;
       cache.dist = new Float64Array(n);
       cache.prev = new Int32Array(n);
     }
+    cache.dist.fill(Infinity, 0, n);
+    cache.prev.fill(-1, 0, n);
+  }
+  // Relaxes the moves out of state st (point p, heading d, cost d0): improved neighbours are queued.
+  function expand(G, st, d0, h, heap, home) {
+    var dist = cache.dist, prev = cache.prev, p = Math.floor(st / 4), d = st % 4, i = Math.floor(p / G.ny), j = p % G.ny;
+    for (var d2 = 0; d2 < 4; d2++) {
+      if (d2 === (d + 2) % 4) continue;
+      var mv = step(G, p, i, j, d, d2, home);
+      if (!mv) continue;
+      var st2 = mv.p2 * 4 + d2, nd = d0 + mv.cost;
+      if (nd < dist[st2]) {
+        dist[st2] = nd;
+        prev[st2] = st;
+        heapPush(heap, nd + h(mv.p2), st2);
+      }
+    }
+  }
+  function traceBack(G, starts, best) {
+    var prev = cache.prev, pts = [];
+    for (var s2 = best.st; s2 >= 0; s2 = prev[s2]) {
+      var pp = Math.floor(s2 / 4);
+      pts.unshift([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]);
+    }
+    var origin = firstState(prev, best.st);
+    var first = starts.find(function (s) { return s.p * 4 + s.d === origin; });
+    return { pts: pts, start: first, goal: best.goal, cost: best.cost };
+  }
+
+  // A* over (grid point, heading); cost = length (x region / hug penalties) + bends. starts / goals: {p, d, c}.
+  function search(G, starts, goals, home) {
+    searchBuffers(G.nx * G.ny * 4);
     var dist = cache.dist, prev = cache.prev;
-    dist.fill(Infinity, 0, n);
-    prev.fill(-1, 0, n);
     var goalAt = {}, hx = [], heap = [];
     goals.forEach(function (g) {
       goalAt[g.p] = goalAt[g.p] || [];
@@ -286,28 +314,9 @@ export function geometryKit() {
         var total = d0 + turnCost(g.d, d) + g.c;
         if (total < best.cost) best = { cost: total, st: st, goal: g };
       }
-      var i = Math.floor(p / G.ny), j = p % G.ny;
-      for (var d2 = 0; d2 < 4; d2++) {
-        if (d2 === (d + 2) % 4) continue;
-        var mv = step(G, p, i, j, d, d2, home);
-        if (!mv) continue;
-        var st2 = mv.p2 * 4 + d2, nd = d0 + mv.cost;
-        if (nd < dist[st2]) {
-          dist[st2] = nd;
-          prev[st2] = st;
-          heapPush(heap, nd + h(mv.p2), st2);
-        }
-      }
+      expand(G, st, d0, h, heap, home);
     }
-    if (best.st < 0) return null;
-    var pts = [];
-    for (var s2 = best.st; s2 >= 0; s2 = prev[s2]) {
-      var pp = Math.floor(s2 / 4);
-      pts.unshift([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]);
-    }
-    var origin = firstState(prev, best.st);
-    var first = starts.find(function (s) { return s.p * 4 + s.d === origin; });
-    return { pts: pts, start: first, goal: best.goal, cost: best.cost };
+    return best.st < 0 ? null : traceBack(G, starts, best);
   }
 
   // Port on side sd (0 right, 1 bottom, 2 left, 3 top; = outward heading) at position v along the side.

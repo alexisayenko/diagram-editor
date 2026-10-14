@@ -23,6 +23,20 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     }
     return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
   }
+  function dividerHtml(y, W) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; }
+  function nodeDividers(m, g, nb, hwY, W) {
+    var h = "", below = !!(m.hw || m.os || g.ip.length);
+    if (m.nj && nb > m.nj) h += dividerHtml(8 + 16 * m.nj, W);
+    if (nb && below) h += dividerHtml(8 + 16 * nb, W);
+    if (m.hw && (m.os || g.ip.length)) h += dividerHtml(hwY + 6, W);
+    if (m.os && g.ip.length) h += dividerHtml(g.ip[0][1] - g.y - 12.5, W);
+    return h;
+  }
+  function ipPills(g, ipw, S) {
+    return g.ip.map(function (p, k) {
+      return '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x - 5) + '" y="' + (p[1] - g.y - 11) + '" width="' + Math.round(ipw[k] + 10) + '" height="15" rx="' + ({ clean: 8, dark: 3 }[S] ?? 0) + '"/>';
+    }).join("");
+  }
   function nodeChrome(id) {
     var S = ctx.style, g = hooks.viewNode ? hooks.viewNode(id, D.layout.nodes[id]) : D.layout.nodes[id], e = D.ent["n:" + id], ix = D.idx.nodes[id];
     var tl = TEXT_X;
@@ -40,16 +54,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     var h = frameHtml(S, W, bottom, HH);
     h += '<g class="ic" transform="translate(' + (W - 22.8) + ' -16.8) scale(.85)">' + icon(e.db ? "db" : "server") + "</g>";
     h += hw;
-    var dv = function (y) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; };
-    var below = !!(m.hw || m.os || g.ip.length);
-    if (m.nj && nb > m.nj) h += dv(8 + 16 * m.nj);
-    if (nb && below) h += dv(8 + 16 * nb);
-    if (m.hw && (m.os || g.ip.length)) h += dv(hwY + 6);
-    if (m.os && g.ip.length) h += dv(g.ip[0][1] - g.y - 12.5);
-    g.ip.forEach(function (p, k) {
-      var w = Math.round(ipw[k] + 10);
-      h += '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x - 5) + '" y="' + (p[1] - g.y - 11) + '" width="' + w + '" height="15" rx="' + ({ clean: 8, dark: 3 }[S] ?? 0) + '"/>';
-    });
+    h += nodeDividers(m, g, nb, hwY, W) + ipPills(g, ipw, S);
     return h;
   }
 

@@ -165,6 +165,7 @@ export async function readZip(bytes, limits = {}) {
     const job = acceptEntry(h, seen, maxFile);
     if (job) jobs.push(job);
   }
+  if (p !== cdAt + cdSize) throw new Error("The zip central directory size does not match its entries.");
   const out = new Map();
   let total = 0;
   for (const j of jobs) {

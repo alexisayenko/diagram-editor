@@ -97,27 +97,32 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     try { svg.setPointerCapture(e.pointerId); } catch (error_) { /* capture is optional */ }
   });
 
+  function snapSide(r, side, dx, dy) {
+    if (side.includes("w")) dx = snapDelta(r.x, dx);
+    if (side.includes("e")) dx = snapDelta(r.x + r.w, dx);
+    if (side.includes("n")) dy = snapDelta(r.y, dy);
+    if (side.includes("s")) dy = snapDelta(r.y + r.h, dy);
+    return [dx, dy];
+  }
+
+  function dragState(e, dx, dy) {
+    var snap = $("ts").checked && !e.shiftKey, regionId = drag.key.slice(2);
+    if (drag.side) {
+      if (snap) [dx, dy] = snapSide(drag.from.clusters[regionId], drag.side, dx, dy);
+      return model.resize(drag.from, regionId, drag.side, dx, dy);
+    }
+    if (snap) {
+      var o = origin(drag.from, drag.key);
+      dx = snapDelta(o.x, dx);
+      dy = snapDelta(o.y, dy);
+    }
+    return model.apply(drag.from, drag.key, dx, dy);
+  }
+
   svg.addEventListener("pointermove", function (e) {
     if (!drag || e.pointerId !== drag.id) return;
     var p = model.point(e);
-    var dx = Math.round(p.x - drag.x), dy = Math.round(p.y - drag.y);
-    if (drag.side) {
-      var r = drag.from.clusters[drag.key.slice(2)], sn = $("ts").checked && !e.shiftKey, sd = drag.side;
-      if (sn) {
-        if (sd.includes("w")) dx = snapDelta(r.x, dx);
-        if (sd.includes("e")) dx = snapDelta(r.x + r.w, dx);
-        if (sd.includes("n")) dy = snapDelta(r.y, dy);
-        if (sd.includes("s")) dy = snapDelta(r.y + r.h, dy);
-      }
-      state.st = model.resize(drag.from, drag.key.slice(2), sd, dx, dy);
-    } else {
-      if ($("ts").checked && !e.shiftKey) {
-        var o = origin(drag.from, drag.key);
-        dx = snapDelta(o.x, dx);
-        dy = snapDelta(o.y, dy);
-      }
-      state.st = model.apply(drag.from, drag.key, dx, dy);
-    }
+    state.st = dragState(e, Math.round(p.x - drag.x), Math.round(p.y - drag.y));
     // Routing runs once per frame, not per pointer event.
     if (!frame) frame = requestAnimationFrame(function () { frame = 0; model.render(state.st); });
   });

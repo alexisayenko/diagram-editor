@@ -19,34 +19,44 @@ export function normalizeName(name) {
   return n;
 }
 
-// Returns the new file text (null when nothing changes and the file is absent). An empty name removes the name but keeps the entry.
-export function setNetworkName(existing, cidr, name) {
-  const n = normalizeName(name), c = parseCidr(cidr);
-  if (c.error) throw new Error(c.error);
-  const text = existing ?? "";
-  const nl = text.includes("\r\n") ? "\r\n" : "\n";
-  const lines = text.split(/(?<=\n)/);
-  const body = (l) => l.replace(/\r?\n$/, "");
-  const eolOf = (l) => {
-    if (l.endsWith("\r\n")) return "\r\n";
-    return l.endsWith("\n") ? "\n" : "";
-  };
-  let at = -1, end = lines.length;
-  for (let i = 0; i < lines.length && at < 0; i++) {
-    if (!/^\s*\[\[\s*networks\s*\]\]\s*(#.*)?$/.test(body(lines[i]))) continue;
-    let j = i + 1;
-    while (j < lines.length && !/^\s*\[/.test(lines[j])) j++;
-    for (let k = i + 1; k < j; k++) {
-      const m = body(lines[k]).match(/^\s*cidr\s*=\s*(?:"([^"]*)"|'([^']*)')/);
-      if (m && sameCidr((m[1] ?? m[2]).trim(), cidr)) { at = i; end = j; break; }
-    }
+const body = (l) => l.replace(/\r?\n$/, "");
+const indentOf = (l) => body(l).match(/^\s*/)[0];
+const eolOf = (l) => {
+  if (l.endsWith("\r\n")) return "\r\n";
+  return l.endsWith("\n") ? "\n" : "";
+};
+const NETWORKS_HEAD = /^\s*\[\[\s*networks\s*\]\]\s*(#.*)?$/;
+const CIDR_LINE = /^\s*cidr\s*=\s*(?:"([^"]*)"|'([^']*)')/;
+
+const entryEnd = (lines, from) => {
+  let j = from + 1;
+  while (j < lines.length && !/^\s*\[/.test(lines[j])) j++;
+  return j;
+};
+
+const hasCidr = (lines, from, to, cidr) => {
+  for (let k = from; k < to; k++) {
+    const m = CIDR_LINE.exec(body(lines[k]));
+    if (m && sameCidr((m[1] ?? m[2]).trim(), cidr)) return true;
   }
-  if (at < 0) {
-    if (!n) return existing;
-    let head = text;
-    if (text.trim()) head = (text.endsWith("\n") ? text : text + nl) + nl;
-    return head + `[[networks]]${nl}cidr = "${cidr}"${nl}name = ${quote(n)}${nl}`;
+  return false;
+};
+
+function findEntry(lines, cidr) {
+  for (let i = 0; i < lines.length; i++) {
+    if (!NETWORKS_HEAD.test(body(lines[i]))) continue;
+    const end = entryEnd(lines, i);
+    if (hasCidr(lines, i + 1, end, cidr)) return { at: i, end };
   }
+  return null;
+}
+
+function appendEntry(text, nl, cidr, n) {
+  const head = text.trim() ? (text.endsWith("\n") ? text : text + nl) + nl : text;
+  return head + "[[networks]]" + nl + 'cidr = "' + cidr + '"' + nl + "name = " + quote(n) + nl;
+}
+
+function editEntry(lines, { at, end }, n, nl) {
   let nameAt = -1, cidrLine = -1;
   for (let k = at + 1; k < end; k++) {
     if (/^\s*name\s*=/.test(body(lines[k]))) nameAt = k;
@@ -54,11 +64,23 @@ export function setNetworkName(existing, cidr, name) {
   }
   if (nameAt >= 0) {
     if (!n) lines.splice(nameAt, 1);
-    else lines[nameAt] = body(lines[nameAt]).match(/^\s*/)[0] + `name = ${quote(n)}` + eolOf(lines[nameAt]);
+    else lines[nameAt] = indentOf(lines[nameAt]) + "name = " + quote(n) + eolOf(lines[nameAt]);
   } else if (n) {
-    const l = lines[cidrLine], eol = eolOf(l), indent = body(l).match(/^\s*/)[0];
+    const l = lines[cidrLine], eol = eolOf(l);
     if (!eol) lines[cidrLine] = l + nl;
-    lines.splice(cidrLine + 1, 0, indent + `name = ${quote(n)}` + eol);
+    lines.splice(cidrLine + 1, 0, indentOf(l) + "name = " + quote(n) + eol);
   }
   return lines.join("");
+}
+
+// Returns the new file text (null when nothing changes and the file is absent). An empty name removes the name but keeps the entry.
+export function setNetworkName(existing, cidr, name) {
+  const n = normalizeName(name), c = parseCidr(cidr);
+  if (c.error) throw new Error(c.error);
+  const text = existing ?? "";
+  const nl = text.includes("\r\n") ? "\r\n" : "\n";
+  const lines = text.split(/(?<=\n)/);
+  const entry = findEntry(lines, cidr);
+  if (entry) return editEntry(lines, entry, n, nl);
+  return n ? appendEntry(text, nl, cidr, n) : existing;
 }

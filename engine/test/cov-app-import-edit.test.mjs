@@ -461,7 +461,7 @@ test("add, duplicate, move, region and rename refuse while an edit is open", asy
   assert.equal(h.ctl.loads, 1);
 });
 
-test("a second edit before the diagram has reloaded is refused with a retry hint", { skip: "bug: engine/browser/app.js:221 (also 232, 243, 257, 263) calls notesApi().finish() while ready is false; notesApi() is null then, so it throws instead of returning 'Try again once the diagram has reloaded.'. Repro: ed.add('web', 1, 1); ed.add('web', 1, 1) before the frame load event." }, async () => {
+test("a second edit before the diagram has reloaded is refused with a retry hint", async () => {
   const h = await boot({ files: demoFiles("demo") });
   const ed = h.serverEditor();
   assert.equal(ed.add("web", 1, 1), null);

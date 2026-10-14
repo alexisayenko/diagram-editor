@@ -25,6 +25,7 @@ export function createStore(dir) {
       return readFileSync(pathOf(name), "utf8");
     } catch (e) {
       if (e.code === "ENOENT") return null;
+      if (e.code === "ENOTDIR" || e.code === "EISDIR") throw new HttpError(400, "Name collides with an existing file or folder: " + name);
       throw e;
     }
   };
@@ -62,9 +63,10 @@ export function createStore(dir) {
     seen.add(e.name);
     if (typeof e.text !== "string") throw new HttpError(400, "Missing text for " + e.name);
     if (Buffer.byteLength(e.text) > MAX_BYTES) throw new HttpError(413, `${e.name} is larger than ${MAX_BYTES / 1024 / 1024} MB`);
+    const current = read(e.name);
     if (e.overwrite === true) return false;
     if (!("base" in e) || (e.base !== null && typeof e.base !== "string")) throw new HttpError(400, "Missing base for " + e.name);
-    return read(e.name) !== e.base;
+    return current !== e.base;
   }
   function writeEntry(e, saved) {
     const target = pathOf(e.name), tmp = join(dirname(target), "." + randomBytes(6).toString("hex") + ".tmp");

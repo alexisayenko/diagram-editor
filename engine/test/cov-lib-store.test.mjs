@@ -42,11 +42,11 @@ test("get: reads, 404 for a missing file, 400 for a bad name", () => {
   assert.equal(status(() => store.get(undefined)), 400);
 });
 
-test("get: reading a directory as a file is a hard error, not a 404", () => {
+test("get: reading a directory as a file is a 400 collision, not a 404", () => {
   const { dir, store } = fresh();
   mkdirSync(join(dir, "d.toml"), { recursive: true });
   const e = status(() => store.get("d.toml"));
-  assert.ok(e instanceof Error && !(e instanceof HttpError));
+  assert.equal(e, 400);
 });
 
 test("write: rejects non-arrays, empty, too many, bad entries, duplicates, missing text, oversize", () => {
@@ -96,18 +96,19 @@ test("write: leaves no temporary files behind", () => {
 test("write: a failing write is a 500 that names the files saved so far and cleans up", () => {
   const { dir, store } = fresh();
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "blocked"), "i am a file");
+  let reads = 0;
+  const flaky = { name: "blocked.toml", overwrite: true, get text() { return ++reads <= 2 ? "2" : 7; } };
   let err;
   try {
-    store.write([{ name: "first.toml", text: "1", base: null }, { name: "blocked/x.toml", text: "2", overwrite: true }]);
+    store.write([{ name: "first.toml", text: "1", base: null }, flaky]);
   } catch (e) {
     err = e;
   }
   assert.equal(err.status, 500);
-  assert.match(err.message, /^Writing blocked\/x\.toml failed: /);
+  assert.match(err.message, /^Writing blocked.toml failed: /);
   assert.deepEqual(err.extra.saved, ["first.toml"]);
   assert.equal(readFileSync(join(dir, "first.toml"), "utf8"), "1");
-  assert.deepEqual(readdirSync(dir).sort(), ["blocked", "first.toml"]);
+  assert.deepEqual(readdirSync(dir).sort(), ["first.toml"]);
 });
 
 test("checkOrigin: host, origin and fetch-site rules", () => {
@@ -261,4 +262,17 @@ test("store: symlinked and unusual entries never escape the list filter", () => 
   if (linked) assert.ok(names.includes("link.toml"));
   assert.equal(names.includes("../outside.toml"), false);
   rmSync(root, { recursive: true, force: true });
+});
+
+test("write: a name whose parent path is an existing file, or that is a folder, is a 400 validation error", () => {
+  const { dir, store } = fresh();
+  mkdirSync(join(dir, "demo"), { recursive: true });
+  writeFileSync(join(dir, "demo", "a.toml"), "x = 1\n");
+  mkdirSync(join(dir, "demo", "d.toml"));
+  for (const entry of [{ name: "demo/a.toml/b.toml", base: null }, { name: "demo/a.toml/b.toml", overwrite: true }, { name: "demo/d.toml", overwrite: true }]) {
+    assert.equal(status(() => store.write([{ text: "y", ...entry }])), 400);
+  }
+  const r = api(store, "PUT", "/api/files", { files: [{ name: "demo/a.toml/b.toml", text: "y", base: null }] });
+  assert.equal(r.status, 400);
+  assert.match(JSON.stringify(r.body ?? r), /collides/);
 });

@@ -176,4 +176,4 @@ Malformed TOML or invalid saved geometry leaves the current diagram open. A fail
 
 Run `node engine/browser.mjs` after changing the engine; it regenerates the standalone `diagram.html`. Use `node engine/browser.mjs --check` to check drift and `node --test engine/test/*.test.mjs` for the TOML and browser workflow tests.
 
-The existing Mermaid-folder build (`node engine/build.mjs examples/demo`) remains available and reads only `diagram.mmd`, `diagram.json`, `details.md`, `layout.json` and its Markdown companions, never the TOML files; the TOML page is the new authoring workflow.
+The existing Mermaid-folder build (`node engine/build.mjs examples/demo`) remains available and reads only `diagram.mmd`, `diagram.json`, `details.md`, `layout.json` and its Markdown companions, never the TOML files; the TOML page is the new authoring workflow. A folder without `layout.json` (such as one made by `engine/new.mjs`) is arranged automatically at build time; add `layout.json` to pin positions.

@@ -49,7 +49,7 @@ const demoCopy = (root) => {
   return dir;
 };
 
-test("build.mjs on a scaffolded diagram fails: new.mjs writes no layout.json", { skip: "bug: engine/new.mjs scaffolds no layout.json, so node engine/build.mjs <new-dir> dies with ENOENT (build.mjs reads it unconditionally)" }, () => {
+test("build.mjs builds a freshly scaffolded diagram, auto-arranging the missing layout.json", () => {
   const root = tmp();
   try {
     const dir = join(root, "my-diag");

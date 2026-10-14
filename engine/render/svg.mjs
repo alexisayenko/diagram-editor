@@ -90,7 +90,7 @@ const renderEdge = (cx, e, ei) => {
 };
 
 // routes: geometry.mjs route() result; groups: diagram.json connection groups.
-export function renderSvgBody(model, layout, ent, nets, ipNet, routes, groups, meta) {
+export function renderSvg({ model, layout, ent, nets, ipNet, routes, groups, meta }) {
   const { clusters, nodes, edges } = model;
   const gOf = groupOf(groups);
   const { hl, lvOf } = processLines(meta);

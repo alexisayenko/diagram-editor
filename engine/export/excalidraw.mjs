@@ -2,9 +2,7 @@ import { createHash } from "node:crypto";
 import { isDashed } from "../parse/mmd.mjs";
 import { geometryKit } from "../render/geometry.mjs";
 
-// "sketch": monochrome whiteboard like the Sketch skin (red only for connection groups and firewalls, yellow notes); "clean": coloured cards, type legend.
-const STYLE = "sketch";
-const SKETCH = STYLE === "sketch";
+// Monochrome whiteboard look like the Sketch skin: red only for connection groups and firewalls, yellow notes.
 
 // Fonts: 5 = Excalifont (hand-drawn, default), 1 = Virgil, 2 = Helvetica, 3 = Cascadia (monospace).
 const SANS = 5;
@@ -15,7 +13,6 @@ const ASCENT = { 1: 0.9, 2: 0.85, 3: 0.9, 5: 0.9 };
 const HEAD = 20;
 const INK = "#1e1e1e";
 const MUTED = "#6b7280";
-const AMBER = "#b26a00";
 const FW_RED = "#d62728";
 const FW_PTS = [[-3.5, -11], [3.5, -6.6], [-3.5, -2.2], [3.5, 2.2], [-3.5, 6.6], [3.5, 11]];
 const LABEL_DX = [0, -10, 10, -20, 20, -40, 40, -60, 60, -80, 80, -100, 100, -120, 120];
@@ -25,10 +22,6 @@ const LEGEND_PAD = 10;
 
 const r1 = (v) => Math.round(v * 10) / 10;
 const digest = (s) => createHash("sha1").update(s).digest(); // NOSONAR: not security relevant, only derives stable element ids and seeds
-const mix = (hex, t) => {
-  const c = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
-  return "#" + c.map((v) => Math.round(v + (255 - v) * t).toString(16).padStart(2, "0")).join("");
-};
 const wrap = (s, max) => {
   const out = [];
   let cur = "";
@@ -139,34 +132,20 @@ function createBuilder() {
 }
 
 function addClusters(cx) {
-  const { b, model, layout, ent, colorOf, shapeOf } = cx;
+  const { b, model, layout, shapeOf } = cx;
   for (const c of model.clusters.values()) {
-    const g = layout.clusters[c.id], e = ent["c:" + c.id], col = colorOf(e.ty);
-    const r = SKETCH
-      ? b.rect("c:" + c.id, g.x, g.y, g.w, g.h, { dashed: true, round: true })
-      : b.rect("c:" + c.id, g.x, g.y, g.w, g.h, { stroke: col, bg: mix(col, 0.93), dashed: e.prop, round: true });
+    const g = layout.clusters[c.id];
+    const r = b.rect("c:" + c.id, g.x, g.y, g.w, g.h, { dashed: true, round: true });
     b.text("c:" + c.id + ":title", c.title, { container: r, x: g.x + g.w / 2, top: g.y + 5, align: "center", fs: 14 });
     shapeOf["c:" + c.id] = r;
   }
 }
 
-const osColor = (os) => {
-  if (SKETCH) return MUTED;
-  if (!os) return "#9ca3af";
-  return os.eol ? AMBER : MUTED;
-};
-
-function addServerCard(cx, n, k, b0) {
-  const { b, layout, ent, colorOf } = cx;
-  const g = layout.nodes[n.id], e = ent[k], col = colorOf(e.ty), grp = [gid(k)];
-  if (SKETCH) {
-    const card = b.rect(k, g.x, g.y, g.w, g.h, { sw: 1.5, dashed: e.prop, round: true, groups: grp });
-    b.text(k + ":title", n.title, { x: g.title[0], baseline: g.title[1], fs: 14, groups: grp });
-    return { card, grp };
-  }
-  const card = b.rect(k, b0.x0, b0.y0, b0.x1 - b0.x0, b0.y1 - b0.y0, { stroke: col, bg: "#ffffff", sw: 2, dashed: e.prop, groups: grp });
-  const head = b.rect(k + ":head", b0.x0, b0.y0, b0.x1 - b0.x0, HEAD, { stroke: col, bg: col, sw: 2, dashed: e.prop, groups: grp });
-  b.text(k + ":title", n.title, { container: head, x: b0.x0 + 5, top: b0.y0 + (HEAD - 13 * LINE_H[SANS]) / 2, valign: "middle", fs: 13, color: "#ffffff", groups: grp });
+function addServerCard(cx, n, k) {
+  const { b, layout, ent } = cx;
+  const g = layout.nodes[n.id], e = ent[k], grp = [gid(k)];
+  const card = b.rect(k, g.x, g.y, g.w, g.h, { sw: 1.5, dashed: e.prop, round: true, groups: grp });
+  b.text(k + ":title", n.title, { x: g.title[0], baseline: g.title[1], fs: 14, groups: grp });
   return { card, grp };
 }
 
@@ -174,15 +153,14 @@ function addServerOs(cx, k, g, b0, grp) {
   const os = cx.ent[k].os, eol = os?.eol ? " (EOL)" : "";
   const label = os ? (os.d || os.v) + eol : "OS ?";
   const lastBody = g.body.length ? g.body[g.body.length - 1][1] : g.y;
-  const firstIp = g.ip.length ? g.ip[0][1] : b0.y1;
-  const osBase = SKETCH ? g.y + g.h - 4 : firstIp - 15;
+  const osBase = g.y + g.h - 4;
   const fits = osBase - 9 > lastBody + 2;
   cx.b.text(k + ":os", label, {
     x: fits ? g.x + 10 : b0.x1 - 6,
     baseline: fits ? osBase : b0.y0 + HEAD + 12,
     align: fits ? "left" : "right",
     fs: 10,
-    color: osColor(os),
+    color: MUTED,
     groups: grp,
   });
 }
@@ -199,13 +177,13 @@ function addServers(cx) {
     if (g.hidden) continue;
     const k = "n:" + n.id;
     const b0 = kit.boxExtent(g, meta.nodes[n.id].tl);
-    const { card, grp } = addServerCard(cx, n, k, b0);
+    const { card, grp } = addServerCard(cx, n, k);
     n.body.forEach((s, i) => {
       const pg = procLine[n.id + ":" + i];
       const color = pg ? config.groups[pg].color : INK;
       b.text(`${k}:body:${i}`, s, { x: g.body[i][0], baseline: g.body[i][1], color, groups: grp });
     });
-    n.ip.forEach((s, i) => b.text(`${k}:ip:${i}`, s, { x: g.ip[i][0], baseline: g.ip[i][1], ff: MONO, color: SKETCH ? INK : "#334155", groups: grp }));
+    n.ip.forEach((s, i) => b.text(`${k}:ip:${i}`, s, { x: g.ip[i][0], baseline: g.ip[i][1], ff: MONO, color: INK, groups: grp }));
     addServerOs(cx, k, g, b0, grp);
     shapeOf[k] = card;
   }
@@ -288,22 +266,6 @@ function legendHead(cx, L, key, s) {
   L.y += 18;
 }
 
-function legendTypes(cx, L) {
-  const { b } = cx;
-  let infra = false;
-  for (const t of cx.typeList) {
-    if (t.infra && !infra) {
-      infra = true;
-      L.y += 6;
-      legendHead(cx, L, "infra", "OTHER INFRASTRUCTURE");
-    }
-    const col = cx.colorOf(t.ty);
-    b.rect("legend:sw:" + t.k, L.x, L.y + 1, 12, 12, t.dash ? { stroke: col, dashed: true, groups: L.groups } : { stroke: col, bg: col, groups: L.groups });
-    b.text("legend:t:" + t.k, t.label, { x: L.x + 20, top: L.y, fs: 12, groups: L.groups });
-    L.y += 20;
-  }
-}
-
 function legendConnections(cx, L) {
   const { b, config, model } = cx;
   const rows = [["request", INK, false, cx.edgeLabels.request]];
@@ -325,13 +287,8 @@ function legendConnections(cx, L) {
 function addLegend(cx, vx, vy) {
   const { b } = cx;
   const groups = [gid("legend")];
-  const legend = b.rect("legend", vx - 20 - LEGEND_W, vy, LEGEND_W, 10, SKETCH ? { round: true, groups } : { stroke: "#cbd5e1", bg: "#ffffff", round: true, groups });
+  const legend = b.rect("legend", vx - 20 - LEGEND_W, vy, LEGEND_W, 10, { round: true, groups });
   const L = { x: vx - 20 - LEGEND_W + LEGEND_PAD, y: vy + LEGEND_PAD, groups };
-  if (!SKETCH) {
-    legendHead(cx, L, "types", "SERVER TYPES");
-    legendTypes(cx, L);
-    L.y += 6;
-  }
   legendHead(cx, L, "conn", "CONNECTIONS");
   legendConnections(cx, L);
   legend.height = r1(L.y - vy + 4);
@@ -344,7 +301,7 @@ function addNotes(cx, notes, nx, vy) {
   notes.forEach((n, i) => {
     const lines = [...wrap(n.title, max), "", ...n.paras.flatMap((p, j) => [...(j ? [""] : []), ...wrap(p, max)]), "", n.date];
     const h = lines.length * fs * LINE_H[SANS] + 10;
-    const sticky = b.rect("note:" + i, nx, ny, NW, h, SKETCH ? { stroke: "transparent", bg: "#fff3bf" } : { stroke: "#e0b400", bg: "#fff3a6", round: true });
+    const sticky = b.rect("note:" + i, nx, ny, NW, h, { stroke: "transparent", bg: "#fff3bf" });
     const original = [n.title, "", n.paras.join("\n\n"), "", n.date].join("\n");
     b.text("note:" + i + ":text", lines.join("\n"), { container: sticky, x: nx + 5, top: ny + 5, fs, original });
     ny += h + 14;
@@ -360,9 +317,9 @@ function addDrawings(cx, drawings) {
 }
 
 // Excalidraw scene for a diagram: same geometry as the view (fitted boxes, routed connections, label and firewall spots).
-export function renderExcalidraw({ config, model, layout, meta, routes, ent, typeList, typeColors, notes, edgeLabels, viewBox, drawings = [] }) {
+export function renderExcalidraw({ config, model, layout, meta, routes, ent, notes, edgeLabels, viewBox, drawings = [] }) {
   const b = createBuilder();
-  const cx = { b, kit: geometryKit(), config, model, layout, meta, ent, typeList, edgeLabels, colorOf: (ty) => typeColors[ty] || MUTED, shapeOf: {} };
+  const cx = { b, kit: geometryKit(), config, model, layout, meta, ent, edgeLabels, shapeOf: {} };
 
   addClusters(cx);
   addServers(cx);

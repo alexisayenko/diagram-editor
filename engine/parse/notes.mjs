@@ -1,5 +1,11 @@
 import { fail } from "../lib/util.mjs";
 
+function dateOf(note, line, at) {
+  const m = /^Date:\s*(\S.*)$/.exec(line);
+  if (!m) fail(at + `note "${note.title}": first line must be "Date: <stamp>", got: ${line}`);
+  return m[1].trim();
+}
+
 export function parseNotes(src) {
   const notes = [];
   let cur = null, para = [];
@@ -11,18 +17,14 @@ export function parseNotes(src) {
     const line = raw.trim(), at = `notes.md:${i + 1}: `;
     const heading = /^## (.*)$/.exec(raw);
     if (heading) {
-      const m = heading;
       if (cur) flush();
-      if (!m[1].trim()) fail(at + "empty note title");
-      cur = { title: m[1].trim(), date: null, paras: [], line: i + 1 };
+      if (!heading[1].trim()) fail(at + "empty note title");
+      cur = { title: heading[1].trim(), date: null, paras: [], line: i + 1 };
       notes.push(cur);
     } else if (!cur) {
       if (line && !/^# \S/.test(line)) fail(at + `text before the first "## <title>": ${line}`);
     } else if (cur.date === null) {
-      if (!line) return;
-      const m = /^Date:\s*(\S.*)$/.exec(line);
-      if (!m) fail(at + `note "${cur.title}": first line must be "Date: <stamp>", got: ${line}`);
-      cur.date = m[1].trim();
+      if (line) cur.date = dateOf(cur, line, at);
     } else if (!line) flush();
     else if (line.startsWith("#")) fail(at + `unexpected heading "${line}" (notes use "## <title>")`);
     else para.push(line);

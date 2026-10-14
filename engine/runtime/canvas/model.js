@@ -27,7 +27,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     var s = clone(from), id = key.slice(2), m = D.meta.nodes[id];
     move(s, key, dx, dy);
     if (key.charAt(0) === "c") (D.kids[id] || []).forEach(function (n) { move(s, "n:" + n, dx, dy); });
-    else if (m && m.cl) geometry.fitRegion(s, D.meta, m.cl, from.clusters[m.cl], skins.widths());
+    else if (m?.cl) geometry.fitRegion(s, D.meta, m.cl, from.clusters[m.cl], skins.widths());
     return s;
   }
 

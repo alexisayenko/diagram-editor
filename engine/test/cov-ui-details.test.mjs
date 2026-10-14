@@ -123,7 +123,7 @@ test("hardware strip lists every cell as 'value label'", () => {
   assert.ok(text.endsWith("8G ram"));
 });
 
-test("hardware strip separator is a middle dot", { skip: "bug: engine/runtime/ui/details.js:98 joins with the literal text ' 00b7 ' instead of ' \\u00b7 ' (renders '4 cpu 00b7 8G ram')" }, () => {
+test("hardware strip separator is a middle dot", () => {
   const { details, $ } = setup();
   details.renderPanel("n:a");
   assert.equal($("pn").querySelector(".hws").textContent, "4 cpu · 8G ram");
@@ -263,7 +263,30 @@ test("core save: creates a download link for the blob and revokes the URL later"
   assert.equal(t.flush(), 1);
 });
 
-test("md: a line starting with '#' but no space (e.g. a hashtag) renders as a paragraph", { skip: "bug: engine/runtime/ui/details.js md() paragraph loop excludes /^#/ lines but the heading rule needs '# ', so md('#nospace') never advances and loops forever" }, () => {
+test("md: a line starting with '#' but no space (e.g. a hashtag) renders as a paragraph", () => {
   const { details } = setup();
   assert.equal(details.md("#nospace"), "<p>#nospace</p>");
+});
+
+test("md: lines starting with '#' without a space stay plain paragraph lines", () => {
+  const { details } = setup();
+  assert.equal(details.md("#"), "<p>#</p>");
+  assert.equal(details.md("####### seven"), "<p>####### seven</p>");
+  assert.equal(details.md("text\n#tag\n# Head"), "<p>text #tag</p><h1>Head</h1>");
+});
+
+test("md: always terminates on random markdown-like lines", () => {
+  const { details } = setup();
+  const parts = ["#", "##", "-", "*", "1.", "7", "`", "|", " ", "a", "**", "[x](https://e.test)", "---", ":"];
+  let seed = 12345;
+  const rnd = (n) => (seed = (seed * 1103515245 + 12345) % 2147483648) % n;
+  for (let k = 0; k < 3000; k++) {
+    const lines = [];
+    for (let n = rnd(6) + 1; n > 0; n--) {
+      let l = "";
+      for (let c = rnd(5); c >= 0; c--) l += parts[rnd(parts.length)];
+      lines.push(l);
+    }
+    assert.equal(typeof details.md(lines.join("\n")), "string");
+  }
 });

@@ -200,3 +200,14 @@ test("isArchiveName: case-insensitive extension, non-strings", () => {
   assert.equal(isArchiveName(null), false);
   assert.equal(isArchiveName(5), false);
 });
+
+test("a central-directory size that does not match the entries is rejected", async () => {
+  const good = raw([f("a.toml"), f("b.toml")]);
+  assert.equal((await readZip(good)).size, 2);
+  await assert.rejects(reads(raw([f("a.toml"), f("b.toml")], { eocd: { cdSize: new DataView(good.buffer).getUint32(good.length - 10, true) + 1 } })), /Not a valid zip file/);
+  for (const delta of [-1, -10]) {
+    const base = raw([f("a.toml"), f("b.toml")]);
+    const cdSize = new DataView(base.buffer).getUint32(base.length - 10, true);
+    await assert.rejects(reads(raw([f("a.toml"), f("b.toml")], { eocd: { cdSize: cdSize + delta } })), /central directory size/);
+  }
+});

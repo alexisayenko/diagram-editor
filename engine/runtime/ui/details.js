@@ -4,31 +4,35 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
   function inline(s) {
     return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/\[([^\]]+)\]\((https?:\/\/[^)\s"]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
   }
+  var HEADING = /^(#{1,6})\s+(\S.*)?$/, TABLE_ROW = /^\s*\|/, LIST_ITEM = /^\s*[-*]\s+/;
+  function mdCells(l) { return l.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map(function (c) { return c.trim(); }); }
+  function mdRow(cs, cell) {
+    return "<tr>" + cs.map(function (c) { return "<" + cell + ">" + inline(c) + "</" + cell + ">"; }).join("") + "</tr>";
+  }
+  function mdTable(rows) {
+    var body = rows.slice(/^[\s|:-]+$/.test(rows[1] || "") ? 2 : 1);
+    return "<table><thead>" + mdRow(mdCells(rows[0]), "th") + "</thead><tbody>" + body.map(function (r) { return mdRow(mdCells(r), "td"); }).join("") + "</tbody></table>";
+  }
+  function mdList(items) {
+    return "<ul>" + items.map(function (l) { return "<li>" + inline(l.replace(LIST_ITEM, "")) + "</li>"; }).join("") + "</ul>";
+  }
+  function mdRun(L, i, test) {
+    var run = [];
+    while (i < L.length && test(L[i])) { run.push(L[i]); i++; }
+    return run;
+  }
+  function mdParagraphLine(l) { return !!l.trim() && !HEADING.test(l) && !TABLE_ROW.test(l) && !LIST_ITEM.test(l); }
   function md(src) {
-    var L = src.split("\n"), o = [], i = 0;
-    function cells(l) { return l.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map(function (c) { return c.trim(); }); }
+    var L = src.split("\n"), o = [], i = 0, l, m, run;
     while (i < L.length) {
-      var l = L[i], m;
+      l = L[i];
       if (!l.trim()) { i++; continue; }
-      m = l.match(/^(#{1,6})\s+(.*)$/);
-      if (m) { o.push("<h" + m[1].length + ">" + inline(m[2]) + "</h" + m[1].length + ">"); i++; continue; }
-      if (/^\s*\|/.test(l)) {
-        var rows = [];
-        while (i < L.length && /^\s*\|/.test(L[i])) { rows.push(L[i]); i++; }
-        var h = cells(rows[0]), t = "<table><thead><tr>" + h.map(function (c) { return "<th>" + inline(c) + "</th>"; }).join("") + "</tr></thead><tbody>";
-        rows.slice(/^[\s|:-]+$/.test(rows[1] || "") ? 2 : 1).forEach(function (r) { t += "<tr>" + cells(r).map(function (c) { return "<td>" + inline(c) + "</td>"; }).join("") + "</tr>"; });
-        o.push(t + "</tbody></table>");
-        continue;
-      }
-      if (/^\s*[-*]\s+/.test(l)) {
-        var u = "<ul>";
-        while (i < L.length && /^\s*[-*]\s+/.test(L[i])) { u += "<li>" + inline(L[i].replace(/^\s*[-*]\s+/, "")) + "</li>"; i++; }
-        o.push(u + "</ul>");
-        continue;
-      }
-      var p = [];
-      while (i < L.length && L[i].trim() && !/^(#|\s*\||\s*[-*]\s)/.test(L[i])) { p.push(L[i]); i++; }
-      o.push("<p>" + inline(p.join(" ")) + "</p>");
+      m = l.match(HEADING);
+      if (m) { o.push("<h" + m[1].length + ">" + inline(m[2] || "") + "</h" + m[1].length + ">"); i++; continue; }
+      if (TABLE_ROW.test(l)) { run = mdRun(L, i, function (x) { return TABLE_ROW.test(x); }); o.push(mdTable(run)); }
+      else if (LIST_ITEM.test(l)) { run = mdRun(L, i, function (x) { return LIST_ITEM.test(x); }); o.push(mdList(run)); }
+      else { run = mdRun(L, i, mdParagraphLine); o.push("<p>" + inline(run.join(" ")) + "</p>"); }
+      i += run.length;
     }
     return o.join("");
   }
@@ -95,7 +99,7 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
     if (!cells?.length) return;
     var d = document.createElement("div");
     d.className = "hws";
-    d.textContent = cells.map(function (c) { return c[1] + " " + c[0]; }).join(" 00b7 ");
+    d.textContent = cells.map(function (c) { return c[1] + " " + c[0]; }).join(" · ");
     var t = pn.querySelector("table");
     if (t) t.parentNode.insertBefore(d, t.nextSibling);
     else pn.insertBefore(d, pn.querySelector(".tg").nextSibling);

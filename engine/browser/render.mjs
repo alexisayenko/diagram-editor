@@ -8,7 +8,7 @@ import { edgeKey } from "../parse/mmd.mjs";
 import { geometryKit, geometryMeta } from "../render/geometry.mjs";
 import { drawKit } from "../render/draw-kit.mjs";
 import { autoLayoutKit } from "../render/auto-layout.mjs";
-import { renderSvgBody } from "../render/svg.mjs";
+import { renderSvg } from "../render/svg.mjs";
 import { computeViewBox } from "../render/viewbox.mjs";
 import { buildEdgeKey, groupAssets } from "../render/edge-key.mjs";
 import { buildDataJson } from "../page/data.mjs";
@@ -94,7 +94,7 @@ export function renderDiagram(files, folder, saved, assets, refit = []) {
   const routes = kit.route(layout, meta);
   const { ent, typeList, typeCss } = resolveTypes(model, layout, config.proposedLabel);
   for (const n of model.nodes.values()) ent["n:" + n.id].os = osInfo(osOf(sections[n.title]));
-  const { body: svgBody, idx } = renderSvgBody(model, layout, ent, nets, ipNet, routes, config.groups, meta);
+  const { body: svgBody, idx } = renderSvg({ model, layout, ent, nets, ipNet, routes, groups: config.groups, meta });
   const edgeKeys = buildEdgeKey(model, config.edgeLabels, config.groups), groupKit = groupAssets(config.groups);
   const viewBox = computeViewBox(model, layout, routes);
   const dataJson = buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes, nets, ipNet, edgeKeyRows: edgeKeys.rows, drawings });
