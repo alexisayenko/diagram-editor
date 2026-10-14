@@ -11,95 +11,54 @@ Infrastructure diagram editor: an engine (`engine/`) that renders TOML / Mermaid
 
 ---
 
-# project-template (scaffold notes)
-
-Seed repo for new projects. Defines a standard folder layout,
-naming rules, and docs subtree. Copy on init; not used as a
-runtime dependency.
-
-## Overview
-
-This template assumes **one product, delivered through one or
-more top-level code folders** at the repo root. Each folder is a
-deployment target — name it by what it is (`mobile/`, `web/`,
-`workers/`, `marketing-site/`, etc.). Avoid generic names like
-`app/` that don't say which one.
-
-Multi-product is rare; see
-[`docs/README.md`](docs/README.md#multi-product-split) for the
-split path if/when it happens.
-
 ## Quick start
 
-1. Click **Use this template** on GitHub (or `git clone` and
-   remove `.git/` to start fresh).
-2. Replace this Overview and Quick start with content for the
-   new project.
-3. Keep the [Structure](#structure) section — that's the
-   canonical convention.
-4. Fill in [`docs/README.md`](docs/README.md) with the project's
-   product and docs subtree.
+Needs Node.js (run it through WSL on Windows). No install step, no
+dependencies.
+
+```sh
+node engine/serve.mjs                       # serve the page on http://127.0.0.1:8080
+node --test engine/test/*.test.mjs          # run the tests
+node engine/browser.mjs [--check]           # regenerate diagram.html (check for drift)
+node engine/build.mjs examples/demo [--check]   # Mermaid build of the demo folder
+node engine/new.mjs <dir>                   # scaffold a Mermaid-format diagram folder
+```
+
+Open the printed address, then **New diagram**, **Open saved diagram**
+or **Import diagram**. Diagrams are saved in the git-ignored `local/`
+folder. Format and workflow: [docs/tech/authoring.md](docs/tech/authoring.md);
+engine map: [docs/tech/architecture.md](docs/tech/architecture.md);
+why it is built this way: [docs/tech/decisions/](docs/tech/decisions/README.md).
 
 ## Structure
 
-### Top-level layout
-
-Folders sort first (alphabetically), then files — VS Code
-default.
-
 ```text
-project-root/
-├── archive/                              # obsolete code + docs (single graveyard)
-├── docs/                                 # project-level strategy + documentation
-├── scripts/                              # cross-cutting build tooling
-├── mobile/                               # mobile app (example name)
-├── web/                                  # web app or static site (example name)
-├── <shared-infra>/                       # e.g. supabase/, prisma/, infra/
-├── AGENTS.md                             # mirror of CLAUDE.md for other agents (kept in step)
-├── CLAUDE.md                             # agent-specific guidance (kept in step with AGENTS.md)
-├── README.md                             # this file — entry point + structure
-└── LICENSE                               # license
+diagram-editor/
+├── docs/            # strategy, specs, ADRs, tech reference
+├── engine/          # parsers, layout, renderers, browser runtime, server, tests
+├── examples/demo/   # synthetic sample diagram in every format
+├── local/           # YOUR diagrams (git-ignored, never committed)
+├── tools/           # host-probe.sh: read-only Linux host probe
+├── AGENTS.md        # mirror of CLAUDE.md for other agents (kept in step)
+├── CLAUDE.md        # agent guidance (kept in step with AGENTS.md)
+├── diagram.html     # generated standalone page (node engine/browser.mjs)
+├── LICENSE
+└── README.md        # this file
 ```
 
-**Don't pre-create empty folders.** Add a folder on the day a
-second code folder, archived artifact, or per-folder doc
-actually lands — not before. See
-[`docs/README.md#section-file-folder`](docs/README.md#section-file-folder)
-for the same rule applied inside `docs/`.
+`tmp/` is also git-ignored scratch space.
+
+## Conventions
 
 ### Naming
 
 | Convention | Example | Why |
 | --- | --- | --- |
 | `kebab-case.md` for documents | `branding.md`, `task-0001.md` | Reads as prose; case-safe across OSes |
-| Lowercase folders | `docs/`, `scripts/`, `archive/` | Matches URL paths; case-safe |
+| Lowercase folders | `docs/`, `engine/`, `archive/` | Matches URL paths; case-safe |
 | `UPPERCASE.md` only for conventionally recognized files | `README.md`, `CLAUDE.md`, `AGENTS.md`, `LICENSE`, `CHANGELOG.md` | Don't invent new uppercase files |
 
-Code folders use their natural name (`mobile/`, `web/`,
-`workers/`); see [Overview](#overview).
-
-### Infra at root
-
-Folders sit unprefixed at the root when they apply across the
-project:
-
-- **`docs/`** — strategy, product, business, brand
-- **`scripts/`** — cross-cutting build tooling (e.g. release-note
-  fan-out from `docs/` to multiple code folders)
-- **`<shared-infra>/`** — shared backend / infrastructure used
-  by multiple code folders (e.g. `supabase/`, `prisma/`,
-  `infra/`)
-
-If a script or config touches one code folder only, it lives
-with that folder, not at root.
-
-### Ad-hoc root files
-
-Some root files are created on demand, not scaffolded:
-
-- `HANDOVER.md` — open work deferred between sessions. Create
-  when you have items to defer; delete when they're all resolved.
-  Not a living doc.
+Code folders use their natural name (`engine/`, `tools/`).
 
 ### Archive
 

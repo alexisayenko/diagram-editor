@@ -117,7 +117,7 @@ This dependency-free parser supports an explicit **TOML subset**: top-level keys
 
 ## Collecting server facts
 
-`tools/host-probe.sh` is a read-only Linux probe (bash, `ip`, `ss`, `systemctl`, `crontab -l`, docker/podman if present; no writes, no installs, 5 s timeouts; no environment variables or command arguments are printed). It uses `sudo -n` only when it works without a password, otherwise it runs as the plain user and says so (process names may then show as `?`). Feed it over stdin, once per host in `hosts.txt` (one IP or DNS name per line, `#` lines are comments):
+`tools/host-probe.sh` is a read-only Linux probe (bash, `ip`, `ss`, `systemctl`, `crontab -l`, docker/podman if present; no writes, no installs, 5 s timeouts; no environment variables or command arguments are printed). It never uses sudo and runs as the plain user (process names of other users' ports show as `?`); every command it runs is listed once in its `COMMANDS` block ([ADR-0008](decisions/adr-0008-host-probe.md)). Feed it over stdin, once per host in `hosts.txt` (one IP or DNS name per line, `#` lines are comments):
 
 ```sh
 mkdir -p out

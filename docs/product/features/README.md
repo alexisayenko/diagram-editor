@@ -124,3 +124,20 @@ into [`../../tasks/`](../../tasks/) — see the
 2. Create `features/<noun>-<verb>.md` (kebab-case, noun-verb).
 3. Cross-link the concepts it touches.
 4. As tasks land, append them to **Related tasks**.
+
+## Existing features
+
+- [`self-service.md`](self-service.md) — build, edit and save a diagram
+  in the page; entry point to the rest.
+- [`server-edit.md`](server-edit.md) — add, edit, duplicate and move
+  servers; cards.
+- [`notes-edit.md`](notes-edit.md) — add, edit and delete notes.
+- [`networks-derive.md`](networks-derive.md) — derived networks,
+  naming, auto-append.
+- [`servers-import.md`](servers-import.md) — host probe script and
+  **Import servers**.
+- [`diagram-archive.md`](diagram-archive.md) — `.diag.zip` export and
+  import.
+- [`drawing-draw.md`](drawing-draw.md) — pencil and eraser.
+
+Decisions behind them: [`../../tech/decisions/`](../../tech/decisions/README.md).

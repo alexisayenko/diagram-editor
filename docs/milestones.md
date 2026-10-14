@@ -14,5 +14,17 @@ One bullet per event: ISO date, an em dash, what happened in a
 sentence or two, and a link to the task or artifact that carries
 the detail. Newest first; several events on one date are fine.
 
-- [TODO: YYYY-MM-DD] — [TODO: one-line summary; link to the task,
-  artifact, post, or release].
+- 2026-10-14 — Networks derived from server IPs, optionally named, and
+  appended to `networks.toml` on Save
+  ([ADR-0006](tech/decisions/adr-0006-derived-networks.md)).
+- 2026-10-13 — Host probe, **Import servers**, `.diag.zip` archives and
+  the Open saved diagram / New diagram dialogs
+  ([ADR-0005](tech/decisions/adr-0005-diag-zip-archive.md),
+  [ADR-0008](tech/decisions/adr-0008-host-probe.md)).
+- 2026-10-08 — Diagram split into a folder of small files
+  ([ADR-0003](tech/decisions/adr-0003-diagram-folder-surgical-writeback.md)).
+- 2026-10-07 — Engine added with the synthetic demo; server-side
+  storage in `local/`, notes and server editing, drawing tools
+  ([ADR-0004](tech/decisions/adr-0004-local-server-storage.md)).
+- 2026-10-07 — Rule recorded: no real infrastructure data in the repo
+  ([ADR-0001](tech/decisions/adr-0001-no-infra-data-in-repo.md)).

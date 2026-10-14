@@ -1,5 +1,9 @@
 # CI/CD
 
+Status in this repo: no workflows exist yet; nothing here is wired up.
+The `[TODO: ...]` placeholders below are for when the first one is
+added. Tests run locally: `node --test engine/test/*.test.mjs`.
+
 Playbook for testing and shipping a project on the GitHub Free
 plan with a $0 Actions budget. Extracted from moene
 (`project-moodtracker`), which is the worked example throughout;

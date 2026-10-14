@@ -23,11 +23,11 @@ reinforce the principle.]
 
 ## Product
 
-Diagram editor for infrastructure diagrams: a shared engine renders a folder of TOML files (or Mermaid + JSON) describing servers, regions and connections into a self-contained interactive HTML page, SVG/PNG exports and an Excalidraw scene. Authors open `diagram.html` in desktop Edge or Chrome, pick a folder, and arrange the layout in edit mode. Diagram folders hold content only; no diagram needs engine edits. [TODO: users, monetization.]
+Diagram editor for infrastructure diagrams: a shared engine renders a folder of TOML files (or Mermaid + JSON) describing servers, regions and connections into a self-contained interactive HTML page, SVG/PNG exports and an Excalidraw scene. Authors run `node engine/serve.mjs`, open it in any modern browser, create, open or import a diagram (stored in the git-ignored `local/` folder, or exchanged as a `.diag.zip`), edit servers and notes, import hosts probed by `tools/host-probe.sh`, and arrange the layout in edit mode. Diagram folders hold content only; no diagram needs engine edits. [TODO: users, monetization.]
 
 ## Tech stack
 
-Plain Node.js ESM (`engine/`, no package manifest or dependencies) for parsing, layout and rendering; browser runtime in `engine/runtime/` (vanilla JS modules inlined into one script) and CSS in `engine/css/`. Run Node through WSL: `node engine/build.mjs <dir> [--check]` builds a diagram folder, `node engine/browser.mjs [--check]` regenerates the standalone `diagram.html`, `node engine/serve.mjs` serves it on localhost, `node --test engine/test/*.test.mjs` runs tests. No deploy target yet. Status: ported from infra-diagram-engine; `layout.html` of `examples/demo` is out of date and one browser-bundle test fails (both also in the source).
+Plain Node.js ESM (`engine/`, no package manifest or dependencies) for parsing, layout and rendering; browser runtime in `engine/runtime/` (vanilla JS modules inlined into one script) and CSS in `engine/css/`. Run Node through WSL: `node engine/build.mjs <dir> [--check]` builds a diagram folder, `node engine/browser.mjs [--check]` regenerates the standalone `diagram.html`, `node engine/serve.mjs` serves it on localhost, `node --test engine/test/*.test.mjs` runs tests. No deploy target yet. Status: all 180 tests pass and `diagram.html` is up to date; `layout.html` of `examples/demo` (Mermaid build) is out of date and needs a rebuild.
 
 ## Working in a shared checkout
 
@@ -59,6 +59,7 @@ Auth notes if any (HTTPS, fine-grained PAT, etc.).]
 - [docs/tech/ci-cd.md](docs/tech/ci-cd.md) — CI/CD playbook
 - [docs/tech/architecture.md](docs/tech/architecture.md) — engine module map, build, page behaviour
 - [docs/tech/authoring.md](docs/tech/authoring.md) — TOML authoring format and workflow
+- [docs/tech/decisions/](docs/tech/decisions/README.md) — ADRs: why the engine is built this way
 - [docs/product/concepts/terminology.md](docs/product/concepts/terminology.md) — agreed vocabulary
-- [docs/product/features/self-service.md](docs/product/features/self-service.md) — self-service spec
+- [docs/product/features/](docs/product/features/README.md) — feature specs (start with self-service)
 - [examples/demo/](examples/demo/) — sample diagram in every format

@@ -21,7 +21,9 @@ This template assumes **one product, delivered through one or
 more top-level code folders** (`mobile/`, `web/`, `workers/`,
 `marketing-site/`, etc.). Name each folder by what it is.
 
-- [TODO: product name] — [TODO: one-line description].
+- diagram-editor — editor for infrastructure diagrams: a TOML diagram
+  folder rendered by one engine into an interactive page and exports
+  (code in `engine/`, `tools/`, `examples/`).
 
 If a second product ever appears (rare), see
 [Multi-product split](#multi-product-split).
@@ -131,6 +133,10 @@ and rules):
   store metadata and legal-page drafts
 - [`tasks/README.md`](tasks/README.md) — task spec + frontmatter
 - [`tech/README.md`](tech/README.md) — stack + decisions frame
+- [`tech/architecture.md`](tech/architecture.md),
+  [`tech/authoring.md`](tech/authoring.md) — engine and format
+  reference
+- [`tech/decisions/README.md`](tech/decisions/README.md) — ADR index
 - [`tech/ci-cd.md`](tech/ci-cd.md) — CI/CD playbook (manual
   workflows, test layers, deploy and release paths)
 - [`ui-ux/README.md`](ui-ux/README.md) — screen + journey spec,
@@ -170,7 +176,10 @@ docs/
 ├── milestones.md                       # dated project events
 ├── product/                            # entry: product/README.md
 │   ├── concepts/                       # entry: concepts/README.md
+│   │   ├── terminology.md              # agreed vocabulary
+│   │   └── service-cname.md            # concept, not implemented
 │   ├── features/                       # entry: features/README.md
+│   │   └── self-service.md …           # one spec per capability
 │   └── README.md
 ├── release/                            # entry: release/README.md
 │   ├── app-store-metadata.md           # store listing draft
@@ -179,6 +188,9 @@ docs/
 │   ├── README.md
 │   └── task-XXXX.md                    # numbered tasks
 ├── tech/                               # entry: tech/README.md
+│   ├── architecture.md                 # engine module map, page behaviour
+│   ├── authoring.md                    # diagram format, workflow, local API
+│   ├── decisions/                      # ADRs: adr-NNNN-<slug>.md + README
 │   └── ci-cd.md                        # CI/CD playbook
 ├── ui-ux/                              # entry: ui-ux/README.md
 │   ├── style-guide.md                  # visual + interaction standards

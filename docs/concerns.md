@@ -40,18 +40,20 @@ against it.
 
 ---
 
-## C1 — [TODO: concern name]
+## C1 — Self-service diagram editor
 
-[TODO: 1-3 sentences — what work falls under this slice. What it
-spans across sections.]
+Persistent layer: building, editing, saving and exchanging a diagram
+in the page, with no real data in the repo. Spans tech (engine,
+format, local server), product (feature specs) and tools (host
+probe).
 
-- Lives in: [TODO: paths where this work shows up — e.g.
-  `web/`, `data/`, `scripts/`]
-- Source spec: [TODO: link to the relevant section/file]
+- Lives in: `engine/`, `tools/`, `examples/`
+- Source spec: [`product/features/self-service.md`](product/features/self-service.md)
 
-## C2 — [TODO: concern name]
+## C2 — Service CNAME
 
-[TODO: …]
+Bounded: show the DNS alias clients use for a service. Concept only,
+not implemented.
 
-- Lives in: [TODO]
-- Source spec: [TODO]
+- Lives in: `docs/product/concepts/`
+- Source spec: [`product/concepts/service-cname.md`](product/concepts/service-cname.md)
