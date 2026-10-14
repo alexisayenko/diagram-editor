@@ -5,6 +5,12 @@ DNS name of the host that runs it.
 
 Status: Concept: not implemented; display undecided.
 
+Decided 2026-10-14
+([ADR-0013](../../tech/decisions/adr-0013-adopt-refactoring-roadmap.md)):
+the key is named `aliases`, not `cnames`, and is expanded into one
+model list. It ships after `format_version` exists. The concept is
+still not implemented.
+
 ## Problem and goal
 
 Clients never type the host name. They use an alias such as
@@ -38,13 +44,13 @@ ranges. A network filter only dims a CNAME together with its server.
 
 All names below are synthetic.
 
-### Option 1: `cnames` key on a server
+### Option 1: `aliases` key on a server
 
 ```toml
 # servers/host-01.toml
 name = "host-01.example.test"
 dns = ["host-01.example.test"]
-cnames = ["app.example.test", "api.example.test"]
+aliases = ["app.example.test", "api.example.test"]
 ```
 
 - Optional string list, same host-name validation as `dns`.
@@ -57,11 +63,11 @@ Cons: no room for a label or note; one CNAME on two hosts is two
 entries that can drift apart; a CNAME pointing nowhere cannot
 exist; a name can be listed on two servers by mistake.
 
-### Option 2: diagram-level `[[cnames]]` table
+### Option 2: diagram-level `[[aliases]]` table
 
 ```toml
-# cnames.toml (new optional file, like networks.toml)
-[[cnames]]
+# aliases.toml (new optional file, like networks.toml)
+[[aliases]]
 name = "app.example.test"
 targets = ["host-01", "host-02"]  # server ids, may be empty
 label = "Service A"               # optional
@@ -86,7 +92,7 @@ Start with Option 1, keep Option 2 open.
 Reason: the first need is "show the aliases of this host". Option 1
 needs no new file, editor or import change. Option 2 is the right
 end state once one CNAME must point at several hosts or at nothing.
-They are compatible: `cnames` on a server stays as shorthand for
+They are compatible: `aliases` on a server stays as shorthand for
 "this name targets me", and the table adds the extras. Whatever
 display is chosen must treat a CNAME as `name -> list of servers`,
 even while the list always has one element.
@@ -94,10 +100,10 @@ even while the list always has one element.
 ## Relation to other data
 
 - **`dns` key**: the host's own names. A name in both `dns` and
-  `cnames` is a validation warning.
+  `aliases` is a validation warning.
 - **Import servers / host probe**: the probe runs on the host and
   cannot learn CNAMEs. They come from DNS zone data or by hand.
-  Import must keep an existing `cnames` list when it merges a
+  Import must keep an existing `aliases` list when it merges a
   snippet.
 - **Connections**: unchanged; they still join servers. A connection
   whose target is a CNAME is a later idea, out of scope.
@@ -149,7 +155,7 @@ even while the list always has one element.
 - Readability: more ink; arrows add crossings in dense areas.
 - Edit mode: dragged like a note or server; add and remove from the
   right-click menu.
-- Layout file: new positions in `diagram.layout.json` (a `cnames`
+- Layout file: new positions in `diagram.layout.json` (an `aliases`
   section keyed by name); with no saved position the panel is
   auto-placed next to its target.
 - Exports: panel and arrows must be drawn in SVG and PNG and emitted
@@ -201,22 +207,22 @@ even while the list always has one element.
 
 ## Recommendation
 
-Display A (label on top of the card) with data Option 1 (`cnames`
+Display A (label on top of the card) with data Option 1 (`aliases`
 key).
 
 Minimal slice, in order:
 
-1. Parse and validate `cnames` on a server: host-name check, no
+1. Parse and validate `aliases` on a server: host-name check, no
    name on two servers, warning if also in `dns`.
 2. Show the list in the details panel next to DNS.
 3. Draw the label strip above the card; include it in card size for
    auto-layout and exports.
-4. Add a `cnames` list field to the server editor and Save (same
+4. Add an `aliases` list field to the server editor and Save (same
    key-level rewrite as `dns`).
 5. Add a synthetic example to `examples/demo`.
 
 Defer B until a CNAME must point at several hosts or nowhere; then
-add `cnames.toml` (Option 2) and the movable panel with arrows.
+add `aliases.toml` (Option 2) and the movable panel with arrows.
 
 ## Open questions
 

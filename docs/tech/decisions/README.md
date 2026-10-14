@@ -54,3 +54,4 @@ What we did not pick and why.
 | [0010](adr-0010-test-strategy.md) | Tests with `node:test`, no dependencies, measured coverage | 2026-10-14 |
 | [0011](adr-0011-static-analysis-sonarcloud.md) | Static analysis with SonarCloud | 2026-10-14 |
 | [0012](adr-0012-generated-outputs-committed.md) | Generated outputs are committed and checked | 2026-10-07 |
+| [0013](adr-0013-adopt-refactoring-roadmap.md) | Adopt the refactoring roadmap and its eleven decisions | 2026-10-14 |

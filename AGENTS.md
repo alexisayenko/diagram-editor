@@ -83,6 +83,7 @@ Auth notes if any (HTTPS, fine-grained PAT, etc.).]
 - [ADR-0010](docs/tech/decisions/adr-0010-test-strategy.md) — test strategy and coverage
 - [ADR-0011](docs/tech/decisions/adr-0011-static-analysis-sonarcloud.md) — SonarCloud
 - [ADR-0012](docs/tech/decisions/adr-0012-generated-outputs-committed.md) — generated outputs are committed and checked
+- [ADR-0013](docs/tech/decisions/adr-0013-adopt-refactoring-roadmap.md) — refactoring roadmap and its eleven decisions
 - [docs/product/concepts/terminology.md](docs/product/concepts/terminology.md) — agreed vocabulary
 - [docs/product/features/](docs/product/features/README.md) — feature specs (start with self-service)
 - [examples/demo/](examples/demo/) — sample diagram in every format

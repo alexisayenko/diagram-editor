@@ -1,7 +1,8 @@
 # Refactoring recommendations
 
-Status: proposal · 2026-10-14 · baseline commit fdbd033. Nothing here is
-decided; the owner decisions in section 5 gate the big items.
+Status: accepted plan, Wave 0 not started · 2026-10-14 · baseline commit
+fdbd033. The owner decided all eleven items of section 5 on 2026-10-14
+([ADR-0013](decisions/adr-0013-adopt-refactoring-roadmap.md)).
 
 ## 1. Purpose and how to read it
 
@@ -13,7 +14,7 @@ review prefix: `CD` code design, `AR` architecture, `DK` DRY/KISS,
 `BP` best practices, `DM` data model.
 
 How to read: start with section 2 (themes), pick work from section 3
-(waves), settle section 5 (decisions) before Wave 2, look up any ID in
+(waves), read section 5 (decisions, settled), look up any ID in
 section 6.
 
 Baseline numbers (2026-10-14):
@@ -195,54 +196,50 @@ checks; "after" is the expected grade once the listed items land.
 | Testability | B+ | A- | 628 tests, but five fake-DOM harnesses and coverage-driven names | BP-18, BP-19, CD-01 |
 | Tooling and DX | C | B+ | No `package.json`, hook, lint, CI or version | BP-22, BP-23 |
 
-## 5. Decisions needed from the owner
+## 5. Decisions
 
-1. **Legacy Mermaid/markdown pipeline** (AR-02, DK-01, BP-02). Options:
-   a) delete now; b) keep import-only with a one-off converter to the
-   TOML folder, then delete; c) keep both. Recommend b: it ends the
-   double maintenance and the only CDN dependency without stranding
-   old folders. Blocks Wave 2.
-2. **Format version key** (DM-01). Options: a) integer
-   `format_version = 1` (needs integer support in the TOML subset,
-   [ADR-0002](decisions/adr-0002-toml-subset-parser.md)); b) string
-   `format_version = "1"`; c) none. Recommend b: strict, no parser
-   change. Absent means 1.
-3. **CDN code in `index.html`** (BP-02). Options: a) pin versions with
-   SRI; b) drop `marked` and reuse the engine's `md()`; c) leave it
-   until D1 removes the file. Recommend a as a Wave 0 stopgap, then c.
-4. **CSP and sandbox for the diagram iframe** (BP-01, BP-03). Options:
-   a) CSP meta plus server headers; b) `sandbox` attribute; c) both.
-   Note `sandbox` without `allow-same-origin` breaks the parent bridge
-   (`contentWindow` access). Recommend a now, and b only after the host
-   interface (DM-15) moves to `postMessage`.
-5. **Layout version and downgrade policy** (DM-02, DM-05). Options:
-   a) newer file opens read-only with a warning; b) Save writes a
-   `.bak` first; c) preserve nested unknown fields. Recommend a, plus
-   version 2 only when the minimal layout lands.
-6. **Update model: keep full `srcdoc` re-render or shell plus scene**
-   (AR-06). Options: a) keep; b) refactor now; c) benchmark first,
-   refactor only if 150 servers feels slow. Recommend c: reviewer
-   numbers show about 200 ms at 157 servers without connections.
-7. **Tooling without CI** (BP-22, BP-23). Options: a) `package.json`
-   scripts, a `tools/hooks/pre-commit` and a manual workflow later;
-   b) add a CI workflow now; c) nothing. Recommend a, given the GitHub
-   Actions free-minutes quota.
-8. **Committed generated outputs** (ADR-0012, AR-12). Options: a) keep,
-   mark `-diff` in `.gitattributes`; b) generate in CI only. Recommend
-   a: `serve.mjs` serves `diagram.html` straight from disk.
-9. **Id case policy** (DM-11). Options: a) lowercase only for new ids,
-   read leniently; b) forbid uppercase; c) leave. Recommend a, with a
-   case-insensitive uniqueness check (Windows and macOS collide).
-10. **Alias key for Service CNAME** (DM-19). Options: a) `cnames` as in
-    the concept; b) neutral `aliases`, expanded into one model list.
-    Recommend b, shipped after D2.
-11. **Test strategy shift** (BP-18, BP-19). Options: a) keep `cov-*`
-    and the 100% target; b) add SVG goldens and a headless smoke, merge
-    the harnesses, rename by area. Recommend b after Wave 2; amend
-    ADR-0010.
+Status: **Decided** · 2026-10-14. The owner accepted the recommended
+option of all eleven items. They are recorded in
+[ADR-0013](decisions/adr-0013-adopt-refactoring-roadmap.md). Items are
+still referred to as D1 to D11.
+
+1. **Legacy Mermaid/markdown pipeline** (AR-02, DK-01, BP-02).
+   Decided: b) keep import-only with a one-off converter to the TOML
+   folder, then delete. Ends the double maintenance and the only CDN
+   dependency without stranding old folders. Blocks Wave 2.
+2. **Format version key** (DM-01). Decided: b) string
+   `format_version = "1"`: strict, no parser change. Absent means 1.
+3. **CDN code in `index.html`** (BP-02). Decided: a) pin versions with
+   SRI now as a Wave 0 stopgap; c) drop it with the legacy path (D1).
+4. **CSP and sandbox for the diagram iframe** (BP-01, BP-03). Decided:
+   a) CSP meta plus server headers now; b) `sandbox` only after the
+   host interface (DM-15) moves to `postMessage`, because `sandbox`
+   without `allow-same-origin` breaks the parent bridge.
+5. **Layout version and downgrade policy** (DM-02, DM-05). Decided:
+   a) a newer file opens read-only with a warning; version 2 only when
+   the minimal layout lands.
+6. **Update model** (AR-06). Decided: c) benchmark first; refactor
+   only if 150 servers feels slow (reviewers measured about 200 ms at
+   157 servers without connections).
+7. **Tooling without CI** (BP-22, BP-23). Decided: a) `package.json`
+   scripts and a `tools/hooks/pre-commit`; no CI yet (free-minutes
+   quota).
+8. **Committed generated outputs** (ADR-0012, AR-12). Decided: a) keep
+   them committed and mark them `-diff` in `.gitattributes`:
+   `serve.mjs` serves `diagram.html` straight from disk.
+9. **Id case policy** (DM-11). Decided: a) lowercase only for new ids,
+   read leniently, with a case-insensitive uniqueness check (Windows
+   and macOS collide).
+10. **Alias key for Service CNAME** (DM-19). Decided: b) neutral
+    `aliases`, expanded into one model list; shipped after D2. The
+    [concept](../product/concepts/service-cname.md) uses this key.
+11. **Test strategy shift** (BP-18, BP-19). Decided: b) add SVG goldens
+    and a headless smoke test, then merge the harnesses and rename by
+    area, after Wave 2; amend ADR-0010 when done.
 
 Wave 2 needs ADRs for: one pipeline and model, legacy fate, bundling,
-update model, format versioning, server API, CI (ADR-0013 and up).
+update model, format versioning, server API, CI (ADR-0014 and up;
+ADR-0013 is the roadmap decision).
 
 ## 6. Findings index
 
