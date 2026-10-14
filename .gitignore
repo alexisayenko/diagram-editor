@@ -32,3 +32,6 @@ out/
 /local/
 *.private.*
 /tmp/
+
+# Scratch folders
+/.tmp*/

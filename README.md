@@ -39,7 +39,7 @@ node engine/browser.mjs --check                                  # diagram.html 
 node engine/build.mjs examples/demo --check                      # demo outputs are current
 ```
 
-- 627 tests, 99.85% line coverage, no dependencies (`node:test`).
+- 635 tests, 99.73% line coverage, no dependencies (`node:test`).
 - Files: `<topic>.test.mjs` and `cov-<area>-<topic>.test.mjs`;
   `helpers.mjs` and `cov-*.mjs` are shared helpers, not tests.
 - Rule: a bug found gets a skipped test first, then a fix that

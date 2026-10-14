@@ -46,8 +46,8 @@ workflow is added.
 
 ## Known gaps
 
-- SonarCloud: 2 open bugs (promises not awaited in
-  `engine/browser/app.js`) and a failing quality gate
+- SonarCloud: a failing quality gate (0 bugs, 2 vulnerabilities, 119
+  code smells at the last analysed push)
   ([ADR-0011](decisions/adr-0011-static-analysis-sonarcloud.md)).
 - The engine has no `package.json`; Node versions are not pinned.
 - Service CNAME is a concept only

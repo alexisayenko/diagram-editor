@@ -35,8 +35,8 @@ there and bugs hid in the page code.
   `node --test --experimental-test-coverage engine/test/*.test.mjs`.
 - Targets: every engine file at 100% of lines, and branches above
   90% where a test can reach them.
-- Reached on 2026-10-14 (627 tests, 0 failed, 0 skipped): all files
-  99.85% lines, 96.75% branches, 97.69% functions. The report also
+- Reached on 2026-10-14 (635 tests, 0 failed, 0 skipped): all files
+  99.73% lines, 96.80% branches, 97.71% functions. The report also
   lists the test files themselves.
 
 | Area | Lines | Branches |

@@ -26,7 +26,7 @@ the detail. Newest first; several events on one date are fine.
     removal, `app.js` split, layering, update model.
   - Wave 3: planned (accepted): layout v2, units, warnings channel,
     aliases, API polish, harness merge.
-- 2026-10-14 — Tests, refactor and static analysis: 627 tests with 99.85%
+- 2026-10-14 — Tests, refactor and static analysis: 635 tests with 99.73%
   line coverage, large functions split, six bugs found by the tests
   fixed, SonarCloud clean-up
   ([ADR-0010](tech/decisions/adr-0010-test-strategy.md),

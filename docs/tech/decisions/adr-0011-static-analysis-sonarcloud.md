@@ -32,11 +32,10 @@ so small, plain functions matter.
     disk).
   - **S1523** on `new vm.Script` in the two test loaders: the code
     run is the repo's own source; `.sonarcloud.properties` ignores this rule for `engine/test/cov-*.mjs` only.
-- Status at the last analysis (4996b5c, 2026-10-14): 2 bugs
-  (S9383, promises not awaited in `engine/browser/app.js`), 2
-  vulnerabilities (the S1523 test loaders), 168 code smells, 0
-  hotspots, 0.0% duplication; the quality gate is not passed. The
-  two bugs are open work ([concerns](../../concerns.md)).
+- Status at the last analysed push (2026-10-14): 0 bugs, 2
+  vulnerabilities (the S1523 test loaders), 119 code smells, 0.0%
+  duplication; the quality gate is not passed. The numbers reflect
+  the last analysed push, not necessarily the current commit.
 
 ## Consequences
 

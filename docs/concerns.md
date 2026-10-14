@@ -52,8 +52,8 @@ probe).
 - Quality: tests and coverage
   ([ADR-0010](tech/decisions/adr-0010-test-strategy.md)); SonarCloud
   ([ADR-0011](tech/decisions/adr-0011-static-analysis-sonarcloud.md)).
-  Open: 2 SonarCloud bugs (S9383, promises not awaited in
-  `engine/browser/app.js`) and the quality gate.
+  Open: the SonarCloud quality gate (2 vulnerabilities, 119 code
+  smells at the last analysed push).
 
 ## C2 — Service CNAME
 
