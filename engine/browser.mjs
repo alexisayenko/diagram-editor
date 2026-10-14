@@ -27,7 +27,7 @@ function bundle(id) {
   if (/^import |^export /m.test(src)) throw new Error("Unsupported module syntax: " + id);
   modules.set(id, src + "\nObject.assign(exports, {" + exports.join(",") + "});");
 }
-for (const entry of ["browser/render.mjs", "parse/toml.mjs", "parse/toml-write.mjs", "parse/networks-append.mjs", "parse/new-diagram.mjs", "parse/import-servers.mjs", "lib/names.mjs", "lib/diagrams.mjs", "lib/zip.mjs"]) bundle(entry);
+for (const entry of ["browser/render.mjs", "parse/toml.mjs", "parse/toml-write.mjs", "parse/networks-append.mjs", "parse/networks-name.mjs","parse/new-diagram.mjs", "parse/import-servers.mjs", "lib/names.mjs", "lib/diagrams.mjs", "lib/zip.mjs"]) bundle(entry);
 const factories = [...modules].map(([id, src]) => `${JSON.stringify(id)}: function(require, exports) {\n${src}\n}`).join(",\n");
 const assets = { cssSvg: css("svg"), cssPage: css("page"), js: "window.InfraDiagramFileBacked = true;\n" + script() };
 const hostScript = readFileSync(resolve(engine, "../tools/host-probe.sh"), "utf8");

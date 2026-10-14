@@ -1,6 +1,7 @@
 // A saved diagram is a folder in local/ behind engine/serve.mjs; the model and geometry stay in this tab. Files travel as .diag.zip archives.
 const { setNotes, setServer, addServer, duplicateServer, addRegion, moveServer, freeRegionTypes } = require("parse/toml-write.mjs");
 const { appendNetworks } = require("parse/networks-append.mjs");
+const { setNetworkName, normalizeName } = require("parse/networks-name.mjs");
 const { parseNoteText, mergeFolder, withRoot, tomlModel } = require("parse/toml.mjs");
 const { mergeTypes } = require("parse/types.mjs");
 const { newDiagram, DIAGRAM_ID } = require("parse/new-diagram.mjs");
@@ -60,7 +61,7 @@ function load(folder, files, layoutText) {
   ready = false;
   const LAYOUT_KEYS = ["version", "diagramId", "nodes", "clusters", "edges", "drawings"];
   const extra = saved ? Object.fromEntries(Object.entries(saved).filter(([k]) => !LAYOUT_KEYS.includes(k))) : {};
-  active = { folder, layoutName, source: new Map(files), work: new Map(files), text: layoutText, extra, hadDrawings: !!saved && "drawings" in saved, id: result.id, notes: result.notes, carryLayout: false, reload: null, after: null };
+  active = { folder, layoutName, source: new Map(files), work: new Map(files), text: layoutText, extra, hadDrawings: !!saved && "drawings" in saved, id: result.id, notes: result.notes, carryLayout: false, reload: null, after: null, netNames: new Map() };
   frame.srcdoc = result.html;
   document.querySelector("#welcome").hidden = true;
   frame.hidden = false;
@@ -82,7 +83,7 @@ frame.addEventListener("load", () => {
   if (!ready) message("The diagram could not start. Reload it to retry.", true);
   else {
     diagram.noteParser = (text) => { const n = parseNoteText(text, "Note", true); return { title: n.title, date: n.date, paras: n.paras }; };
-    diagram.serverEditor = { source: serverSource, apply: applyServer, add: addNewServer, duplicate: duplicateExisting, regionTypes, addRegion: addNewRegion, move: moveToRegion };
+    diagram.serverEditor = { source: serverSource, apply: applyServer, add: addNewServer, duplicate: duplicateExisting, regionTypes, addRegion: addNewRegion, move: moveToRegion, renameNetwork };
     const after = active.after;
     active.after = null;
     if (after?.edit) frame.contentDocument.getElementById("te").click();
@@ -242,6 +243,18 @@ function moveToRegion(id, region) {
     return null;
   } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
 }
+function renameNetwork(cidr, name) {
+  const open = notesApi().finish() || serverApi().finish();
+  if (open) return "Fix the open edit first: " + open;
+  if (!ready) return "Try again once the diagram has reloaded.";
+  try {
+    const clean = normalizeName(name), prev = active.work.get(NETWORKS) ?? null, next = setNetworkName(prev, cidr, clean);
+    if (next === prev) return null;
+    active.netNames.set(cidr, clean);
+    rerenderMany(new Map([[NETWORKS, next]]), {}, [], undefined);
+    return null;
+  } catch (e) { return String(e.message).replace(/^TOML: /, ""); }
+}
 function withNotes(files, texts) {
   const out = new Map(files), prev = out.get(NOTES), next = setNotes(prev ?? "", texts);
   if (prev !== undefined || next !== "") out.set(NOTES, next);
@@ -278,7 +291,7 @@ function pending() {
   const texts = notes.texts(), notesChanged = JSON.stringify(texts) !== JSON.stringify(active.notes);
   const layout = api.currentLayout(), drawings = drawApi().list();
   const files = notesChanged ? withNotes(active.work, texts) : active.work;
-  const changed = [...files].filter(([p, t]) => active.source.get(p) !== t).map(([p]) => p);
+  const changed = [...files].filter(([p, t]) => active.source.get(p) !== t && (p !== NETWORKS || active.fresh)).map(([p]) => p);
   return {
     api, notes, texts, drawings, files, changed, layout,
     layoutText: JSON.stringify({ version: 1, diagramId: active.id, ...active.extra, ...layout, ...(drawings.length || active.hadDrawings ? { drawings } : {}) }, null, 2) + "\n",
@@ -288,13 +301,16 @@ const NETWORKS = "networks.toml";
 async function syncNetworks() {
   const ips = [...tomlModel(active.work, active.folder).model.nodes.values()].flatMap((n) => n.ip), name = active.folder + "/" + NETWORKS;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const base = await stored(name), res = appendNetworks(base, ips);
-    if (!res.added.length) return { count: 0 };
+    const base = await stored(name);
+    let text = base, renamed = 0;
+    for (const [cidr, label] of active.netNames) { const next = setNetworkName(text, cidr, label); if (next !== text) renamed++; text = next; }
+    const res = appendNetworks(text, ips);
+    if (res.text === base) { active.netNames.clear(); return { count: 0, renamed: 0 }; }
     try {
       await putFiles([{ name, text: res.text, base }]);
-      active.source.set(NETWORKS, res.text); active.work.set(NETWORKS, res.text);
-      return { count: res.added.length };
-    } catch (e) { if (e.status !== 409 || attempt) return { count: 0, error: e.message }; }
+      active.source.set(NETWORKS, res.text); active.work.set(NETWORKS, res.text); active.netNames.clear();
+      return { count: res.added.length, renamed };
+    } catch (e) { if (e.status !== 409 || attempt) return { count: 0, renamed: 0, error: e.message }; }
   }
 }
 saveButton.addEventListener("click", async () => {
@@ -316,7 +332,7 @@ saveButton.addEventListener("click", async () => {
     afterSave(p, files.map((f) => f.name));
     const net = await syncNetworks().catch((e) => ({ count: 0, error: e.message }));
     const saved = p.changed.length ? `Saved ${active.layoutName} and ${p.changed.length} file(s) in local/${active.folder}/` : `Saved ${active.layoutName} in local/`;
-    message(saved + (net.count ? ` · ${net.count} new networks added to networks.toml` : "") + (net.error ? ` · networks.toml not updated: ${net.error}` : ""), !!net.error);
+    message(saved + (net.count ? ` · ${net.count} new networks added to networks.toml` : "") + (net.renamed ? ` · ${net.renamed} network name${net.renamed === 1 ? "" : "s"} saved to networks.toml` : "") + (net.error ? ` · networks.toml not updated: ${net.error}` : ""), !!net.error);
   } catch (e) {
     if (p && e.saved?.length) {
       afterSave(p, e.saved);

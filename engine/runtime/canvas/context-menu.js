@@ -1,4 +1,4 @@
-InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model"], function (core, model) {
+InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/networks"], function (core, model, networks) {
   var state = model.state;
   var menu = null;
 
@@ -57,6 +57,15 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model"], function
     });
   }
 
+  function networkAt(target) {
+    var b = target && target.closest && target.closest("#wl .nw"), i = b && +b.getAttribute("data-n"), net = b && core.D && core.D.nets && core.D.nets[i];
+    return net && net.cidr ? { i: i, net: net } : null;
+  }
+
+  function openNetwork(e, at) {
+    show(e, function () { return addItem(at.net.name ? "Edit name" : "Add name", function () { networks.editName(at.i); }); });
+  }
+
   function open(e) {
     var p = model.point(e), api = bridge(), id = serverAt(e.target), region = model.regionAt(state.st, p), at = { clientX: e.clientX, clientY: e.clientY };
     show(e, function () {
@@ -78,7 +87,8 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model"], function
     if (!state.on || !bridge() || !bridge().add || editable(e.target)) return;
     e.preventDefault();
     close();
-    open(e);
+    var nw = networkAt(e.target);
+    if (nw && bridge().renameNetwork) openNetwork(e, nw); else open(e);
   });
   document.addEventListener("pointerdown", function (e) { if (menu && !menu.contains(e.target)) close(); }, true);
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && menu) { e.stopPropagation(); close(); } }, true);

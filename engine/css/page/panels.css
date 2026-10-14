@@ -13,6 +13,7 @@
 .nw[aria-pressed=true]{background:var(--line);font-weight:600}
 .nw:focus-visible{outline:2px solid var(--fg);outline-offset:-2px}
 .nw code{font:11px ui-monospace,Consolas,monospace}
+.nw input.nwe{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--fg);border-radius:3px;padding:0 3px;width:calc(100% - 1ch);min-width:6ch;box-sizing:border-box}
 .nk{font:11px ui-monospace,Consolas,monospace;color:var(--mut)}
 .nw.z{color:var(--mut)}
 #wr{margin-top:6px}

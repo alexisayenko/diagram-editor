@@ -19,7 +19,7 @@ test("addServer creates a uniquely named servers/<id>.toml in the region or with
 
 const regionAt = new Function("return " + readFileSync(new URL("../runtime/canvas/model.js", import.meta.url), "utf8").match(/function regionAt[\s\S]*?\n  }\n/)[0])();
 
-function harness({ on = true, add = () => null, duplicate, regions } = {}) {
+function harness({ on = true, add = () => null, duplicate, regions, nets, rename } = {}) {
   const make = () => {
     const e = { children: [], attrs: {}, listeners: {}, style: {}, offsetWidth: 100, offsetHeight: 30, removed: false, focus() {}, setAttribute(k, v) { e.attrs[k] = v; },
       addEventListener(t, f) { (e.listeners[t] ||= []).push(f); }, appendChild(c) { e.children.push(c); return c; }, remove() { e.removed = true; }, contains: (t) => t === e || e.children.includes(t) };
@@ -30,11 +30,12 @@ function harness({ on = true, add = () => null, duplicate, regions } = {}) {
   win.innerWidth = 800; win.innerHeight = 600;
   win.addEventListener = (t, f) => { (win.listeners[t] ||= []).push(f); };
   win.InfraDiagram = { serverEditor: { add: (...a) => { calls.push(a); return add(...a); }, ...(duplicate ? { duplicate: (id) => { calls.push(["dup", id]); return duplicate(id); } } : {}),
+    ...(rename ? { renameNetwork: rename } : {}),
     ...(regions ? { regionTypes: () => regions, addRegion: (...a) => { calls.push(["region", ...a]); return null; } } : {}) } };
   const state = { on, st: { clusters: { big: { x: 0, y: 0, w: 500, h: 500 }, small: { x: 100, y: 100, w: 100, h: 100 } } } };
   let mod;
   const src = readFileSync(new URL("../runtime/canvas/context-menu.js", import.meta.url), "utf8");
-  runInNewContext(src, { window: win, document: doc, InfraDiagram: { define: (n, d, f) => { mod = f({ svg, $: () => tm }, { state, point: (e) => ({ x: e.clientX, y: e.clientY }), regionAt }); } } });
+  runInNewContext(src, { window: win, document: doc, InfraDiagram: { define: (n, d, f) => { mod = f({ svg, $: () => tm, D: { nets } }, { state, point: (e) => ({ x: e.clientX, y: e.clientY }), regionAt }, { editName: (i) => calls.push(["edit-name", i]) }); } } });
   const fire = (target, t, ev = {}) => (target.listeners[t] || []).forEach((f) => f({ target: svg, preventDefault() { prevented.push(t); }, stopPropagation() {}, ...ev }));
   return { svg, tm, doc, win, calls, prevented, state, mod, fire, menu: () => doc.body.children.find((c) => !c.removed) };
 }
@@ -146,4 +147,29 @@ test("context menu: Add Region is disabled with a message when every type has a 
   const plain = harness();
   plain.fire(plain.doc, "contextmenu", { clientX: 900, clientY: 900 });
   assert.deepEqual(plain.menu().children.map((c) => c.textContent), ["Add Server"]);
+});
+
+const netTarget = (i) => target({ closest: (sel) => (sel === "#wl .nw" ? { getAttribute: () => String(i) } : null) });
+const nets = [{ cidr: "192.0.2.0/24", name: "" }, { cidr: "198.51.100.0/24", name: "Net B" }, { cidr: "", name: "Unassigned network" }];
+
+test("context menu: a network entry offers Add name or Edit name and starts the inline editor", () => {
+  const h = harness({ nets, rename: () => null });
+  h.fire(h.doc, "contextmenu", { target: netTarget(0), clientX: 5, clientY: 5 });
+  assert.deepEqual(h.prevented, ["contextmenu"]);
+  assert.deepEqual(h.menu().children.map((c) => c.textContent), ["Add name"]);
+  h.menu().children[0].listeners.click[0]();
+  assert.deepEqual(h.calls, [["edit-name", 0]]);
+  h.fire(h.doc, "contextmenu", { target: netTarget(1), clientX: 5, clientY: 5 });
+  assert.deepEqual(h.menu().children.map((c) => c.textContent), ["Edit name"]);
+  h.fire(h.doc, "contextmenu", { target: netTarget(2), clientX: 5, clientY: 5 });
+  assert.deepEqual(h.menu().children.map((c) => c.textContent), ["Add Server"]);
+});
+
+test("context menu: network entries get no menu outside edit mode or without the bridge's renameNetwork", () => {
+  const off = harness({ on: false, nets, rename: () => null });
+  off.fire(off.doc, "contextmenu", { target: netTarget(0) });
+  assert.deepEqual(off.prevented, []);
+  const bare = harness({ nets });
+  bare.fire(bare.doc, "contextmenu", { target: netTarget(0) });
+  assert.equal(bare.menu().children[0].textContent, "Add Server");
 });

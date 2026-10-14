@@ -36,5 +36,32 @@ InfraDiagram.define("ui/networks", ["ui/core", "ui/panels"], function (core, pan
     if (b) b.scrollIntoView({ block: "nearest" });
   }
 
-  return { initNetworks: initNetworks, setNet: setNet, toggleNet: toggleNet };
+  // Inline name editor on a network entry (edit mode, via the context menu): Enter or blur commits, Esc cancels; empty removes the name.
+  function editName(i) {
+    var net = D.nets && D.nets[i], b = document.querySelector('#wl .nw[data-n="' + i + '"]'), api = window.InfraDiagram.serverEditor;
+    if (!net || !net.cidr || !b || !api || !api.renameNetwork || b.querySelector(".nwe")) return;
+    var label = b.firstElementChild, saved = label.innerHTML, input = document.createElement("input"), done = false;
+    while (label.lastChild && label.lastChild.nodeType === 3) label.removeChild(label.lastChild);
+    input.type = "text"; input.className = "nwe"; input.maxLength = 80; input.value = net.name || "";
+    input.setAttribute("aria-label", "Network name for " + net.cidr);
+    function finish(commit) {
+      if (done) return;
+      done = true;
+      var value = input.value.trim(), err = commit && value !== (net.name || "") ? api.renameNetwork(net.cidr, value) : null;
+      label.innerHTML = saved;
+      if (err) $("tm").textContent = err;
+    }
+    input.addEventListener("keydown", function (e) {
+      e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); finish(true); }
+      else if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    });
+    input.addEventListener("click", function (e) { e.stopPropagation(); });
+    input.addEventListener("blur", function () { finish(true); });
+    label.appendChild(input);
+    input.focus();
+    input.select();
+  }
+
+  return { initNetworks: initNetworks, setNet: setNet, toggleNet: toggleNet, editName: editName };
 });
