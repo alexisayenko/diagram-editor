@@ -14,6 +14,12 @@ One bullet per event: ISO date, an em dash, what happened in a
 sentence or two, and a link to the task or artifact that carries
 the detail. Newest first; several events on one date are fine.
 
+- 2026-10-14 — Tests, refactor and static analysis: 627 tests with 99.85%
+  line coverage, large functions split, six bugs found by the tests
+  fixed, SonarCloud clean-up
+  ([ADR-0010](tech/decisions/adr-0010-test-strategy.md),
+  [ADR-0011](tech/decisions/adr-0011-static-analysis-sonarcloud.md),
+  [ADR-0012](tech/decisions/adr-0012-generated-outputs-committed.md)).
 - 2026-10-14 — Networks derived from server IPs, optionally named, and
   appended to `networks.toml` on Save
   ([ADR-0006](tech/decisions/adr-0006-derived-networks.md)).

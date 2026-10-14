@@ -18,7 +18,7 @@ dependencies.
 
 ```sh
 node engine/serve.mjs                       # serve the page on http://127.0.0.1:8080
-node --test engine/test/*.test.mjs          # run the tests
+node --test engine/test/*.test.mjs          # run the tests (see Testing)
 node engine/browser.mjs [--check]           # regenerate diagram.html (check for drift)
 node engine/build.mjs examples/demo [--check]   # Mermaid build of the demo folder
 node engine/new.mjs <dir>                   # scaffold a Mermaid-format diagram folder
@@ -29,6 +29,25 @@ or **Import diagram**. Diagrams are saved in the git-ignored `local/`
 folder. Format and workflow: [docs/tech/authoring.md](docs/tech/authoring.md);
 engine map: [docs/tech/architecture.md](docs/tech/architecture.md);
 why it is built this way: [docs/tech/decisions/](docs/tech/decisions/README.md).
+
+## Testing
+
+```sh
+node --test engine/test/*.test.mjs                               # all tests (WSL)
+node --test --experimental-test-coverage engine/test/*.test.mjs  # with coverage
+node engine/browser.mjs --check                                  # diagram.html is current
+node engine/build.mjs examples/demo --check                      # demo outputs are current
+```
+
+- 627 tests, 99.85% line coverage, no dependencies (`node:test`).
+- Files: `<topic>.test.mjs` and `cov-<area>-<topic>.test.mjs`;
+  `helpers.mjs` and `cov-*.mjs` are shared helpers, not tests.
+- Rule: a bug found gets a skipped test first, then a fix that
+  un-skips it.
+- More: [ADR-0010](docs/tech/decisions/adr-0010-test-strategy.md)
+  (tests), [ADR-0011](docs/tech/decisions/adr-0011-static-analysis-sonarcloud.md)
+  (SonarCloud), [ADR-0012](docs/tech/decisions/adr-0012-generated-outputs-committed.md)
+  (generated outputs).
 
 ## Structure
 

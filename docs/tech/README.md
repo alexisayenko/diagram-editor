@@ -34,14 +34,18 @@ Don't pre-create — extract on first real entry. See
 ## Deploy and CI
 
 No deploy target and no CI workflows yet; the engine runs locally.
-Tests: `node --test engine/test/*.test.mjs` (WSL). [`ci-cd.md`](ci-cd.md)
-is the scaffolded playbook; its `[TODO: ...]` placeholders apply only
-if a workflow is added.
+Tests: `node --test engine/test/*.test.mjs` (WSL, 627 tests; see
+[ADR-0010](decisions/adr-0010-test-strategy.md)). SonarCloud analyses
+every push ([ADR-0011](decisions/adr-0011-static-analysis-sonarcloud.md)).
+[`ci-cd.md`](ci-cd.md) is the scaffolded playbook and holds a proposed
+minimal workflow; its `[TODO: ...]` placeholders apply only if a
+workflow is added.
 
 ## Known gaps
 
-- `examples/demo/layout.html` (Mermaid build) is out of date;
-  `node engine/build.mjs examples/demo --check` fails until rebuilt.
+- SonarCloud: 2 open bugs (promises not awaited in
+  `engine/browser/app.js`) and a failing quality gate
+  ([ADR-0011](decisions/adr-0011-static-analysis-sonarcloud.md)).
 - The engine has no `package.json`; Node versions are not pinned.
 - Service CNAME is a concept only
   ([`../product/concepts/service-cname.md`](../product/concepts/service-cname.md)).

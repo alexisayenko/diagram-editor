@@ -47,6 +47,12 @@ Probe output: `id`, `name`, `ips`, `os`, `cpu`, `ram`, `swap`,
   server **Export** carries them.
 - Real host names and IPs in the output stay out of this repo.
 
+## Known limits
+
+- Files with parse or validation errors are skipped and counted in the
+  summary ("N imported, N renamed, N skipped (parse errors)").
+- Placement is a simple grid; occupied cells are skipped.
+
 ## Out of scope
 
 - Windows or macOS hosts, container-only hosts.

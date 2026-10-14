@@ -41,6 +41,12 @@ The zip holds the diagram folder with no wrapper: `topology.toml`,
 - Saving over an existing folder asks "Replace the saved diagram
   <name>?"; files the archive lacks stay in the folder.
 
+## Known limits
+
+- The central directory size in the archive must match its entries;
+  a mismatch refuses the whole archive.
+- Only stored and deflate entries are read.
+
 ## Out of scope
 
 - Other archive formats, encrypted archives.

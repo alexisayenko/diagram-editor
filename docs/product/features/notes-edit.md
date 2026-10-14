@@ -42,6 +42,11 @@ Reference: [authoring.md](../../tech/authoring.md#editing-notes-in-the-page).
   are kept.
 - Changed on disk since load: Save answers 409, nothing is written.
 
+## Known limits
+
+- Right after **Save** the page reloads the diagram; a note edit
+  started before that ends is refused until the diagram has reloaded.
+
 ## Out of scope
 
 - Rich text, attachments, per-server notes (use a server's `details`).

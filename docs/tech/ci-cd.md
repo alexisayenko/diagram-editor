@@ -4,6 +4,46 @@ Status in this repo: no workflows exist yet; nothing here is wired up.
 The `[TODO: ...]` placeholders below are for when the first one is
 added. Tests run locally: `node --test engine/test/*.test.mjs`.
 
+## This repo today
+
+- **CI does not exist yet.** No `.github/workflows/`, no deploy target.
+- Checks run by hand ([README](../../README.md#testing)): tests,
+  `--check` for the generated outputs, and the coverage report.
+- SonarCloud already analyses every push through *automatic
+  analysis*, with no workflow ([ADR-0011](decisions/adr-0011-static-analysis-sonarcloud.md)).
+
+### Proposal: one minimal workflow (not created)
+
+A single manual workflow, `code-quality.yml`, in the shape of the
+playbook below (`workflow_dispatch` only). It would run the same
+commands a developer runs locally:
+
+```yaml
+name: Code quality
+on: workflow_dispatch
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@<sha>        # pin by commit SHA
+      - uses: actions/setup-node@<sha>
+        with:
+          node-version: 22                  # [TODO: pin the version]
+      - run: node --test engine/test/*.test.mjs
+      - run: node engine/browser.mjs --check
+      - run: node engine/build.mjs examples/demo --check
+```
+
+- No install step: the engine has no dependencies.
+- Add `--experimental-test-coverage` to the test step if the report
+  is wanted in the job log.
+- **SonarCloud:** keep automatic analysis. A scan step in CI needs a
+  `SONAR_TOKEN` secret and requires switching automatic analysis off
+  first (the two cannot run together). Do that only if the
+  quality gate must block something.
+- Triggers stay manual until the free-minutes budget is a
+  non-issue; see the principles below.
+
 Playbook for testing and shipping a project on the GitHub Free
 plan with a $0 Actions budget. Extracted from moene
 (`project-moodtracker`), which is the worked example throughout;

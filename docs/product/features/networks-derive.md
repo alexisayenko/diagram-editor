@@ -51,6 +51,11 @@ See which servers share a network without typing every CIDR
 - The auto-append retries once on a conflict, then reports without
   failing Save. Without the local server nothing is written.
 
+## Known limits
+
+- A network name is one line of at most 80 characters; longer or
+  multi-line names are refused.
+
 ## Out of scope
 
 - VLAN ids, sites, gateways, DHCP ranges.

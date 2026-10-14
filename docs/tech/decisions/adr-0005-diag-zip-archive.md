@@ -36,3 +36,9 @@ from outside, so it is untrusted input.
 - Folder copy: not possible from a browser without the picker.
 - Single JSON bundle: unreadable for hand edits, no per-file diffs.
 - A zip library: dependency; its defaults are not strict.
+
+## Amendment 2026-10-14
+
+The reader also checks that the central directory size in the
+end-of-archive record matches the entries it read, and rejects the
+archive otherwise (4996b5c).

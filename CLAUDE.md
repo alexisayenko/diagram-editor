@@ -25,7 +25,26 @@ Diagram editor for infrastructure diagrams: a shared engine renders a folder of 
 
 ## Tech stack
 
-Plain Node.js ESM (`engine/`, no package manifest or dependencies) for parsing, layout and rendering; browser runtime in `engine/runtime/` (vanilla JS modules inlined into one script) and CSS in `engine/css/`. Run Node through WSL: `node engine/build.mjs <dir> [--check]` builds a diagram folder, `node engine/browser.mjs [--check]` regenerates the standalone `diagram.html`, `node engine/serve.mjs` serves it on localhost, `node --test engine/test/*.test.mjs` runs tests. No deploy target yet. Status: all 180 tests pass and `diagram.html` is up to date; `layout.html` of `examples/demo` (Mermaid build) is out of date and needs a rebuild.
+Plain Node.js ESM (`engine/`, no package manifest or dependencies) for parsing, layout and rendering; browser runtime in `engine/runtime/` (vanilla JS modules inlined into one script) and CSS in `engine/css/`. Run Node through WSL: `node engine/build.mjs <dir> [--check]` builds a diagram folder, `node engine/browser.mjs [--check]` regenerates the standalone `diagram.html`, `node engine/serve.mjs` serves it on localhost, `node --test engine/test/*.test.mjs` runs tests. No deploy target yet. Status: all 627 tests pass (99.85% line coverage), `diagram.html` and the `examples/demo` outputs are up to date (`--check` passes).
+
+## Testing
+
+Run Node through WSL; there is no install step.
+
+```sh
+node --test engine/test/*.test.mjs                                  # all tests
+node --test --experimental-test-coverage engine/test/*.test.mjs     # with coverage
+node engine/browser.mjs --check                                     # diagram.html is current
+node engine/build.mjs examples/demo --check                         # demo outputs are current
+```
+
+- Files: `<topic>.test.mjs` and `cov-<area>-<topic>.test.mjs`;
+  `helpers.mjs` and `cov-*.mjs` (no `.test`) are shared helpers.
+- Browser-side code is tested in a `node:vm` context with fake DOM
+  objects, so Node coverage counts the real files.
+- Rule: a bug found gets a skipped test first, then a fix that
+  un-skips it.
+- Details: [ADR-0010](docs/tech/decisions/adr-0010-test-strategy.md).
 
 ## Working in a shared checkout
 
@@ -58,6 +77,9 @@ Auth notes if any (HTTPS, fine-grained PAT, etc.).]
 - [docs/tech/architecture.md](docs/tech/architecture.md) — engine module map, build, page behaviour
 - [docs/tech/authoring.md](docs/tech/authoring.md) — TOML authoring format and workflow
 - [docs/tech/decisions/](docs/tech/decisions/README.md) — ADRs: why the engine is built this way
+- [ADR-0010](docs/tech/decisions/adr-0010-test-strategy.md) — test strategy and coverage
+- [ADR-0011](docs/tech/decisions/adr-0011-static-analysis-sonarcloud.md) — SonarCloud
+- [ADR-0012](docs/tech/decisions/adr-0012-generated-outputs-committed.md) — generated outputs are committed and checked
 - [docs/product/concepts/terminology.md](docs/product/concepts/terminology.md) — agreed vocabulary
 - [docs/product/features/](docs/product/features/README.md) — feature specs (start with self-service)
 - [examples/demo/](examples/demo/) — sample diagram in every format

@@ -58,6 +58,19 @@ Surgical write-back keeps hand-made comments and formatting
   region per type.
 - If the file changed on disk, Save answers 409 and writes nothing.
 
+## Known limits
+
+- The Notes (`details`) text shows a small Markdown subset: headings,
+  paragraphs, lists, tables, `code`, **bold** and http(s) links. No
+  nested lists, italics or images. A line like `#tag` (no space after
+  `#`) is plain text.
+- Right after **Save** the page reloads the diagram; an edit started
+  before that ends is refused with "Try again once the diagram has
+  reloaded."
+- A new server or region name that collides with an existing file or
+  folder in `local/` is refused by the server (400) and Save reports
+  it.
+
 ## Out of scope
 
 - Renaming ids, deleting servers in the page (delete the file).

@@ -51,3 +51,6 @@ What we did not pick and why.
 | [0007](adr-0007-service-groups-card-flag.md) | Service groups and the card flag | 2026-10-14 |
 | [0008](adr-0008-host-probe.md) | Read-only host probe with a COMMANDS block | 2026-10-13 |
 | [0009](adr-0009-drawings-in-layout-json.md) | Drawings stored in the layout JSON | 2026-10-07 |
+| [0010](adr-0010-test-strategy.md) | Tests with `node:test`, no dependencies, measured coverage | 2026-10-14 |
+| [0011](adr-0011-static-analysis-sonarcloud.md) | Static analysis with SonarCloud | 2026-10-14 |
+| [0012](adr-0012-generated-outputs-committed.md) | Generated outputs are committed and checked | 2026-10-07 |

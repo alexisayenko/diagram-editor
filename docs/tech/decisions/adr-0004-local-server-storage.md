@@ -43,3 +43,9 @@ folder-picker version needed fixes (1f6ac9e).
 The folder picker, brought back on 2026-10-08 (63aab11), was removed
 again in 57d6ecb: **Open saved diagram**, **New diagram** and
 **Import diagram** replace it.
+
+## Amendment 2026-10-14
+
+A name that collides with an existing file or folder (for example
+`a/b.toml` when `a` is a file) is answered with 400 and a clear
+message. It was an unhandled 500 before 4996b5c.

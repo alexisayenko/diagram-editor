@@ -49,6 +49,11 @@ probe).
 
 - Lives in: `engine/`, `tools/`, `examples/`
 - Source spec: [`product/features/self-service.md`](product/features/self-service.md)
+- Quality: tests and coverage
+  ([ADR-0010](tech/decisions/adr-0010-test-strategy.md)); SonarCloud
+  ([ADR-0011](tech/decisions/adr-0011-static-analysis-sonarcloud.md)).
+  Open: 2 SonarCloud bugs (S9383, promises not awaited in
+  `engine/browser/app.js`) and the quality gate.
 
 ## C2 — Service CNAME
 
