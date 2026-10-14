@@ -492,9 +492,41 @@ InfraDiagram.define = function (name, deps, factory) {
   InfraDiagram.modules[name] = factory(...args);
 };
 
-InfraDiagram.define("ui/core", [], function () {
+InfraDiagram.define("ui/keys", [], function () {
+  var kit = (function keysKit() {
+    var PREFIX = { server: "n", region: "c", edge: "e", group: "g", level: "lv" };
+    var KIND = {};
+    Object.keys(PREFIX).forEach(function (k) { KIND[PREFIX[k]] = k; });
+
+    function nodeKey(kind, id) {
+      if (!Object.hasOwn(PREFIX, kind)) throw new Error("Unknown key kind: " + kind);
+      return PREFIX[kind] + ":" + id;
+    }
+
+    // { kind, id } of a key; kind is null for a string that is not a key of a known kind (id: the whole string).
+    function parseKey(key) {
+      var at = String(key).indexOf(":"), prefix = at < 0 ? "" : key.slice(0, at);
+      if (!Object.hasOwn(KIND, prefix)) return { kind: null, id: key };
+      return { kind: KIND[prefix], id: key.slice(at + 1) };
+    }
+
+    function isKind(key, kind) { return parseKey(key).kind === kind; }
+
+    return { nodeKey: nodeKey, parseKey: parseKey, isKind: isKind };
+  })();
+
+  return { nodeKey: kit.nodeKey, parseKey: kit.parseKey, isKind: kit.isKind };
+});
+
+InfraDiagram.define("ui/metrics", [], function () {
+  var kit = ((metrics) => ({ METRICS: metrics }))({"head":20,"sketchTitleDy":6,"textX":10,"line":16,"bodyTop":18,"ipTop":22,"ipLine":18,"boxPad":20,"dividerTop":8,"titleCw":6.6,"bodyCw":6.6,"ipCw":7,"osCw":5.6,"hwCw":5.6,"titleExtra":28,"ipExtra":26,"osExtra":26,"eolExtra":4,"noEolExtra":1,"regionTitleHalfCw":3.9,"regionTitleHalfPad":4,"band":30,"bandGap":10,"minGap":20,"pad":16,"minW":100,"minH":60,"regionTop":40,"gap":20,"regionGap":60,"origin":20,"maxRowW":1200,"cols":3,"emptyW":220,"emptyH":120,"ipPill":{"dx":-5,"dy":-11,"h":15,"extraW":10},"osPill":{"h":12,"textX":16,"textY":9,"iconX":2.5,"iconY":0.5,"iconScale":0.786,"extraW":20,"eolGap":4},"netButton":{"w":14,"h":13},"cardIcon":{"dx":22.8,"dy":-16.8,"scale":0.85},"charWidth":{"sketch":7,"clean":6,"dark":6.6,"swiss":6.6},"noteCharWidth":{"sketch":6.6,"clean":5.6,"dark":6.4,"swiss":5.7},"osCharWidth":{"sketch":5.6,"other":5.2}});
+
+  return { METRICS: kit.METRICS };
+});
+
+InfraDiagram.define("ui/core", ["ui/metrics"], function (metrics) {
   var STYLES = ["sketch", "clean", "dark", "swiss"];
-  var CW = { sketch: 7, clean: 6, dark: 6.6, swiss: 6.6 };
+  var CW = metrics.METRICS.charWidth;
   var BG = { clean: "#F3F5F9", dark: "#0A1020", swiss: "#FFFFFF" };
   var D = JSON.parse(document.getElementById("layout-data").textContent);
   var svg = document.querySelector("svg");
@@ -637,7 +669,7 @@ InfraDiagram.define("ui/os-icons", [], function () {
   return { ICONS: kit.ICONS, glyph: kit.glyph, iconSvg: kit.iconSvg };
 });
 
-InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons"], function (core, osIcons) {
+InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], function (core, osIcons, keys) {
   var D = core.D, esc = core.esc, $ = core.$;
 
   function inline(s) {
@@ -759,14 +791,14 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons"], function (core, os
       var lines = (e.body || []).concat(e.ip || []);
       if (lines.length) html += "<ul>" + lines.map(function (x) { return "<li>" + inline(x) + "</li>"; }).join("") + "</ul>";
     }
-    if (e.cl && D.ent["c:" + e.cl]) {
-      var ce = D.ent["c:" + e.cl], cs = D.sections[ce.title];
+    if (e.cl && D.ent[keys.nodeKey("region", e.cl)]) {
+      var ce = D.ent[keys.nodeKey("region", e.cl)], cs = D.sections[ce.title];
       if (cs && !sec) html += '<hr><p class="pm">Part of ' + esc(ce.title) + "</p>" + md(cs);
       else html += '<p class="pm">Part of ' + esc(ce.title) + "</p>";
     }
     pn.innerHTML = html;
-    if (key.charAt(0) === "n") hwStrip(pn, e.hwc);
-    if (key.charAt(0) === "n") osRow(pn, e.os);
+    if (keys.isKind(key, "server")) hwStrip(pn, e.hwc);
+    if (keys.isKind(key, "server")) osRow(pn, e.os);
     netButtons(pn);
     pn.dataset.ty = e.ty;
     core.emit("panel", key, pn);
@@ -775,9 +807,9 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons"], function (core, os
   return { md: md, renderPanel: renderPanel };
 });
 
-InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, details) {
+InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics"], function (core, details, keys, metrics) {
   var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx, CW = core.CW, STYLES = core.STYLES, hooks = core.services;
-  var pillW = {}, boxW = {}, btn = {}, TEXT_X = 10;
+  var M = metrics.METRICS, pillW = {}, boxW = {}, btn = {}, TEXT_X = M.textX;
 
   function measure(el, n, cw) {
     var w = 0;
@@ -803,19 +835,19 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
   function dividerHtml(y, W) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; }
   function nodeDividers(m, g, nb, hwY, W) {
     var h = "", below = !!(m.hw || m.os || g.ip.length);
-    if (m.nj && nb > m.nj) h += dividerHtml(8 + 16 * m.nj, W);
-    if (nb && below) h += dividerHtml(8 + 16 * nb, W);
+    if (m.nj && nb > m.nj) h += dividerHtml(M.dividerTop + M.line * m.nj, W);
+    if (nb && below) h += dividerHtml(M.dividerTop + M.line * nb, W);
     if (m.hw && (m.os || g.ip.length)) h += dividerHtml(hwY + 6, W);
     if (m.os && g.ip.length) h += dividerHtml(g.ip[0][1] - g.y - 12.5, W);
     return h;
   }
   function ipPills(g, ipw, S) {
     return g.ip.map(function (p, k) {
-      return '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x - 5) + '" y="' + (p[1] - g.y - 11) + '" width="' + Math.round(ipw[k] + 10) + '" height="15" rx="' + ({ clean: 8, dark: 3 }[S] ?? 0) + '"/>';
+      return '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x + M.ipPill.dx) + '" y="' + (p[1] - g.y + M.ipPill.dy) + '" width="' + Math.round(ipw[k] + M.ipPill.extraW) + '" height="' + M.ipPill.h + '" rx="' + ({ clean: 8, dark: 3 }[S] ?? 0) + '"/>';
     }).join("");
   }
   function nodeChrome(id) {
-    var S = ctx.style, g = hooks.viewNode ? hooks.viewNode(id, D.layout.nodes[id]) : D.layout.nodes[id], e = D.ent["n:" + id], ix = D.idx.nodes[id];
+    var S = ctx.style, g = hooks.viewNode ? hooks.viewNode(id, D.layout.nodes[id]) : D.layout.nodes[id], e = D.ent[keys.nodeKey("server", id)], ix = D.idx.nodes[id];
     var tl = TEXT_X;
     var tw = measure(els[ix.t], els[ix.t].firstChild.textContent.length, CW[S]);
     var bottom = g.h;
@@ -823,13 +855,13 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
       bottom = Math.max(bottom, p[1] - g.y + 7);
       return measure(els[ix.i[k]], 14, CW[S]);
     });
-    var W = Math.max(g.w, tl + tw + 28), HH = 20, m = sysMeta(D.meta.nodes[id] || {}), nb = g.body.length, hwY = 18 + 16 * nb;
+    var W = Math.max(g.w, tl + tw + M.titleExtra), HH = M.head, m = sysMeta(D.meta.nodes[id] || {}), nb = g.body.length, hwY = M.bodyTop + M.line * nb;
     boxW[id] = W;
-    var hwX = g.body.length ? g.body[0][0] - g.x : 10;
+    var hwX = g.body.length ? g.body[0][0] - g.x : M.textX;
     var hw = m.hw ? '<text class="hw" x="' + hwX + '" y="' + hwY + '">' + core.esc(m.hw) + "</text>" : "";
     if (S === "sketch") { delete boxW[id]; return hw; }
     var h = frameHtml(S, W, bottom, HH);
-    h += '<g class="ic" transform="translate(' + (W - 22.8) + ' -16.8) scale(.85)">' + icon(e.db ? "db" : "server") + "</g>";
+    h += '<g class="ic" transform="translate(' + (W - M.cardIcon.dx) + " " + M.cardIcon.dy + ") scale(" + String(M.cardIcon.scale).replace(/^0\./, ".") + ')">' + icon(e.db ? "db" : "server") + "</g>";
     h += hw;
     h += nodeDividers(m, g, nb, hwY, W) + ipPills(g, ipw, S);
     return h;
@@ -838,17 +870,17 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
   // OS pill: icon, text, then the "EOL" marker after the pill; the text is cut with an ellipsis when pill and marker would not fit the box.
   function sizeOs(g, boxWidth) {
     var t = g.querySelector(".ost"), r = g.querySelector("rect"), e = g.querySelector(".ose"), full = t.getAttribute("data-t") || t.textContent;
-    var cw = ctx.style === "sketch" ? 5.6 : 5.2, ew = e ? measure(e, 3, cw) + 4 : 0, room = boxWidth - 10 - 20 - ew;
+    var cw = M.osCharWidth[ctx.style === "sketch" ? "sketch" : "other"], ew = e ? measure(e, 3, cw) + M.osPill.eolGap : 0, room = boxWidth - M.textX - M.osPill.extraW - ew;
     t.textContent = full;
     var tw = measure(t, full.length, cw);
     if (tw > room && room > 0) {
       t.textContent = full.slice(0, Math.max(2, Math.floor(full.length * room / tw) - 1)) + "…";
       tw = measure(t, t.textContent.length, cw);
     }
-    var w = Math.round(tw + 20);
+    var w = Math.round(tw + M.osPill.extraW);
     r.setAttribute("width", w);
     r.setAttribute("rx", { clean: 6, dark: 3, sketch: 2 }[ctx.style] ?? 0);
-    if (e) e.setAttribute("x", w + 4);
+    if (e) e.setAttribute("x", w + M.osPill.eolGap);
   }
 
   function rebuildChrome() {
@@ -1012,7 +1044,7 @@ InfraDiagram.define("ui/panels", ["ui/core"], function (core) {
   return { placeChrome: placeChrome, initPanels: initPanels, setPanel: setPanel };
 });
 
-InfraDiagram.define("ui/networks", ["ui/core", "ui/panels"], function (core, panels) {
+InfraDiagram.define("ui/networks", ["ui/core", "ui/panels", "ui/keys"], function (core, panels, keys) {
   var D = core.D, ctx = core.ctx, $ = core.$;
 
   function initNetworks() {
@@ -1031,7 +1063,7 @@ InfraDiagram.define("ui/networks", ["ui/core", "ui/panels"], function (core, pan
     if (ctx.net !== null) {
       M = {};
       D.nets[ctx.net].m.forEach(function (k) { M[k] = 1; });
-      D.edges.forEach(function (e) { if (M[e.from] && M[e.to]) M["e:" + e.k] = 1; });
+      D.edges.forEach(function (e) { if (M[e.from] && M[e.to]) M[keys.nodeKey("edge", e.k)] = 1; });
     }
     core.ents.forEach(function (el) { el.classList.toggle("nf", !!M && !M[el.dataset.ent]); });
     document.querySelectorAll("#wl .nw, .nwb, .nwd").forEach(function (b) {
@@ -1157,7 +1189,7 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
   return { initLegend: initLegend, toggle: toggle, showAll: showAll };
 });
 
-InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels"], function (core, details, panels) {
+InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels", "ui/keys"], function (core, details, panels, keys) {
   var D = core.D, ctx = core.ctx;
 
   function related(key) {
@@ -1165,14 +1197,15 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels"], func
     B[key] = 1;
     var near = [key];
     D.edges.forEach(function (e) {
-      if (e.from === key) { B[e.to] = 1; near.push(e.to); B["e:" + e.k] = 1; }
-      else if (e.to === key) { B[e.from] = 1; near.push(e.from); B["e:" + e.k] = 1; }
+      if (e.from === key) { B[e.to] = 1; near.push(e.to); B[keys.nodeKey("edge", e.k)] = 1; }
+      else if (e.to === key) { B[e.from] = 1; near.push(e.from); B[keys.nodeKey("edge", e.k)] = 1; }
     });
     near.forEach(function (k) {
-      if (k.startsWith("c")) (D.kids[k.slice(2)] || []).forEach(function (n) { B["n:" + n] = 1; });
+      var pk = keys.parseKey(k);
+      if (pk.kind === "region") (D.kids[pk.id] || []).forEach(function (n) { B[keys.nodeKey("server", n)] = 1; });
     });
     Object.keys(B).forEach(function (k) {
-      if (k.startsWith("n") && D.ent[k]?.cl) B["c:" + D.ent[k].cl] = 1;
+      if (keys.isKind(k, "server") && D.ent[k]?.cl) B[keys.nodeKey("region", D.ent[k].cl)] = 1;
     });
     return B;
   }
@@ -1243,7 +1276,7 @@ InfraDiagram.define("ui/clear-click", ["ui/core", "ui/selection", "ui/networks"]
   return { isEmptyTarget: isEmptyTarget, isEmptyClick: isEmptyClick, clearSelection: clearSelection };
 });
 
-InfraDiagram.define("ui/export-columns", ["ui/core"], function (core) {
+InfraDiagram.define("ui/export-columns", ["ui/core", "ui/metrics"], function (core, metrics) {
   var D = core.D, ctx = core.ctx, esc = core.esc;
 
   function legendSvg(x0, y0) {
@@ -1294,7 +1327,7 @@ InfraDiagram.define("ui/export-columns", ["ui/core"], function (core) {
     return out;
   }
   function notesSvg(x0, y0) {
-    var S = ctx.style, CWN = { sketch: 6.6, clean: 5.6, dark: 6.4, swiss: 5.7 }[S];
+    var S = ctx.style, CWN = metrics.METRICS.noteCharWidth[S];
     var W = 250, P = 10, LH = 14, h = "", y = y0;
     var rx = { swiss: 0, dark: 4 }[S] ?? 2;
     D.notes.forEach(function (n) {
@@ -1407,7 +1440,7 @@ InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], functio
   return { exportSvg: exportSvg, downloadSvg: downloadSvg, downloadPng: downloadPng };
 });
 
-InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/networks", "ui/legend", "ui/panels", "ui/selection", "ui/copy", "ui/export-image"], function (core, details, skins, networks, legend, panels, selection, copy, exportImage) {
+InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/networks", "ui/legend", "ui/panels", "ui/selection", "ui/copy", "ui/export-image", "ui/keys"], function (core, details, skins, networks, legend, panels, selection, copy, exportImage, keys) {
   const { D, svg, els, ctx, STYLES, $ } = core, hooks = core.services;
 
   function ipText(tg, id) {
@@ -1420,15 +1453,16 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
     if (nb) { networks.toggleNet(+nb.dataset.n); return; }
     const t = tg.closest?.("[data-ent]");
     const k = t?.dataset.ent;
-    if (!k || (k.charAt(0) !== "n" && k.charAt(0) !== "c")) { selection.select(null); return; }
-    const cl = tg.classList, id = k.slice(2);
-    if (k.charAt(0) === "n" && (cl.contains("nb") || cl.contains("ni") || cl.contains("ip"))) {
+    const pk = k ? keys.parseKey(k) : null;
+    if (!pk || (pk.kind !== "server" && pk.kind !== "region")) { selection.select(null); return; }
+    const cl = tg.classList, id = pk.id;
+    if (pk.kind === "server" && (cl.contains("nb") || cl.contains("ni") || cl.contains("ip"))) {
       const txt = cl.contains("ip") ? ipText(tg, id) : tg.textContent;
       copy.copyText(txt, e.clientX, e.clientY);
       return;
     }
     if (cl.contains("nt") || cl.contains("ct") || t.classList.contains("osg")) { selection.select(k); return; }
-    if (k.charAt(0) === "n" && t.classList.contains("ch")) {
+    if (pk.kind === "server" && t.classList.contains("ch")) {
       const m = svg.getScreenCTM(), y = m ? (e.clientY - m.f) / m.d : 0;
       if (y < hooks.getState().nodes[id].y) selection.select(k);
     }
@@ -1442,7 +1476,8 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
 
   function focusKey(el) {
     const k = el?.getAttribute?.("tabindex") === "0" ? el.dataset?.ent : null;
-    return k && (k.charAt(0) === "n" || k.charAt(0) === "c") ? k : null;
+    const kind = k ? keys.parseKey(k).kind : null;
+    return kind === "server" || kind === "region" ? k : null;
   }
 
   function onSvgKeydown(e) {
@@ -1483,8 +1518,8 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
   function ringBox(key) {
     const s = hooks.getState?.();
     if (!s) return null;
-    const id = key.slice(2);
-    if (key.charAt(0) === "c") return s.clusters[id] || null;
+    const pk = keys.parseKey(key), id = pk.id;
+    if (pk.kind === "region") return s.clusters[id] || null;
     const g = s.nodes[id];
     return g && hooks.viewNode ? hooks.viewNode(id, g) : g || null;
   }
@@ -1801,7 +1836,7 @@ InfraDiagram.define("ui/server-fields", [], function () {
   return { FIELDS: kit.FIELDS };
 });
 
-InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "ui/server-fields"], function (core, selection, panels, serverFields) {
+InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "ui/server-fields", "ui/keys"], function (core, selection, panels, serverFields, keys) {
   var $ = core.$;
   var TEXTS = serverFields.FIELDS.filter(function (f) { return f.row; }).map(function (f) { return [f.key, f.formLabel || f.label, f.placeholder]; });
   var LISTS = serverFields.FIELDS.filter(function (f) { return f.type === "list" && f.form; }).map(function (f) { return [f.key, f.label, f.add, f.placeholder]; });
@@ -1932,7 +1967,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
   }
 
   function openForm(key) {
-    var raw = bridge().source(key.slice(2)), pn = $("pn");
+    var raw = bridge().source(keys.parseKey(key).id), pn = $("pn");
     if (!raw) return;
     var close = pn.querySelector("#pc"), tg = pn.querySelector(".tg");
     edit = { key: key, raw: raw, form: el("div", "sf"), texts: {}, lists: {}, notes: null, type: raw.server_type, tg: tg, suffix: tg.textContent.endsWith(" · PROPOSED") ? " · PROPOSED" : "" };
@@ -1958,7 +1993,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
     if (!edit) return true;
     var f = collect(), err;
     if (!changed()) { cancel(); return true; }
-    err = bridge().apply(edit.key.slice(2), f);
+    err = bridge().apply(keys.parseKey(edit.key).id, f);
     if (err) {
       edit.err.textContent = err;
       edit.err.hidden = false;
@@ -1988,7 +2023,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
   core.on("panel", function (key, pn) {
     edit = null;
     current = null;
-    if (key.charAt(0) !== "n" || !enabled()) return;
+    if (!keys.isKind(key, "server") || !enabled()) return;
     current = key;
     var h = pn.querySelector("h1");
     h.classList.add("sed");
@@ -2022,9 +2057,9 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
 });
 
 InfraDiagram.define("canvas/geometry", [], function () {
-  var kit = (function geometryKit() {
-    var HEAD = 20, TITLE_CW = 6.6, BODY_CW = 6.6, IP_CW = 7, OS_CW = 5.6, HW_CW = 5.6, TEXT_X = 10;
-    var BAND = 30, BAND_GAP = 10, MIN_GAP = 20, PAD = 16, MIN_W = 100, MIN_H = 60;
+  var kit = (function geometryKitOf(sizes, keyset) {
+    var HEAD = sizes.head, TITLE_CW = sizes.titleCw, BODY_CW = sizes.bodyCw, IP_CW = sizes.ipCw, OS_CW = sizes.osCw, HW_CW = sizes.hwCw, TEXT_X = sizes.textX;
+    var BAND = sizes.band, BAND_GAP = sizes.bandGap, MIN_GAP = sizes.minGap, PAD = sizes.pad, MIN_W = sizes.minW, MIN_H = sizes.minH;
     var M = 10, BEND = 50, REGION = 1.5, HUG = 2, TIGHT = 0.3, RAD = 22;
     var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
     var cache = { n: 0 };
@@ -2040,15 +2075,31 @@ InfraDiagram.define("canvas/geometry", [], function () {
     function boxExtent(g, tl, w) {
       var bottom = g.y + g.h;
       for (const p of g.ip) bottom = Math.max(bottom, p[1] + 7);
-      return { x0: g.x, y0: g.y - HEAD, x1: g.x + (w || Math.max(g.w, TEXT_X + tl * TITLE_CW + 28)), y1: bottom };
+      return { x0: g.x, y0: g.y - HEAD, x1: g.x + (w || Math.max(g.w, TEXT_X + tl * TITLE_CW + sizes.titleExtra)), y1: bottom };
+    }
+
+    // Text rows above the IP pills: body lines, hardware strip, OS pill.
+    function rows(t) { return t.nb + (t.hw ? 1 : 0) + (t.os ? 1 : 0); }
+    function needW(t) {
+      var os = t.os ? TEXT_X + (t.ol + (t.oe ? sizes.eolExtra : sizes.noEolExtra)) * OS_CW + sizes.osExtra : 0;
+      return Math.ceil(Math.max(TEXT_X + t.tl * TITLE_CW + sizes.titleExtra, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + sizes.ipExtra : 0, os, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0));
+    }
+    function needH(t) { return sizes.boxPad + sizes.line * rows(t) + sizes.ipLine * t.ni; }
+
+    // The box of a server from its meta (text lengths and line counts): size and the text positions, for a box whose top-left corner (below the header) is x, y.
+    // The one definition shared by auto layout, saved-layout reconcile, fitBox and the card renderer.
+    function boxFor(t, x, y) {
+      var r = rows(t), body = [], ip = [], i;
+      for (i = 0; i < t.nb; i++) body.push([x + TEXT_X, y + sizes.bodyTop + sizes.line * i]);
+      for (i = 0; i < t.ni; i++) ip.push([x + TEXT_X, y + sizes.ipTop + sizes.line * r + sizes.ipLine * i]);
+      return { x: x, y: y, w: needW(t), h: needH(t), title: [x + TEXT_X, y - sizes.sketchTitleDy], body: body, ip: ip };
     }
 
     // Body and IP lines sit at the box's text padding; the box is wide enough for its title, body lines and IP pills plus network buttons.
     function fitBox(g, t) {
       g.body.forEach(function (p) { p[0] = g.x + TEXT_X; });
       g.ip.forEach(function (p) { p[0] = g.x + TEXT_X; });
-      var need = Math.max(TEXT_X + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0, t.os ? TEXT_X + (t.ol + (t.oe ? 4 : 1)) * OS_CW + 26 : 0, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0);
-      g.w = Math.max(g.w, Math.ceil(need));
+      g.w = Math.max(g.w, needW(t));
     }
 
     // Smallest rectangle that holds a region's visible servers with padding and the header band, or null when it has none.
@@ -2090,8 +2141,8 @@ InfraDiagram.define("canvas/geometry", [], function () {
     function shapes(s, meta, w) {
       var ent = {}, nodes = [], titles = [], clusters = [];
       Object.keys(meta.clusters).forEach(function (id, i) {
-        var c = s.clusters[id], hw = meta.clusters[id].tl * 3.9 + 4;
-        var r = { k: "c:" + id, i: i, x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.h };
+        var c = s.clusters[id], hw = meta.clusters[id].tl * sizes.regionTitleHalfCw + sizes.regionTitleHalfPad;
+        var r = { k: keyset.nodeKey("region", id), i: i, x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.h };
         ent[r.k] = r; clusters.push(r);
         titles.push({ x0: c.title[0] - hw, y0: c.title[1] - 13, x1: c.title[0] + hw, y1: c.title[1] + 4 });
       });
@@ -2099,8 +2150,8 @@ InfraDiagram.define("canvas/geometry", [], function () {
         var g = s.nodes[id];
         if (!g || g.hidden) return;
         var r = boxExtent(g, meta.nodes[id].tl, w?.[id]);
-        r.k = "n:" + id;
-        r.cl = meta.nodes[id].cl ? ent["c:" + meta.nodes[id].cl].i : -1;
+        r.k = keyset.nodeKey("server", id);
+        r.cl = meta.nodes[id].cl ? ent[keyset.nodeKey("region", meta.nodes[id].cl)].i : -1;
         ent[r.k] = r; nodes.push(r);
       });
       var bands = [];
@@ -2124,7 +2175,49 @@ InfraDiagram.define("canvas/geometry", [], function () {
       });
       return mid;
     }
-    function inside(x, y, r, m) { return x > r.x0 - m + 0.01 && x < r.x1 + m - 0.01 && y > r.y0 - m + 0.01 && y < r.y1 + m - 0.01; }
+    function firstAbove(a, v) {
+      var lo = 0, hi = a.length;
+      while (lo < hi) {
+        var m = (lo + hi) >> 1;
+        if (a[m] > v) hi = m; else lo = m + 1;
+      }
+      return lo;
+    }
+    function firstAtLeast(a, v) {
+      var lo = 0, hi = a.length;
+      while (lo < hi) {
+        var m = (lo + hi) >> 1;
+        if (a[m] >= v) hi = m; else lo = m + 1;
+      }
+      return lo;
+    }
+    function mids(a) {
+      var out = [];
+      for (var k = 0; k + 1 < a.length; k++) out.push((a[k] + a[k + 1]) / 2);
+      return out;
+    }
+    // Writes val (OR-ed in when or is set) into arr, a nx x ny table (row stride ny), at every point (X[i], Y[j]) strictly inside rectangle r grown by m.
+    function paint(arr, ny, X, Y, r, m, val, or) {
+      var i0 = firstAbove(X, r.x0 - m + 0.01), i1 = firstAtLeast(X, r.x1 + m - 0.01), j0 = firstAbove(Y, r.y0 - m + 0.01), j1 = firstAtLeast(Y, r.y1 + m - 0.01);
+      for (var i = i0; i < i1; i++) {
+        for (var j = j0; j < j1; j++) {
+          if (or) arr[i * ny + j] |= val; else arr[i * ny + j] = val;
+        }
+      }
+    }
+    // ORs 1 into arr where a segment midpoint lies within 9px of a region's border line (along the border, strictly between its ends).
+    function paintHug(arr, ny, A, B, c, horiz) {
+      var lo = horiz ? c.x0 : c.y0, hi = horiz ? c.x1 : c.y1, sides = horiz ? [c.y0, c.y1] : [c.x0, c.x1];
+      var s0 = firstAbove(A, lo), s1 = firstAtLeast(A, hi);
+      sides.forEach(function (a) {
+        for (var k = firstAbove(B, a - 10); k < B.length && B[k] < a + 10; k++) {
+          if (Math.abs(B[k] - a) >= 9) continue;
+          for (var q = s0; q < s1; q++) {
+            if (horiz) arr[q * ny + k] |= 1; else arr[k * ny + q] |= 1;
+          }
+        }
+      });
+    }
 
     // Sparse orthogonal grid over obstacle borders (servers +M, titles +4, regions +-M), extra points and channel midpoints.
     function grid(S, extra) {
@@ -2141,163 +2234,172 @@ InfraDiagram.define("canvas/geometry", [], function () {
       xs = uniq(xs); ys = uniq(ys);
       var nx = xs.length, ny = ys.length, P = nx * ny;
       var blk = new Uint8Array(P), hb = new Uint8Array(P), vb = new Uint8Array(P), hc = new Int16Array(P), vc = new Int16Array(P), hh = new Uint8Array(P), vh = new Uint8Array(P);
-      var obst = S.nodes.map(function (r) { return [r, M]; }).concat(S.titles.map(function (r) { return [r, 4]; }));
-      function hit(x, y) {
-        for (const o of obst) if (inside(x, y, o[0], o[1])) return 1;
-        return 0;
+      var mx = mids(xs), my = mids(ys), i, j;
+      for (i = 0; i + 1 < nx; i++) for (j = 0; j < ny; j++) hc[i * ny + j] = -1;
+      for (i = 0; i < nx; i++) for (j = 0; j + 1 < ny; j++) vc[i * ny + j] = -1;
+      function obstacle(r, m) {
+        paint(blk, ny, xs, ys, r, m, 1); paint(hb, ny, mx, ys, r, m, 1); paint(vb, ny, xs, my, r, m, 1);
       }
-      // Bit 2: a segment within 5px of the narrowest allowed clearance (narrow channel).
-      function tight(x, y) {
-        for (const r of S.nodes) if (inside(x, y, r, M + 5)) return 2;
-        return 0;
+      S.nodes.forEach(function (r) { obstacle(r, M); });
+      S.titles.forEach(function (r) { obstacle(r, 4); });
+      // A point's region is the first (lowest index) one that holds it: paint from the last region to the first.
+      for (var k = S.clusters.length - 1; k >= 0; k--) { paint(hc, ny, mx, ys, S.clusters[k], 0, k); paint(vc, ny, xs, my, S.clusters[k], 0, k); }
+      // Bit 1: a segment hugging a region border. Bit 2: a segment within 5px of the narrowest allowed clearance (narrow channel).
+      S.clusters.forEach(function (c) { paintHug(hh, ny, mx, ys, c, true); paintHug(vh, ny, my, xs, c, false); });
+      S.nodes.forEach(function (r) { paint(hh, ny, mx, ys, r, M + 5, 2, true); paint(vh, ny, xs, my, r, M + 5, 2, true); });
+      // Cost of the segment starting at table point p with every penalty but the region one (cheap), and with it (dear): length x multiplier, summed in the order the search used to.
+      var hcost = [new Float64Array(P), new Float64Array(P)], vcost = [new Float64Array(P), new Float64Array(P)];
+      function costs(out, flags, len, p) {
+        var a = 1, b = 1 + REGION;
+        if (flags[p] & 1) { a += HUG; b += HUG; }
+        if (flags[p] & 2) { a += TIGHT; b += TIGHT; }
+        out[0][p] = len * a; out[1][p] = len * b;
       }
-      function region(x, y) {
-        for (const [k, r] of S.clusters.entries()) if (inside(x, y, r, 0)) return k;
-        return -1;
-      }
-      function hug(x, y, horiz) {
-        for (const c of S.clusters) {
-          if (horiz ? x > c.x0 && x < c.x1 && (Math.abs(y - c.y0) < 9 || Math.abs(y - c.y1) < 9) : y > c.y0 && y < c.y1 && (Math.abs(x - c.x0) < 9 || Math.abs(x - c.x1) < 9)) return 1;
+      for (i = 0; i < nx; i++) {
+        for (j = 0; j < ny; j++) {
+          if (i + 1 < nx) costs(hcost, hh, Math.abs(xs[i + 1] - xs[i]), i * ny + j);
+          if (j + 1 < ny) costs(vcost, vh, Math.abs(ys[j + 1] - ys[j]), i * ny + j);
         }
-        return 0;
       }
-      for (var i = 0; i < nx; i++) for (var j = 0; j < ny; j++) {
-        var p = i * ny + j;
-        blk[p] = hit(xs[i], ys[j]);
-        if (i + 1 < nx) { var mx = (xs[i] + xs[i + 1]) / 2; hb[p] = hit(mx, ys[j]); hc[p] = region(mx, ys[j]); hh[p] = hug(mx, ys[j], true) | tight(mx, ys[j]); }
-        if (j + 1 < ny) { var my = (ys[j] + ys[j + 1]) / 2; vb[p] = hit(xs[i], my); vc[p] = region(xs[i], my); vh[p] = hug(xs[i], my, false) | tight(xs[i], my); }
-      }
-      return { xs: xs, ys: ys, nx: nx, ny: ny, blk: blk, hb: hb, vb: vb, hc: hc, vc: vc, hh: hh, vh: vh };
+      return { xs: xs, ys: ys, nx: nx, ny: ny, blk: blk, hb: hb, vb: vb, hc: hc, vc: vc, hh: hh, vh: vh, hcost: hcost, vcost: vcost };
+    }
+    function nearIdx(a, v) {
+      for (var k = firstAbove(a, v - 0.7); k < a.length && a[k] < v + 0.7; k++) if (Math.abs(a[k] - v) < 0.6) return k;
+      return -1;
     }
     function at(G, x, y) {
-      var i = G.xs.findIndex(function (v) { return Math.abs(v - x) < 0.6; }), j = G.ys.findIndex(function (v) { return Math.abs(v - y) < 0.6; });
+      var i = nearIdx(G.xs, x), j = nearIdx(G.ys, y);
       return i < 0 || j < 0 ? -1 : i * G.ny + j;
     }
 
-    function heapPush(heap, f, st) {
-      heap.push([f, st]);
-      var i = heap.length - 1;
-      while (i > 0) {
-        var q = (i - 1) >> 1;
-        if (heap[q][0] <= heap[i][0]) break;
-        var t = heap[q];
-        heap[q] = heap[i];
-        heap[i] = t;
-        i = q;
-      }
-    }
-    function heapPop(heap) {
-      var top = heap[0], last = heap.pop();
-      if (!heap.length) return top;
-      heap[0] = last;
-      var i = 0;
-      for (;;) {
-        var l = 2 * i + 1, r = l + 1, m = i;
-        if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
-        if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
-        if (m === i) break;
-        var t = heap[m];
-        heap[m] = heap[i];
-        heap[i] = t;
-        i = m;
-      }
-      return top;
-    }
-    function manhattan(G, hx, p) {
-      var x = G.xs[Math.floor(p / G.ny)], y = G.ys[p % G.ny], m = Infinity;
-      for (const q of hx) m = Math.min(m, Math.abs(x - q[0]) + Math.abs(y - q[1]));
-      return m;
-    }
     // Extra cost of reaching a goal with heading gd (-1: any) when arriving with heading d.
     function turnCost(gd, d) {
       if (gd < 0 || gd === d) return 0;
       return gd === (d + 2) % 4 ? Infinity : BEND;
     }
-    // Cost of moving from grid point p (column i, row j) in heading d2 after heading d, and the point reached; null when blocked.
-    function step(G, p, i, j, d, d2, home) {
-      var i2 = i + DX[d2], j2 = j + DY[d2];
-      if (i2 < 0 || j2 < 0 || i2 >= G.nx || j2 >= G.ny) return null;
-      var p2 = i2 * G.ny + j2;
-      if (G.blk[p2]) return null;
-      var horiz = d2 % 2 === 0, lowFirst = horiz ? d2 === 0 : d2 === 1, si = lowFirst ? p : p2;
-      if ((horiz ? G.hb : G.vb)[si]) return null;
-      var cl = (horiz ? G.hc : G.vc)[si], flags = (horiz ? G.hh : G.vh)[si];
-      var len = horiz ? Math.abs(G.xs[i2] - G.xs[i]) : Math.abs(G.ys[j2] - G.ys[j]);
-      var mul = 1;
-      if (cl >= 0 && !home.includes(cl)) mul += REGION;
-      if (flags & 1) mul += HUG;
-      if (flags & 2) mul += TIGHT;
-      return { p2: p2, cost: len * mul + (d2 === d ? 0 : BEND) };
-    }
-    function firstState(prev, st) {
-      while (prev[st] >= 0) st = prev[st];
+    // The state a state was reached from (-1: a start). Per state the search keeps two numbers side by side: the best cost and
+    // a code gen * SCALE + previous state + 1, so the entry belongs to the current search exactly when code >= gen * SCALE.
+    function firstState(st) {
+      var sd = cache.sd, gmin = cache.gen * cache.scale;
+      while (sd[2 * st + 1] > gmin) st = sd[2 * st + 1] - gmin - 1;
       return st;
     }
 
+    // Search tables shared by every search; an entry written by an earlier search reads as unvisited (see firstState), so nothing is cleared between searches.
     function searchBuffers(n) {
       if (cache.n < n) {
         cache.n = n;
-        cache.dist = new Float64Array(n);
-        cache.prev = new Int32Array(n);
+        cache.scale = 2 ** Math.ceil(Math.log2(n + 2));
+        cache.sd = new Float64Array(2 * n);
+        cache.hp = new Float64Array(2 * n);
+        cache.gmark = new Int32Array(n);
+        cache.gen = 0;
+        cache.hf = new Float64Array(1024);
+        cache.hs = new Int32Array(1024);
       }
-      cache.dist.fill(Infinity, 0, n);
-      cache.prev.fill(-1, 0, n);
-    }
-    // Relaxes the moves out of state st (point p, heading d, cost d0): improved neighbours are queued.
-    function expand(G, st, d0, h, heap, home) {
-      var dist = cache.dist, prev = cache.prev, p = Math.floor(st / 4), d = st % 4, i = Math.floor(p / G.ny), j = p % G.ny;
-      for (var d2 = 0; d2 < 4; d2++) {
-        if (d2 === (d + 2) % 4) continue;
-        var mv = step(G, p, i, j, d, d2, home);
-        if (!mv) continue;
-        var st2 = mv.p2 * 4 + d2, nd = d0 + mv.cost;
-        if (nd < dist[st2]) {
-          dist[st2] = nd;
-          prev[st2] = st;
-          heapPush(heap, nd + h(mv.p2), st2);
-        }
-      }
+      cache.gen++;
     }
     function traceBack(G, starts, best) {
-      var prev = cache.prev, pts = [];
-      for (var s2 = best.st; s2 >= 0; s2 = prev[s2]) {
+      var sd = cache.sd, gmin = cache.gen * cache.scale, pts = [];
+      for (var s2 = best.st; s2 >= 0; s2 = sd[2 * s2 + 1] - gmin - 1) {
         var pp = Math.floor(s2 / 4);
-        pts.unshift([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]);
+        pts.push([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]);
       }
-      var origin = firstState(prev, best.st);
+      pts.reverse();
+      var origin = firstState(best.st);
       var first = starts.find(function (s) { return s.p * 4 + s.d === origin; });
       return { pts: pts, start: first, goal: best.goal, cost: best.cost };
     }
 
     // A* over (grid point, heading); cost = length (x region / hug penalties) + bends. starts / goals: {p, d, c}.
+    // Ties pop in the order of a binary min-heap on the estimate alone, so the route chosen is a pure function of the grid and the ends.
     function search(G, starts, goals, home) {
       searchBuffers(G.nx * G.ny * 4);
-      var dist = cache.dist, prev = cache.prev;
-      var goalAt = {}, hx = [], heap = [];
+      var sd = cache.sd, gen = cache.gen, gmin = gen * cache.scale, hp = cache.hp, gmark = cache.gmark, hf = cache.hf, hs = cache.hs, hn = 0;
+      var nx = G.nx, ny = G.ny, xs = G.xs, ys = G.ys, blk = G.blk, hb = G.hb, vb = G.vb, hc = G.hc, vc = G.vc, hcost = G.hcost, vcost = G.vcost;
+      var h0 = home.length > 0 ? home[0] : -2, h1 = home.length > 1 ? home[1] : -2;
+      var goalAt = new Map(), hx = [];
       goals.forEach(function (g) {
-        goalAt[g.p] = goalAt[g.p] || [];
-        goalAt[g.p].push(g);
-        hx.push([G.xs[Math.floor(g.p / G.ny)], G.ys[g.p % G.ny]]);
+        gmark[g.p] = gen;
+        if (!goalAt.has(g.p)) goalAt.set(g.p, []);
+        goalAt.get(g.p).push(g);
+        hx.push([xs[Math.floor(g.p / ny)], ys[g.p % ny]]);
       });
-      function h(p) { return manhattan(G, hx, p); }
+      function h(p) {
+        if (hp[2 * p + 1] === gen) return hp[2 * p];
+        var x = xs[Math.floor(p / ny)], y = ys[p % ny], m = Infinity;
+        for (var k = 0; k < hx.length; k++) m = Math.min(m, Math.abs(x - hx[k][0]) + Math.abs(y - hx[k][1]));
+        hp[2 * p] = m;
+        hp[2 * p + 1] = gen;
+        return m;
+      }
+      function push(f, st) {
+        if (hn === hf.length) {
+          var nf = new Float64Array(hn * 2), ns = new Int32Array(hn * 2);
+          nf.set(hf); ns.set(hs);
+          hf = cache.hf = nf; hs = cache.hs = ns;
+        }
+        var i = hn++, q, t;
+        hf[i] = f; hs[i] = st;
+        while (i > 0) {
+          q = (i - 1) >> 1;
+          if (hf[q] <= hf[i]) break;
+          t = hf[q]; hf[q] = hf[i]; hf[i] = t;
+          t = hs[q]; hs[q] = hs[i]; hs[i] = t;
+          i = q;
+        }
+      }
       starts.forEach(function (s) {
         var st = s.p * 4 + s.d;
-        if (s.c < dist[st]) {
-          dist[st] = s.c;
-          prev[st] = -1;
-          heapPush(heap, s.c + h(s.p), st);
+        if (sd[2 * st + 1] < gmin || s.c < sd[2 * st]) {
+          sd[2 * st] = s.c;
+          sd[2 * st + 1] = gmin;
+          push(s.c + h(s.p), st);
         }
       });
       var best = { cost: Infinity, st: -1, goal: null };
-      while (heap.length) {
-        var e = heapPop(heap), st = e[1], d0 = dist[st], p = Math.floor(st / 4), d = st % 4;
-        if (e[0] >= best.cost) break;
-        if (e[0] > d0 + h(p) + 1e-6) continue;
-        for (const g of goalAt[p] || []) {
-          var total = d0 + turnCost(g.d, d) + g.c;
-          if (total < best.cost) best = { cost: total, st: st, goal: g };
+      while (hn) {
+        var f = hf[0], st = hs[0];
+        hn--;
+        if (hn) {
+          hf[0] = hf[hn]; hs[0] = hs[hn];
+          for (var a = 0; ;) {
+            var l = 2 * a + 1, r = l + 1, mm = a, t;
+            if (l < hn && hf[l] < hf[mm]) mm = l;
+            if (r < hn && hf[r] < hf[mm]) mm = r;
+            if (mm === a) break;
+            t = hf[mm]; hf[mm] = hf[a]; hf[a] = t;
+            t = hs[mm]; hs[mm] = hs[a]; hs[a] = t;
+            a = mm;
+          }
         }
-        expand(G, st, d0, h, heap, home);
+        var d0 = sd[2 * st], p = st >> 2, d = st & 3;
+        if (f >= best.cost) break;
+        if (f > d0 + h(p) + 1e-6) continue;
+        var gl = gmark[p] === gen ? goalAt.get(p) : null;
+        if (gl) {
+          for (var gi = 0; gi < gl.length; gi++) {
+            var total = d0 + turnCost(gl[gi].d, d) + gl[gi].c;
+            if (total < best.cost) best = { cost: total, st: st, goal: gl[gi] };
+          }
+        }
+        var i = (p / ny) | 0, j = p - i * ny;
+        for (var d2 = 0; d2 < 4; d2++) {
+          if (d2 === ((d + 2) & 3)) continue;
+          var i2 = i + DX[d2], j2 = j + DY[d2];
+          if (i2 < 0 || j2 < 0 || i2 >= nx || j2 >= ny) continue;
+          var p2 = i2 * ny + j2;
+          if (blk[p2]) continue;
+          var horiz = d2 % 2 === 0, si = (horiz ? d2 === 0 : d2 === 1) ? p : p2;
+          if ((horiz ? hb : vb)[si]) continue;
+          var cl = (horiz ? hc : vc)[si], dear = cl >= 0 && cl !== h0 && cl !== h1 ? 1 : 0;
+          var st2 = (p2 << 2) + d2, nd = d0 + ((horiz ? hcost : vcost)[dear][si] + (d2 === d ? 0 : BEND));
+          if (sd[2 * st2 + 1] < gmin || nd < sd[2 * st2]) {
+            sd[2 * st2] = nd;
+            sd[2 * st2 + 1] = gmin + st + 1;
+            push(nd + (hp[2 * p2 + 1] === gen ? hp[2 * p2] : h(p2)), st2);
+          }
+        }
       }
       return best.st < 0 ? null : traceBack(G, starts, best);
     }
@@ -2359,10 +2461,35 @@ InfraDiagram.define("canvas/geometry", [], function () {
     }
 
     function overlap(a, b) { return Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)); }
-    function cost(boxes, list) {
-      var s = 0;
-      boxes.forEach(function (b) { list.forEach(function (o) { s += overlap(b, o); }); });
-      return s;
+    // Boxes in a uniform bucket grid, numbered in insertion order; cost() sums the overlaps with a probe box in that order (touching and far boxes add exactly 0, so they are skipped).
+    var BUCKET = 64;
+    function boxIndex() { return { map: new Map(), boxes: [], seen: [], tick: 0 }; }
+    function bucketKey(cx, cy) { return cx * 4194304 + cy; }
+    function bucketsOf(b, fn) {
+      var x1 = Math.floor(b.x0 / BUCKET), x2 = Math.floor(b.x1 / BUCKET), y1 = Math.floor(b.y0 / BUCKET), y2 = Math.floor(b.y1 / BUCKET);
+      for (var cx = x1; cx <= x2; cx++) for (var cy = y1; cy <= y2; cy++) fn(bucketKey(cx, cy));
+    }
+    function addBox(ix, b) {
+      var id = ix.boxes.length;
+      ix.boxes.push(b);
+      ix.seen.push(0);
+      bucketsOf(b, function (key) {
+        var list = ix.map.get(key);
+        if (list) list.push(id); else ix.map.set(key, [id]);
+      });
+    }
+    function cost(boxes, ix) {
+      var total = 0;
+      boxes.forEach(function (b) {
+        var ids = [], tick = ++ix.tick;
+        bucketsOf(b, function (key) {
+          var list = ix.map.get(key);
+          if (list) list.forEach(function (id) { if (ix.seen[id] !== tick) { ix.seen[id] = tick; ids.push(id); } });
+        });
+        ids.sort(num);
+        ids.forEach(function (id) { total += overlap(b, ix.boxes[id]); });
+      });
+      return total;
     }
     // Candidate points along straight pieces, nearest the path's arc midpoint first.
     function stations(sh, margin, ends) {
@@ -2429,7 +2556,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
       }
       // A process endpoint (body line) is a port on its server's left or right side at that line's height; end 0 = from, 1 = to.
       function lineY(e, end) {
-        var li = end ? e.tl : e.fl, id = (end ? e.to : e.from).slice(2);
+        var li = end ? e.tl : e.fl, id = keyset.parseKey(end ? e.to : e.from).id;
         return li === null || li === undefined || !s.nodes[id] ? null : Math.round(s.nodes[id].body[li][1] - 4);
       }
       function endCands(e, end, r, other) {
@@ -2522,7 +2649,9 @@ InfraDiagram.define("canvas/geometry", [], function () {
       });
 
       // Firewall markers, then connection labels, each clear of servers, region titles and borders where possible.
-      var hard = S.nodes.concat(S.titles), placed = [];
+      var hard = boxIndex(), soft = boxIndex();
+      S.nodes.concat(S.titles).forEach(function (b) { addBox(hard, b); });
+      S.bands.forEach(function (b) { addBox(soft, b); });
       E.forEach(function (e) {
         var rt = res[e.k];
         if (!rt) return;
@@ -2530,8 +2659,8 @@ InfraDiagram.define("canvas/geometry", [], function () {
         rt.d = sh.d; rt.sh = sh;
         rt.fw = null;
         if (e.fw) {
-          var f = placeFirewall(sh, hard.concat(placed), S.bands);
-          if (f) { placed = placed.concat(f.boxes); rt.fw = { at: f.at, a: f.a, label: f.label, anchor: f.anchor }; }
+          var f = placeFirewall(sh, hard, soft);
+          if (f) { f.boxes.forEach(function (b) { addBox(hard, b); }); rt.fw = { at: f.at, a: f.a, label: f.label, anchor: f.anchor }; }
         }
       });
       E.forEach(function (e) {
@@ -2542,8 +2671,8 @@ InfraDiagram.define("canvas/geometry", [], function () {
           var fix = ov[e.k]?.label;
           if (fix) rt.label = fix.slice();
           else {
-            var lw = o.lw?.[e.k] || e.ll * 6 + 14, l = placeLabel(rt.sh, lw, hard.concat(placed), S.bands);
-            if (l) { placed.push(l.box); rt.label = l.label; }
+            var lw = o.lw?.[e.k] || e.ll * 6 + 14, l = placeLabel(rt.sh, lw, hard, soft);
+            if (l) { addBox(hard, l.box); rt.label = l.label; }
           }
         }
         delete rt.sh;
@@ -2578,10 +2707,30 @@ InfraDiagram.define("canvas/geometry", [], function () {
       return bad;
     }
 
-    return { headerTitle: headerTitle, boxExtent: boxExtent, fitBox: fitBox, fitRegion: fitRegion, regionBounds: regionBounds, resizeRegion: resizeRegion, route: route, problems: problems };
-  })();
+    return { headerTitle: headerTitle, boxExtent: boxExtent, boxFor: boxFor, rows: rows, fitBox: fitBox, fitRegion: fitRegion, regionBounds: regionBounds, resizeRegion: resizeRegion, route: route, problems: problems };
+  })({"head":20,"sketchTitleDy":6,"textX":10,"line":16,"bodyTop":18,"ipTop":22,"ipLine":18,"boxPad":20,"dividerTop":8,"titleCw":6.6,"bodyCw":6.6,"ipCw":7,"osCw":5.6,"hwCw":5.6,"titleExtra":28,"ipExtra":26,"osExtra":26,"eolExtra":4,"noEolExtra":1,"regionTitleHalfCw":3.9,"regionTitleHalfPad":4,"band":30,"bandGap":10,"minGap":20,"pad":16,"minW":100,"minH":60,"regionTop":40,"gap":20,"regionGap":60,"origin":20,"maxRowW":1200,"cols":3,"emptyW":220,"emptyH":120,"ipPill":{"dx":-5,"dy":-11,"h":15,"extraW":10},"osPill":{"h":12,"textX":16,"textY":9,"iconX":2.5,"iconY":0.5,"iconScale":0.786,"extraW":20,"eolGap":4},"netButton":{"w":14,"h":13},"cardIcon":{"dx":22.8,"dy":-16.8,"scale":0.85},"charWidth":{"sketch":7,"clean":6,"dark":6.6,"swiss":6.6},"noteCharWidth":{"sketch":6.6,"clean":5.6,"dark":6.4,"swiss":5.7},"osCharWidth":{"sketch":5.6,"other":5.2}}, (function keysKit() {
+    var PREFIX = { server: "n", region: "c", edge: "e", group: "g", level: "lv" };
+    var KIND = {};
+    Object.keys(PREFIX).forEach(function (k) { KIND[PREFIX[k]] = k; });
 
-  return { headerTitle: kit.headerTitle, boxExtent: kit.boxExtent, fitBox: kit.fitBox, fitRegion: kit.fitRegion, regionBounds: kit.regionBounds, resizeRegion: kit.resizeRegion, route: kit.route, problems: kit.problems };
+    function nodeKey(kind, id) {
+      if (!Object.hasOwn(PREFIX, kind)) throw new Error("Unknown key kind: " + kind);
+      return PREFIX[kind] + ":" + id;
+    }
+
+    // { kind, id } of a key; kind is null for a string that is not a key of a known kind (id: the whole string).
+    function parseKey(key) {
+      var at = String(key).indexOf(":"), prefix = at < 0 ? "" : key.slice(0, at);
+      if (!Object.hasOwn(KIND, prefix)) return { kind: null, id: key };
+      return { kind: KIND[prefix], id: key.slice(at + 1) };
+    }
+
+    function isKind(key, kind) { return parseKey(key).kind === kind; }
+
+    return { nodeKey: nodeKey, parseKey: parseKey, isKind: isKind };
+  })());
+
+  return { headerTitle: kit.headerTitle, boxExtent: kit.boxExtent, boxFor: kit.boxFor, rows: kit.rows, fitBox: kit.fitBox, fitRegion: kit.fitRegion, regionBounds: kit.regionBounds, resizeRegion: kit.resizeRegion, route: kit.route, problems: kit.problems };
 });
 
 InfraDiagram.define("canvas/draw-kit", [], function () {
@@ -2697,8 +2846,9 @@ InfraDiagram.define("canvas/draw-kit", [], function () {
   return { decimate: kit.decimate, smoothPath: kit.smoothPath, distToStroke: kit.distToStroke, hits: kit.hits, hitIndex: kit.hitIndex, history: kit.history, validate: kit.validate, pathMarkup: kit.pathMarkup, markup: kit.markup, newId: kit.newId };
 });
 
-InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], function (core, skins, geometry) {
+InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "ui/keys", "ui/metrics"], function (core, skins, geometry, keys, metrics) {
   var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx;
+  var M = metrics.METRICS;
   var base = D.layout;
   // Shared canvas state: st is the draft layout, on is edit mode.
   var state = { st: clone(base), on: false };
@@ -2709,11 +2859,11 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
   function shift(p, dx, dy) { p[0] += dx; p[1] += dy; }
 
   function move(s, key, dx, dy) {
-    var t = key.charAt(0), id = key.slice(2), g;
-    if (t === "c") {
+    var k = keys.parseKey(key), id = k.id, g;
+    if (k.kind === "region") {
       g = s.clusters[id];
       g.x += dx; g.y += dy; shift(g.title, dx, dy);
-    } else if (t === "n") {
+    } else if (k.kind === "server") {
       g = s.nodes[id];
       if (g.hidden) return;
       g.x += dx; g.y += dy;
@@ -2723,9 +2873,9 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
 
   // A dragged server grows its region (from the drag-start size) so padding and header band hold.
   function apply(from, key, dx, dy) {
-    var s = clone(from), id = key.slice(2), m = D.meta.nodes[id];
+    var s = clone(from), k = keys.parseKey(key), id = k.id, m = D.meta.nodes[id];
     move(s, key, dx, dy);
-    if (key.charAt(0) === "c") (D.kids[id] || []).forEach(function (n) { move(s, "n:" + n, dx, dy); });
+    if (k.kind === "region") (D.kids[id] || []).forEach(function (n) { move(s, keys.nodeKey("server", n), dx, dy); });
     else if (m?.cl) geometry.fitRegion(s, D.meta, m.cl, from.clusters[m.cl], skins.widths());
     return s;
   }
@@ -2778,11 +2928,11 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
   function each(fn) {
     Object.keys(D.idx.clusters).forEach(function (id) {
       var e = D.idx.clusters[id];
-      fn("c:" + id, [e[0], e[1], e[2]]);
+      fn(keys.nodeKey("region", id), [e[0], e[1], e[2]]);
     });
     Object.keys(D.idx.nodes).forEach(function (id) {
       var e = D.idx.nodes[id];
-      fn("n:" + id, [e.c, e.t, e.r].concat(e.b, e.i, e.o === undefined ? [] : [e.o]));
+      fn(keys.nodeKey("server", id), [e.c, e.t, e.r].concat(e.b, e.i, e.o === undefined ? [] : [e.o]));
     });
   }
 
@@ -2808,11 +2958,11 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
   function markBad(s) {
     var bad = state.on ? geometry.problems(s, D.meta, skins.widths()) : {};
     Object.keys(D.idx.nodes).forEach(function (id) {
-      var e = D.idx.nodes[id], on = !!bad["n:" + id];
+      var e = D.idx.nodes[id], on = !!bad[keys.nodeKey("server", id)];
       els[e.r].classList.toggle("bad", on);
       els[e.c].classList.toggle("bad", on);
     });
-    Object.keys(D.idx.clusters).forEach(function (id) { els[D.idx.clusters[id][0]].classList.toggle("bad", !!bad["c:" + id]); });
+    Object.keys(D.idx.clusters).forEach(function (id) { els[D.idx.clusters[id][0]].classList.toggle("bad", !!bad[keys.nodeKey("region", id)]); });
   }
 
   // Display geometry: with the system information off, a card loses its OS and hardware rows (IP pills move up, the box shrinks). The saved state keeps the full size.
@@ -2820,8 +2970,8 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     var m = D.meta.nodes[id], r = 0;
     if (!ctx.sys && m) r = Number(!!m.hw) + Number(!!m.os);
     if (!r) return g;
-    var need = 20 + 16 * m.nb + 18 * m.ni;
-    return { ...g, h: Math.max(g.h - 16 * r, need), ip: g.ip.map(function (p) { return [p[0], p[1] - 16 * r]; }) };
+    var need = geometry.boxFor({ ...m, hw: "", os: 0 }, 0, 0).h;
+    return { ...g, h: Math.max(g.h - M.line * r, need), ip: g.ip.map(function (p) { return [p[0], p[1] - M.line * r]; }) };
   }
   function view(s) {
     if (ctx.sys) return s;
@@ -3156,7 +3306,7 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
   return { list: list, isDirty: isDirty, markSaved: markSaved, undo: undo, redo: redo, setTool: setTool, tool: currentTool };
 });
 
-InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "canvas/zoom-pan"], function (core, init, model, zoomPan) {
+InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "canvas/zoom-pan", "ui/keys"], function (core, init, model, zoomPan, keys) {
   var svg = core.svg, els = core.els, $ = core.$, state = model.state, base = model.base, fit = zoomPan.fit;
   var GRID = 5;
   var drag = null, frame = 0;
@@ -3241,8 +3391,8 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   function snapDelta(start, d) { return Math.round((start + d) / GRID) * GRID - start; }
 
   function origin(s, key) {
-    var t = key.charAt(0), id = key.slice(2);
-    return (t === "c" ? s.clusters : s.nodes)[id];
+    var k = keys.parseKey(key);
+    return (k.kind === "region" ? s.clusters : s.nodes)[k.id];
   }
 
   svg.addEventListener("pointerdown", function (e) {
@@ -3251,7 +3401,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     if (!t && !h) return;
     e.preventDefault();
     var p = model.point(e);
-    drag = { key: h ? "c:" + h.getAttribute("data-rc") : t.getAttribute("data-e"), side: h ? h.getAttribute("data-rs") : null, x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
+    drag = { key: h ? keys.nodeKey("region", h.getAttribute("data-rc")) : t.getAttribute("data-e"), side: h ? h.getAttribute("data-rs") : null, x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
     try { svg.setPointerCapture(e.pointerId); } catch (error_) { /* capture is optional */ }
   });
 
@@ -3264,7 +3414,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   }
 
   function dragState(e, dx, dy) {
-    var snap = $("ts").checked && !e.shiftKey, regionId = drag.key.slice(2);
+    var snap = $("ts").checked && !e.shiftKey, regionId = keys.parseKey(drag.key).id;
     if (drag.side) {
       if (snap) [dx, dy] = snapSide(drag.from.clusters[regionId], drag.side, dx, dy);
       return model.resize(drag.from, regionId, drag.side, dx, dy);
@@ -3302,8 +3452,8 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   });
 
   function drop(d, e) {
-    var api = core.host.serverEditor, id = d.key.slice(2), meta = core.D.meta.nodes[id];
-    if (d.key.charAt(0) !== "n" || !api?.move || !meta) return false;
+    var api = core.host.serverEditor, k = keys.parseKey(d.key), id = k.id, meta = core.D.meta.nodes[id];
+    if (k.kind !== "server" || !api?.move || !meta) return false;
     var from = meta.cl || null, to = model.regionAt(d.from, model.point(e));
     if (to === from) return false;
     if (from) state.st.clusters[from] = model.clone(d.from.clusters[from]);
@@ -3336,7 +3486,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   return { currentLayout: currentLayout, isDirty: isDirty, commit: commit };
 });
 
-InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/networks"], function (core, model, networks) {
+InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/networks", "ui/keys"], function (core, model, networks, keys) {
   var state = model.state;
   var menu = null;
 
@@ -3364,7 +3514,8 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
 
   function serverAt(target) {
     var el = target?.closest?.("[data-ent]"), k = el?.getAttribute("data-ent");
-    return k?.startsWith("n:") ? k.slice(2) : null;
+    var p = k ? keys.parseKey(k) : null;
+    return p?.kind === "server" ? p.id : null;
   }
 
   function editable(t) {

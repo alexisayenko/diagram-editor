@@ -123,8 +123,8 @@ The one vocabulary every stage speaks, produced by `parse/toml.mjs` (`tomlModel`
 | `model.clusters` | `Map<id, { id, title }>` | `[[regions]]` |
 | `model.nodes` | `Map<id, node>` | `[[servers]]` (below) |
 | `model.edges` | `[{ from, to, label, fw, dashed }]` | `[[connections]]`; `edgeKey(e)` is `from>to` |
-| `model.linkStyles` | `Map<edgeIndex, "stroke-dasharray:...">` | dashed (`proposed`) connections; read by `isDashed` |
-| `model.classDefs`, `model.classes` | `Map<type, "stroke:#rrggbb">`, `Map<id, [type, "proposed"?]>` | server types and the `proposed` flag |
+| `model.edgeStyles` | `Map<edgeIndex, "stroke-dasharray:...">` | dashed (`proposed`) connections; read by `isDashed` |
+| `model.typeStyles`, `model.nodeTypes` | `Map<type, "stroke:#rrggbb">`, `Map<id, [type, "proposed"?]>` | server types and the `proposed` flag (formerly the Mermaid names `classDefs`, `classes`, `linkStyles`; internal only, never saved) |
 | `sections` | `{ [title]: markdown }` | rendered from `node.fields` by `serverSection` |
 | `notes` | `[{ title, date, paras, text? }]` | `notes` key of `notes.toml` (`model/notes.mjs`) |
 | `node` | `{ id, title, cluster, db, body, jn, svc, hw, hwc, ip, os, fields }` | one server; `body` is the card text (jobs, services, RMI, systemd, capped with `+N more`), `jn` / `svc` count the jobs and services lines, `hw` is the card strip, `hwc` the strip cells, `ip` the IP list, `os` the cleaned OS string |
@@ -138,7 +138,17 @@ The one vocabulary every stage speaks, produced by `parse/toml.mjs` (`tomlModel`
 | `node.fields.rows` | `[[label, text]]` | the Key / Value rows of the details table (stored text) |
 | `ent["n:<id>"]` | `{ title, cl, db, body, ip, hwc?, ty, prop, tk, tag, os }` | `resolveTypes`; `os` is `osInfo(fields.os)` = `{ v, d, f, eol }` (stored text, display text, family, EOL month or null) |
 
-Keys: `n:<id>` for a server and `c:<id>` for a region (`endKey`).
+Keys: `nodeKey(kind, id)` and `parseKey(key)` in `lib/keys.mjs` build and read every key; nothing concatenates `"n:" + id` or slices `key.slice(2)` by hand. The serialized forms are fixed (pinned in `keys.test.mjs`): `n:<id>` server (kind `server`), `c:<id>` region (`region`), `e:<key>` connection (`edge`), `g:<id>` connection group (`group`), `lv:<level>` connection level (`level`). `parseKey` splits at the first colon, so ids may contain colons; an unknown prefix gives `{ kind: null, id: key }`. The same functions reach the page as the runtime module `ui/keys` (a kit); `geometryKit` receives them as its second argument. `meta` field names (`tl`, `bl`, `nb`, ...) are kept: they are part of the page data (`D.meta`) and renaming them changes every generated page, so it is left for a change that also versions the data.
+
+### Metrics and the box sizing contract
+
+`render/metrics.mjs` holds the one `METRICS` table (frozen): header height, text padding, line pitches, character widths per text kind, paddings and gaps of regions, pill sizes, the card icon, the per-skin fallback character widths. Node modules import it (`auto-layout`, `validate`, `excalidraw`, `svg`); the page gets the same table as the runtime module `ui/metrics` and `geometryKit` receives it as its first argument (`geometryKitOf(metrics, keys)`; `geometryKit()` is the Node call with the real table), so build, auto layout and edit mode cannot drift apart. A size that appears in a second place is a bug: add it to the table.
+
+`kit.boxFor(meta, x, y)` is the one definition of a server card: width from the longest of title, body line, IP, OS pill and hardware strip, height from the rows (body lines, hardware strip, OS pill) plus the IP lines, and the text positions (`title`, `body`, `ip`). `fitBox` (width), auto layout (size and positions), the saved-layout reconcile in `browser/render.mjs` (height and text positions) and edit mode (`viewNode` with system information off) all call it. `box-for.test.mjs` renders six server shapes (no services, many services, EOL OS, long name, hardware strip, three IPs) and checks `boxFor` against the saved geometry and the drawn SVG.
+
+### Routing and the route cache
+
+`geometryKit().route` is an A* over a sparse orthogonal grid. Its tables are typed arrays validated by a generation stamp (no per-search clearing), the open set is a binary heap in typed arrays, region, hug and obstacle flags of the grid are painted per obstacle (binary search on the grid coordinates) instead of tested per point, step costs are precomputed per grid segment, and label and firewall placement look up obstacles in a bucket index (`boxIndex`, `cost`). Everything keeps the arithmetic and the tie-breaking of the original router: `routes-golden.test.mjs` pins the routes of generated 20, 100 and 200 server diagrams to the output of the previous implementation. `render/route-cache.mjs` (`routeAll`) adds a pure cache: the result of `renderModel`/`renderDiagram` carries `routeCache` ({ sig, routes }), and passing it to the next render reuses the routes when the signature (box geometry, region geometry, connections, saved waypoints and labels) is unchanged; `browser/app.js` keeps it between edits. Numbers: [performance.md](performance.md).
 
 
 ## Parser, writer and page app structure
@@ -219,7 +229,7 @@ The toolbar of `diagram.html` (`page/shell.html`): **New diagram**, **Open saved
 `engine/browser.mjs` writes `diagram.html`: it inlines the page shell (`page/shell.html` and `page/shell.css`, read at build time), the bundled modules and `browser/app.js`.
 
 - `page/bundle.mjs` is the module bundler. Entry modules are the `require("...")` names used by `browser/app.js` plus `browser/render.mjs`; their imports are followed (single-line and multi-line named imports and `export { name } from "..."` re-exports; anything else is an error). Modules that run in the page may not import Node modules: `lib/text.mjs` holds the Node-free text helpers (`esc`, `unq`) and `lib/util.mjs` re-exports them, so the bundler maps `lib/util.mjs` to `lib/text.mjs`; the one Node import left in bundled code (`basename` from `node:path`, used by `model/config.mjs`) has a one-line shim in the bundler.
-- `page/kits.mjs` is the registry of kits: functions written once in Node (`geometryKit`, `drawKit`, `osIconKit`) and inlined into the page through `Function.toString()` as runtime modules. A kit body may only use its own locals and language built-ins; `engine/test/kits.test.mjs` scans each kit for free variables.
+- `page/kits.mjs` is the registry of kits: functions written once in Node (`geometryKitOf`, `drawKit`, `osIconKit`, `keysKit`, `metricsKit`) and inlined into the page through `Function.toString()` as runtime modules. A kit body may only use its own locals, its parameters and language built-ins; `engine/test/kits.test.mjs` scans each kit for free variables. A kit may take arguments (`args`: `{ json: value }` is inlined as JSON, `{ kit: fn }` as the call of another kit), which is how `ui/metrics` and `canvas/geometry` receive `METRICS` and the keys; a kit parameter must not be named like a runtime module parameter (`keys`, `metrics`), or the module loader reports an undeclared dependency.
 
 ## Static analysis scope
 

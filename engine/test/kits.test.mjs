@@ -4,6 +4,8 @@ import { KITS } from "../page/kits.mjs";
 import { freeVariables } from "./free-vars.mjs";
 import { script } from "../page/assets.mjs";
 
+const callArg = (a) => ("kit" in a ? a.kit() : a.json);
+
 test("the scanner finds free variables and ignores locals, parameters and properties", () => {
   const pure = () => {
     const k = { a: 1, b: (x, { y }) => x + y, "c": [1] };
@@ -23,7 +25,7 @@ test("every kit is registered with its exports and references no free variables"
     assert.equal(typeof kit.fn, "function", name);
     assert.ok(kit.names.length, name + " exports nothing");
     assert.deepEqual(freeVariables(kit.fn), [], `${name} reads outer variables; pass them in or move them inside the kit`);
-    const result = kit.fn();
+    const result = kit.fn(...(kit.args ?? []).map(callArg));
     for (const n of kit.names) assert.ok(n in result, `${name} does not return ${n}`);
   }
 });

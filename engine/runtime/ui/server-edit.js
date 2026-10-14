@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "ui/server-fields"], function (core, selection, panels, serverFields) {
+InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "ui/server-fields", "ui/keys"], function (core, selection, panels, serverFields, keys) {
   var $ = core.$;
   var TEXTS = serverFields.FIELDS.filter(function (f) { return f.row; }).map(function (f) { return [f.key, f.formLabel || f.label, f.placeholder]; });
   var LISTS = serverFields.FIELDS.filter(function (f) { return f.type === "list" && f.form; }).map(function (f) { return [f.key, f.label, f.add, f.placeholder]; });
@@ -129,7 +129,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
   }
 
   function openForm(key) {
-    var raw = bridge().source(key.slice(2)), pn = $("pn");
+    var raw = bridge().source(keys.parseKey(key).id), pn = $("pn");
     if (!raw) return;
     var close = pn.querySelector("#pc"), tg = pn.querySelector(".tg");
     edit = { key: key, raw: raw, form: el("div", "sf"), texts: {}, lists: {}, notes: null, type: raw.server_type, tg: tg, suffix: tg.textContent.endsWith(" · PROPOSED") ? " · PROPOSED" : "" };
@@ -155,7 +155,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
     if (!edit) return true;
     var f = collect(), err;
     if (!changed()) { cancel(); return true; }
-    err = bridge().apply(edit.key.slice(2), f);
+    err = bridge().apply(keys.parseKey(edit.key).id, f);
     if (err) {
       edit.err.textContent = err;
       edit.err.hidden = false;
@@ -185,7 +185,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
   core.on("panel", function (key, pn) {
     edit = null;
     current = null;
-    if (key.charAt(0) !== "n" || !enabled()) return;
+    if (!keys.isKind(key, "server") || !enabled()) return;
     current = key;
     var h = pn.querySelector("h1");
     h.classList.add("sed");

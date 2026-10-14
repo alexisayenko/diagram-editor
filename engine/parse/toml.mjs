@@ -285,7 +285,7 @@ function addRegions(ctx) {
     checkKeys(r, ["id", "title", "server_type", "proposed"], "region");
     const eid = ctx.entity(r, "region"), ty = ctx.type(r.server_type, eid);
     model.clusters.set(eid, { id: eid, title: str(r.title, eid + ".title") });
-    ctx.classes(eid, ty, bool(r.proposed, eid + ".proposed"));
+    ctx.setType(eid, ty, bool(r.proposed, eid + ".proposed"));
   }
 }
 
@@ -320,7 +320,7 @@ function addServers(ctx) {
     if (names.has(title)) failToml(`${eid}: duplicate server name '${title}'`);
     names.add(title);
     const lists = serverLists(s, eid, ips);
-    ctx.classes(eid, ty, bool(s.proposed, eid + ".proposed"));
+    ctx.setType(eid, ty, bool(s.proposed, eid + ".proposed"));
     for (const k of SERVER_TEXT_KEYS) if (s[k] !== undefined) str(s[k], eid + "." + k);
     if (s.details !== undefined && typeof s.details !== "string") failToml(`${eid}.details must be a string`);
     const dns = list(s.dns, eid + ".dns");
@@ -358,7 +358,7 @@ function addConnections(ctx) {
     if (e.label !== undefined && typeof e.label !== "string") failToml(`${k}.label must be a string`);
     const dashed = bool(e.proposed, k + ".proposed");
     model.edges.push({ from, to, label: e.label || "", fw: bool(e.firewall, k + ".firewall"), dashed });
-    if (dashed) model.linkStyles.set(model.edges.length - 1, "stroke-dasharray:6 4");
+    if (dashed) model.edgeStyles.set(model.edges.length - 1, "stroke-dasharray:6 4");
     if (e.from_service !== undefined || e.to_service !== undefined) config.processes[k] = checkServiceEnds(model, k, from, to, e);
   }
 }
@@ -372,7 +372,7 @@ export function tomlModel(files, folder = "diagram", nets = null) {
   const config = { id, title: str(t.title, "title"), groups: {}, processes: {} };
   const notes = parseNoteList(t.notes), docs = parseDocs(t);
   const { custom, TYPES } = parseCustomTypes(t);
-  const model = { types: custom, clusters: new Map(), nodes: new Map(), edges: [], linkStyles: new Map(), classDefs: new Map(), classes: new Map() };
+  const model = { types: custom, clusters: new Map(), nodes: new Map(), edges: [], edgeStyles: new Map(), typeStyles: new Map(), nodeTypes: new Map() };
   const sections = Object.create(null), used = new Set();
   const ctx = {
     t, model, config, groups, nets, sections, used, TYPES,
@@ -386,9 +386,9 @@ export function tomlModel(files, folder = "diagram", nets = null) {
       used.add(eid);
       return eid;
     },
-    classes(eid, ty, proposed) {
-      model.classes.set(eid, proposed ? [ty, "proposed"] : [ty]);
-      model.classDefs.set(ty, "stroke:" + TYPES[ty].color);
+    setType(eid, ty, proposed) {
+      model.nodeTypes.set(eid, proposed ? [ty, "proposed"] : [ty]);
+      model.typeStyles.set(ty, "stroke:" + TYPES[ty].color);
     },
   };
   addRegions(ctx);

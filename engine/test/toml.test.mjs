@@ -8,6 +8,7 @@ import { css, script } from "../page/assets.mjs";
 import { runInNewContext } from "node:vm";
 import { createFrameBridge } from "../browser/frame-bridge.mjs";
 import { demo as loadDemo, mod, withFile, without, mini } from "./helpers.mjs";
+import { keys } from "./runtime-kits.mjs";
 
 const demo = loadDemo();
 test("TOML comments, quoted hashes, literal strings, escapes and multiline arrays", () => {
@@ -99,7 +100,7 @@ test("browser app script and built diagram.html scripts are syntactically valid"
 test("TOML server OS is not in the generated details markdown; the panel renders it from the structured os", () => {
   const src = readFileSync(new URL("../runtime/ui/details.js", import.meta.url), "utf8");
   let mod;
-  runInNewContext(src, { InfraDiagram: { define: (n, d, f) => { mod = f({ D: {}, esc: (x) => String(x), $: () => null }); } } });
+  runInNewContext(src, { InfraDiagram: { define: (n, d, f) => { mod = f({ D: {}, esc: (x) => String(x), $: () => null }, undefined, keys); } } });
   const server = (id, body) => ["servers/" + id + ".toml", `id="${id}"\nserver_type="web"\nname="${id}.test"\n${body}`];
   const { sections } = tomlModel(new Map([["topology.toml", 'title="t"'], server("a", 'os="Ubuntu 24.04"\ndetails="Note."\n'), server("b", 'os="Debian 12"\n'), server("c", 'details="Only note."\n')]), "t");
   for (const id of ["a", "b", "c"]) assert.ok(!/<t[dh]>OS<\/t[dh]>/.test(mod.md(sections[id + ".test"])));

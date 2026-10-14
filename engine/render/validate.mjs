@@ -1,8 +1,9 @@
 import { fail } from "../lib/errors.mjs";
+import { METRICS } from "./metrics.mjs";
 import { geometryKit, displayLabels, shortTitle } from "./geometry.mjs";
 
-const BAND = 30, BAND_GAP = 10, BOX_HEAD = 20;
-const MIN_GAP = 20, CLUSTER_PAD = 16;
+const BAND = METRICS.band, BAND_GAP = METRICS.bandGap, BOX_HEAD = METRICS.head;
+const MIN_GAP = METRICS.minGap, CLUSTER_PAD = METRICS.pad;
 const kit = geometryKit();
 
 function bandProblems(clusters, nodes, layout) {

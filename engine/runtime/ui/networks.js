@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/networks", ["ui/core", "ui/panels"], function (core, panels) {
+InfraDiagram.define("ui/networks", ["ui/core", "ui/panels", "ui/keys"], function (core, panels, keys) {
   var D = core.D, ctx = core.ctx, $ = core.$;
 
   function initNetworks() {
@@ -17,7 +17,7 @@ InfraDiagram.define("ui/networks", ["ui/core", "ui/panels"], function (core, pan
     if (ctx.net !== null) {
       M = {};
       D.nets[ctx.net].m.forEach(function (k) { M[k] = 1; });
-      D.edges.forEach(function (e) { if (M[e.from] && M[e.to]) M["e:" + e.k] = 1; });
+      D.edges.forEach(function (e) { if (M[e.from] && M[e.to]) M[keys.nodeKey("edge", e.k)] = 1; });
     }
     core.ents.forEach(function (el) { el.classList.toggle("nf", !!M && !M[el.dataset.ent]); });
     document.querySelectorAll("#wl .nw, .nwb, .nwd").forEach(function (b) {

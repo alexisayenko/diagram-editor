@@ -59,3 +59,4 @@ What we did not pick and why.
 | [0015](adr-0015-shared-helpers-and-server-field-table.md) | Shared helpers and the single server field table | 2026-10-14 |
 | [0016](adr-0016-one-render-pipeline-and-split-page-app.md) | One render pipeline and the split page app | 2026-10-14 |
 | [0017](adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md) | Retire the legacy Mermaid and Markdown pipeline | 2026-10-14 |
+| [0018](adr-0018-one-metrics-table-and-node-keys.md) | One metrics table and node keys | 2026-10-14 |

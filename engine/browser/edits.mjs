@@ -4,6 +4,7 @@ import { setNetworkName, normalizeName } from "../parse/networks-name.mjs";
 import { mergeFolder } from "../parse/toml.mjs";
 import { mergeTypes } from "../parse/types.mjs";
 import { NOTES_FILE, NETWORKS_FILE, serverPath } from "../lib/files.mjs";
+import { nodeKey } from "../lib/keys.mjs";
 import { notesEdited } from "./session.mjs";
 
 const REGION_W = 220, REGION_H = 120;
@@ -47,7 +48,7 @@ export function createEdits({ sessions, bridge, render }) {
     session.reload = bridge.show(result.html).then(() => { session.reload = null; });
   }
   function rerender(path, next, id, at, extra = {}) {
-    rerenderMany(new Map([[path, next]]), at ? { [id]: at } : {}, [id], extra.key ?? "n:" + id, extra);
+    rerenderMany(new Map([[path, next]]), at ? { [id]: at } : {}, [id], extra.key ?? nodeKey("server", id), extra);
   }
 
   function serverSource(id) {
@@ -75,7 +76,7 @@ export function createEdits({ sessions, bridge, render }) {
   const regionTypes = () => freeRegionTypes(sessions.current().work);
   const addNewRegion = guarded(editBlocked, (type, x, y) => {
     const { path, text, id } = addRegion(sessions.current().work, { server_type: type });
-    rerender(path, text, id, null, { key: "c:" + id, region: { x, y, w: REGION_W, h: REGION_H, title: [x + REGION_W / 2, y + 20] } });
+    rerender(path, text, id, null, { key: nodeKey("region", id), region: { x, y, w: REGION_W, h: REGION_H, title: [x + REGION_W / 2, y + 20] } });
   });
   const move = guarded(editBlocked, (id, region) => {
     const work = sessions.current().work, { path, text } = moveServer(work, id, region);

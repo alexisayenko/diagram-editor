@@ -1,4 +1,4 @@
-InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/networks"], function (core, model, networks) {
+InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/networks", "ui/keys"], function (core, model, networks, keys) {
   var state = model.state;
   var menu = null;
 
@@ -26,7 +26,8 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
 
   function serverAt(target) {
     var el = target?.closest?.("[data-ent]"), k = el?.getAttribute("data-ent");
-    return k?.startsWith("n:") ? k.slice(2) : null;
+    var p = k ? keys.parseKey(k) : null;
+    return p?.kind === "server" ? p.id : null;
   }
 
   function editable(t) {

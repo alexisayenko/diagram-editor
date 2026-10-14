@@ -145,8 +145,8 @@ test("mergeTypes: built-ins, overrides, new types", () => {
 const ir = ({ clusters = [], nodes = [], defs = {}, classes = {} }) => ({
   clusters: new Map(clusters.map((id) => [id, { id, title: id.toUpperCase() }])),
   nodes: new Map(nodes.map(([id, o = {}]) => [id, { id, title: id.toUpperCase(), body: [], ip: [], cluster: null, db: false, ...o }])),
-  classDefs: new Map(Object.entries(defs)),
-  classes: new Map(Object.entries(classes)),
+  typeStyles: new Map(Object.entries(defs)),
+  nodeTypes: new Map(Object.entries(classes)),
 });
 const typed = (model, types, hidden = {}) =>
   resolveTypes({ ...model, types }, { nodes: Object.fromEntries([...model.nodes.keys()].map((k) => [k, { hidden: !!hidden[k] }])) }, "Next");
@@ -184,8 +184,8 @@ test("resolveTypes: custom types fill missing colours, infra types go last, hidd
 });
 
 test("resolveTypes: problems are reported together", () => {
-  assert.match(failure(() => typed(ir({ nodes: [["a"]], defs: { weird: "stroke:#112233" }, classes: { a: ["weird"] } }))), /classDef "weird" is neither a known server type/);
-  assert.match(failure(() => typed(ir({ nodes: [["a"]], defs: { web: "fill:#fff" }, classes: { a: ["web"] } }))), /classDef "web" has no stroke:#rrggbb colour/);
+  assert.match(failure(() => typed(ir({ nodes: [["a"]], defs: { weird: "stroke:#112233" }, classes: { a: ["weird"] } }))), /type style "weird" is neither a known server type/);
+  assert.match(failure(() => typed(ir({ nodes: [["a"]], defs: { web: "fill:#fff" }, classes: { a: ["web"] } }))), /type style "web" has no stroke:#rrggbb colour/);
   const msg = failure(() => typed(ir({ nodes: [["a"], ["b"], ["c"]], defs: { web: "stroke:#112233" }, classes: { a: ["web"], b: ["weird"], c: ["web", "cache"] } })));
   assert.match(msg, /n:b: unknown class weird/);
   assert.match(msg, /n:b: needs exactly one server type class \(.*\), has none/);

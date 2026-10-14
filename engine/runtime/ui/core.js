@@ -1,6 +1,6 @@
-InfraDiagram.define("ui/core", [], function () {
+InfraDiagram.define("ui/core", ["ui/metrics"], function (metrics) {
   var STYLES = ["sketch", "clean", "dark", "swiss"];
-  var CW = { sketch: 7, clean: 6, dark: 6.6, swiss: 6.6 };
+  var CW = metrics.METRICS.charWidth;
   var BG = { clean: "#F3F5F9", dark: "#0A1020", swiss: "#FFFFFF" };
   var D = JSON.parse(document.getElementById("layout-data").textContent);
   var svg = document.querySelector("svg");

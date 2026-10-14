@@ -17,6 +17,7 @@ import { resolveTypes } from "../engine/parse/types.mjs";
 import { renderSvg } from "../engine/render/svg.mjs";
 import { buildNetworks } from "../engine/parse/shared-networks.mjs";
 import { osInfo } from "../engine/model/os.mjs";
+import { nodeKey } from "../engine/lib/keys.mjs";
 import { renderDiagram } from "../engine/browser/render.mjs";
 import { setServer } from "../engine/parse/toml-write.mjs";
 import { serverPath, NETWORKS_FILE } from "../engine/lib/files.mjs";
@@ -115,7 +116,7 @@ export function measureOnce(files, folder, assetBundle) {
   const { nets: nn, ipNet } = r.value;
   out.deriveNetworks = r.t;
   const { ent, typeList } = resolveTypes(model, layout, config.proposedLabel);
-  for (const nd of model.nodes.values()) if (ent["n:" + nd.id]) ent["n:" + nd.id].os = osInfo(nd.fields.os);
+  for (const nd of model.nodes.values()) if (ent[nodeKey("server", nd.id)]) ent[nodeKey("server", nd.id)].os = osInfo(nd.fields.os);
   r = ms(() => renderSvg({ model, layout, ent, nets: nn, ipNet, routes, groups: config.groups, meta }));
   out.render = r.t;
   r = ms(() => renderModel({ config, model, layout, meta, kit, sections, notes, docs, drawings, assets: assetBundle, networks: shared }));
@@ -142,7 +143,9 @@ export function measureEdit(files, folder, assetBundle) {
   const work = new Map(files).set(path, next);
   const result = renderDiagram(work, folder, first.layout, assetBundle, [id]);
   const t2 = performance.now();
-  return { write: t1 - t0, rebuild: t2 - t1, total: t2 - t0, bytes: Buffer.byteLength(result.html) };
+  const cached = renderDiagram(work, folder, first.layout, assetBundle, [id], first.routeCache);
+  const t3 = performance.now();
+  return { write: t1 - t0, rebuild: t2 - t1, total: t2 - t0, cachedTotal: t3 - t2 + (t1 - t0), bytes: Buffer.byteLength(result.html), same: cached.html === result.html };
 }
 
 export function bench(sizes, runs, log = () => {}) {
@@ -160,6 +163,7 @@ export function bench(sizes, runs, log = () => {}) {
         const v = samples.map((s) => s[k]);
         row[k] = k.endsWith("Bytes") ? v[0] : { median: median(v), p95: p95(v) };
       }
+      row.editCached = { median: median(edits.map((e) => e.cachedTotal)), identical: edits.every((e) => e.same) };
       row.edit = { median: median(edits.map((e) => e.total)), p95: p95(edits.map((e) => e.total)), write: median(edits.map((e) => e.write)), rebuild: median(edits.map((e) => e.rebuild)) };
       row.connections = (files.get("topology.toml").match(/\[\[connections\]\]/g) || []).length;
       result[n] = row;
@@ -185,5 +189,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const result = bench(sizes, runs);
   console.log("ms, median of " + runs + " runs (parse = one tomlModel pass; networks = IP scan + derive; layout = restore, auto-layout, fit)");
   console.log(table(result));
+  console.log("edit with the previous route cache (ms, median): " + Object.entries(result).map(([n, row]) => n + ": " + row.editCached.median.toFixed(0) + (row.editCached.identical ? "" : " (DIFFERENT OUTPUT)")).join(", "));
   if (out) writeFileSync(out, JSON.stringify({ runs, node: process.version, result }, null, 2));
 }

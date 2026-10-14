@@ -56,7 +56,7 @@ test("cardUnits keeps all units without a card group", () => {
 
 test("edge helpers key connections and ends", () => {
   assert.equal(edgeKey({ from: "a", to: "b" }), "a>b");
-  const model = { nodes: new Map([["a", {}]]), linkStyles: new Map([[0, "stroke-dasharray:6 4"]]) };
+  const model = { nodes: new Map([["a", {}]]), edgeStyles: new Map([[0, "stroke-dasharray:6 4"]]) };
   assert.deepEqual([endKey(model, "a"), endKey(model, "r"), isDashed(model, 0), isDashed(model, 1)], ["n:a", "c:r", true, false]);
 });
 

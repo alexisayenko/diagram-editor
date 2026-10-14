@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons"], function (core, osIcons) {
+InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons", "ui/keys"], function (core, osIcons, keys) {
   var D = core.D, esc = core.esc, $ = core.$;
 
   function inline(s) {
@@ -120,14 +120,14 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons"], function (core, os
       var lines = (e.body || []).concat(e.ip || []);
       if (lines.length) html += "<ul>" + lines.map(function (x) { return "<li>" + inline(x) + "</li>"; }).join("") + "</ul>";
     }
-    if (e.cl && D.ent["c:" + e.cl]) {
-      var ce = D.ent["c:" + e.cl], cs = D.sections[ce.title];
+    if (e.cl && D.ent[keys.nodeKey("region", e.cl)]) {
+      var ce = D.ent[keys.nodeKey("region", e.cl)], cs = D.sections[ce.title];
       if (cs && !sec) html += '<hr><p class="pm">Part of ' + esc(ce.title) + "</p>" + md(cs);
       else html += '<p class="pm">Part of ' + esc(ce.title) + "</p>";
     }
     pn.innerHTML = html;
-    if (key.charAt(0) === "n") hwStrip(pn, e.hwc);
-    if (key.charAt(0) === "n") osRow(pn, e.os);
+    if (keys.isKind(key, "server")) hwStrip(pn, e.hwc);
+    if (keys.isKind(key, "server")) osRow(pn, e.os);
     netButtons(pn);
     pn.dataset.ty = e.ty;
     core.emit("panel", key, pn);

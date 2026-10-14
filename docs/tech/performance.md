@@ -1,8 +1,9 @@
 # Performance
 
 Measurements for [AR-06 and AR-13](refactoring-recommendations.md) and
-decision D6 ("benchmark first"). Measurement only: no product code was
-changed. Synthetic data only.
+decision D6 ("benchmark first"). The first sections are the measurement
+(taken before any change); [After the router speed-up](#after-the-router-speed-up-ar-13-step-1)
+has the numbers after step 1 of the ladder. Synthetic data only.
 
 ## Verdict
 
@@ -136,6 +137,58 @@ What not to do:
   gain speed: it changes every saved diagram's look.
 - Do not rewrite the router (A* is fine): the cost is the per-edge
   linear obstacle scans and the lack of reuse.
+
+## After the router speed-up (AR-13 step 1)
+
+Ladder steps 1 and 2 are done in `render/geometry.mjs` and
+`render/route-cache.mjs`; the routes are bit-identical (golden test
+`routes-golden.test.mjs`: the routes of generated 20, 100 and 200 server
+diagrams equal the output of the previous router, and `examples/demo`
+builds with `--check` unchanged).
+
+What changed:
+
+- Grid flags (blocked, region, hug, narrow channel) are painted per
+  obstacle with a binary search over the grid coordinates instead of
+  tested per grid point against every obstacle (`grid` 13 % of the cost).
+- The A* uses typed arrays for costs, predecessors and the open set (a
+  binary heap with the same comparisons), a generation stamp instead of
+  clearing 450 k entries per search, cached heuristic values and
+  precomputed step costs; no object per step (`search`, `expand`, `step`,
+  `searchBuffers` were 50 %).
+- Label and firewall placement look obstacles up in a bucket index
+  instead of scanning every box for every candidate point (21 %); the
+  overlaps are summed in the old order, so scores are identical.
+- `routeAll` returns a cache next to the routes; `renderDiagram` and
+  `renderModel` take and return it (`routeCache`), `browser/app.js` keeps
+  it between edits. An edit that changes no box, region or waypoint (a
+  role, a note, the details text, a name whose header label is the same)
+  reuses every route.
+
+Node, this machine, ms, median of 5 (`node tools/bench.mjs`):
+
+| Servers | pipeline before | pipeline after | route before | route after | edit before | edit after (full) | edit after (route cache hit) |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 50 | 65 | 30 | 70 | 29 | 80 | 31 | 9 |
+| 100 | 277 | 112 | 272 | 101 | 318 | 111 | 16 |
+| 200 | 1438 | 383 | 1396 | 402 | 1266 | 399 | 30 |
+| 400 | 7173 | 1485 | 6234 | 1561 | 7305 | 1592 | 64 |
+
+Scaling 100 to 400 servers (4x): 26x before, 13x after (the route alone
+about 14x). The goal of about 8x was not reached: the search itself is
+unchanged on purpose (a stronger heuristic or a search window pops fewer
+states but can pick another of several equal-cost paths, which would
+change saved diagrams' routes), and it still pops about 4200 states per
+connection at 400 servers against 1500 at 100. 400 servers with 600
+connections cost about 1.3 to 1.5 s in Node (noise of this machine
+included). A single edit that changes a box still re-routes everything;
+the 64 ms case is an edit that changes no geometry. The iframe reload
+(about 20 s in the browser) is not touched: it is the scene swap, the
+next step of the ladder.
+
+`perf.test.mjs` guards ratios only: 200 servers under 8x of 100, 400 under
+20x of 100 (measured 3.5x and 13x), page size, and a cached edit under a
+third of a full one.
 
 ## Do the numbers justify the big change (D6)?
 

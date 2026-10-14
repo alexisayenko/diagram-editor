@@ -1,6 +1,6 @@
-InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, details) {
+InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics"], function (core, details, keys, metrics) {
   var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx, CW = core.CW, STYLES = core.STYLES, hooks = core.services;
-  var pillW = {}, boxW = {}, btn = {}, TEXT_X = 10;
+  var M = metrics.METRICS, pillW = {}, boxW = {}, btn = {}, TEXT_X = M.textX;
 
   function measure(el, n, cw) {
     var w = 0;
@@ -26,19 +26,19 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
   function dividerHtml(y, W) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; }
   function nodeDividers(m, g, nb, hwY, W) {
     var h = "", below = !!(m.hw || m.os || g.ip.length);
-    if (m.nj && nb > m.nj) h += dividerHtml(8 + 16 * m.nj, W);
-    if (nb && below) h += dividerHtml(8 + 16 * nb, W);
+    if (m.nj && nb > m.nj) h += dividerHtml(M.dividerTop + M.line * m.nj, W);
+    if (nb && below) h += dividerHtml(M.dividerTop + M.line * nb, W);
     if (m.hw && (m.os || g.ip.length)) h += dividerHtml(hwY + 6, W);
     if (m.os && g.ip.length) h += dividerHtml(g.ip[0][1] - g.y - 12.5, W);
     return h;
   }
   function ipPills(g, ipw, S) {
     return g.ip.map(function (p, k) {
-      return '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x - 5) + '" y="' + (p[1] - g.y - 11) + '" width="' + Math.round(ipw[k] + 10) + '" height="15" rx="' + ({ clean: 8, dark: 3 }[S] ?? 0) + '"/>';
+      return '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x + M.ipPill.dx) + '" y="' + (p[1] - g.y + M.ipPill.dy) + '" width="' + Math.round(ipw[k] + M.ipPill.extraW) + '" height="' + M.ipPill.h + '" rx="' + ({ clean: 8, dark: 3 }[S] ?? 0) + '"/>';
     }).join("");
   }
   function nodeChrome(id) {
-    var S = ctx.style, g = hooks.viewNode ? hooks.viewNode(id, D.layout.nodes[id]) : D.layout.nodes[id], e = D.ent["n:" + id], ix = D.idx.nodes[id];
+    var S = ctx.style, g = hooks.viewNode ? hooks.viewNode(id, D.layout.nodes[id]) : D.layout.nodes[id], e = D.ent[keys.nodeKey("server", id)], ix = D.idx.nodes[id];
     var tl = TEXT_X;
     var tw = measure(els[ix.t], els[ix.t].firstChild.textContent.length, CW[S]);
     var bottom = g.h;
@@ -46,13 +46,13 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
       bottom = Math.max(bottom, p[1] - g.y + 7);
       return measure(els[ix.i[k]], 14, CW[S]);
     });
-    var W = Math.max(g.w, tl + tw + 28), HH = 20, m = sysMeta(D.meta.nodes[id] || {}), nb = g.body.length, hwY = 18 + 16 * nb;
+    var W = Math.max(g.w, tl + tw + M.titleExtra), HH = M.head, m = sysMeta(D.meta.nodes[id] || {}), nb = g.body.length, hwY = M.bodyTop + M.line * nb;
     boxW[id] = W;
-    var hwX = g.body.length ? g.body[0][0] - g.x : 10;
+    var hwX = g.body.length ? g.body[0][0] - g.x : M.textX;
     var hw = m.hw ? '<text class="hw" x="' + hwX + '" y="' + hwY + '">' + core.esc(m.hw) + "</text>" : "";
     if (S === "sketch") { delete boxW[id]; return hw; }
     var h = frameHtml(S, W, bottom, HH);
-    h += '<g class="ic" transform="translate(' + (W - 22.8) + ' -16.8) scale(.85)">' + icon(e.db ? "db" : "server") + "</g>";
+    h += '<g class="ic" transform="translate(' + (W - M.cardIcon.dx) + " " + M.cardIcon.dy + ") scale(" + String(M.cardIcon.scale).replace(/^0\./, ".") + ')">' + icon(e.db ? "db" : "server") + "</g>";
     h += hw;
     h += nodeDividers(m, g, nb, hwY, W) + ipPills(g, ipw, S);
     return h;
@@ -61,17 +61,17 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
   // OS pill: icon, text, then the "EOL" marker after the pill; the text is cut with an ellipsis when pill and marker would not fit the box.
   function sizeOs(g, boxWidth) {
     var t = g.querySelector(".ost"), r = g.querySelector("rect"), e = g.querySelector(".ose"), full = t.getAttribute("data-t") || t.textContent;
-    var cw = ctx.style === "sketch" ? 5.6 : 5.2, ew = e ? measure(e, 3, cw) + 4 : 0, room = boxWidth - 10 - 20 - ew;
+    var cw = M.osCharWidth[ctx.style === "sketch" ? "sketch" : "other"], ew = e ? measure(e, 3, cw) + M.osPill.eolGap : 0, room = boxWidth - M.textX - M.osPill.extraW - ew;
     t.textContent = full;
     var tw = measure(t, full.length, cw);
     if (tw > room && room > 0) {
       t.textContent = full.slice(0, Math.max(2, Math.floor(full.length * room / tw) - 1)) + "…";
       tw = measure(t, t.textContent.length, cw);
     }
-    var w = Math.round(tw + 20);
+    var w = Math.round(tw + M.osPill.extraW);
     r.setAttribute("width", w);
     r.setAttribute("rx", { clean: 6, dark: 3, sketch: 2 }[ctx.style] ?? 0);
-    if (e) e.setAttribute("x", w + 4);
+    if (e) e.setAttribute("x", w + M.osPill.eolGap);
   }
 
   function rebuildChrome() {

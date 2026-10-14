@@ -2,34 +2,19 @@
 // Fresh regions are packed in rows (topology order), their servers in a grid; standalone servers go in a final row.
 // Missing servers of a placed region go below or right of its servers, whichever clashes less; new regions and
 // standalone servers go below the existing content. Deterministic: same layout + meta, same result.
-// Self-contained on purpose: assets.mjs inlines this function's source as the "canvas/auto-layout" runtime module,
-// so the build and edit mode fill in identical geometry. geometry: the geometryKit() object.
+// Node only (the page gets the filled layout). geometry: the geometryKit() object; sizes come from METRICS.
+import { METRICS } from "./metrics.mjs";
+
 export function autoLayoutKit(geometry) {
-  var HEAD = 20, PAD = 16, TOP = 40, GAP = 20, RGAP = 60, ORIGIN = 20, MAXW = 1200, COLS = 3, EMPTY_W = 220, EMPTY_H = 120;
+  var HEAD = METRICS.head, PAD = METRICS.pad, TOP = METRICS.regionTop, GAP = METRICS.gap, RGAP = METRICS.regionGap, ORIGIN = METRICS.origin;
+  var MAXW = METRICS.maxRowW, COLS = METRICS.cols, EMPTY_W = METRICS.emptyW, EMPTY_H = METRICS.emptyH;
 
   function r1(v) { return Math.round(v * 10) / 10; }
-  function range(n) {
-    var a = [];
-    for (var i = 0; i < n; i++) a.push(i);
-    return a;
-  }
   function dup(o) { return structuredClone(o); }
 
-  // Text rows above the IP pills: body lines, hardware strip, OS pill.
-  function rows(t) { return t.nb + (t.hw ? 1 : 0) + (t.os ? 1 : 0); }
-  // Box size from text lengths and line counts (same width rule as geometryKit.fitBox).
-  function size(t) {
-    return { w: Math.ceil(Math.max(t.tl * 6.6 + 38, 20 + t.bl * 6.6, t.il ? 36 + t.il * 7 : 0, t.os ? 36 + (t.ol + (t.oe ? 4 : 1)) * 5.6 : 0, t.hw ? 20 + t.hw.length * 5.6 : 0)), h: 20 + 16 * rows(t) + 18 * t.ni };
-  }
   // Server whose drawn box (incl. header) has its top-left corner at x, y.
-  function box(t, x, y) {
-    var z = size(t), by = y + HEAD;
-    return {
-      x: x, y: by, w: z.w, h: z.h, title: [x + 10, by - 6],
-      body: range(t.nb).map(function (i) { return [x + 10, by + 18 + 16 * i]; }),
-      ip: range(t.ni).map(function (i) { return [x + 10, by + 22 + 16 * rows(t) + 18 * i]; }),
-    };
-  }
+  function box(t, x, y) { return geometry.boxFor(t, x, y + HEAD); }
+  function size(t) { var z = geometry.boxFor(t, 0, 0); return { w: z.w, h: z.h }; }
 
   function gridSize(meta, ids) {
     var cols = Math.min(ids.length, COLS), rows = Math.ceil(ids.length / cols), cw = 0, ch = 0;
@@ -42,7 +27,7 @@ export function autoLayoutKit(geometry) {
   }
   function regionSize(meta, cid, ids) {
     var g = ids.length ? gridSize(meta, ids) : null;
-    return { w: Math.max(g ? g.w + 2 * PAD : EMPTY_W, Math.ceil(meta.clusters[cid].tl * 7.8 + 2 * PAD)), h: g ? TOP + g.h + PAD : EMPTY_H };
+    return { w: Math.max(g ? g.w + 2 * PAD : EMPTY_W, Math.ceil(meta.clusters[cid].tl * METRICS.regionTitleHalfCw * 2 + 2 * PAD)), h: g ? TOP + g.h + PAD : EMPTY_H };
   }
 
   function ext(s, meta, id) { return geometry.boxExtent(s.nodes[id], meta.nodes[id].tl); }

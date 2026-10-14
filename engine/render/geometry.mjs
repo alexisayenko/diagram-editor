@@ -1,6 +1,8 @@
 import { edgeKey, endKey } from "../model/edges.mjs";
 import { processAnchors } from "../model/config.mjs";
 import { displayOs, osInfo } from "../model/os.mjs";
+import { keysKit } from "../lib/keys.mjs";
+import { METRICS } from "./metrics.mjs";
 
 // Longest server name drawn in a header; longer names are cut with an ellipsis (the full name stays in a tooltip).
 export const TITLE_MAX = 34;
@@ -38,10 +40,10 @@ export function geometryMeta(model, groups, processes) {
 
 // Box extents, box / region auto-sizing, connection routing, label and firewall placement, spacing checks.
 // Self-contained on purpose: assets.mjs inlines this function's source as the "canvas/geometry" runtime module,
-// so the build and edit mode compute identical geometry.
-export function geometryKit() {
-  var HEAD = 20, TITLE_CW = 6.6, BODY_CW = 6.6, IP_CW = 7, OS_CW = 5.6, HW_CW = 5.6, TEXT_X = 10;
-  var BAND = 30, BAND_GAP = 10, MIN_GAP = 20, PAD = 16, MIN_W = 100, MIN_H = 60;
+// so the build and edit mode compute identical geometry. sizes: the METRICS table, keyset: the keysKit() object (both passed in, see page/kits.mjs).
+export function geometryKitOf(sizes, keyset) {
+  var HEAD = sizes.head, TITLE_CW = sizes.titleCw, BODY_CW = sizes.bodyCw, IP_CW = sizes.ipCw, OS_CW = sizes.osCw, HW_CW = sizes.hwCw, TEXT_X = sizes.textX;
+  var BAND = sizes.band, BAND_GAP = sizes.bandGap, MIN_GAP = sizes.minGap, PAD = sizes.pad, MIN_W = sizes.minW, MIN_H = sizes.minH;
   var M = 10, BEND = 50, REGION = 1.5, HUG = 2, TIGHT = 0.3, RAD = 22;
   var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
   var cache = { n: 0 };
@@ -57,15 +59,31 @@ export function geometryKit() {
   function boxExtent(g, tl, w) {
     var bottom = g.y + g.h;
     for (const p of g.ip) bottom = Math.max(bottom, p[1] + 7);
-    return { x0: g.x, y0: g.y - HEAD, x1: g.x + (w || Math.max(g.w, TEXT_X + tl * TITLE_CW + 28)), y1: bottom };
+    return { x0: g.x, y0: g.y - HEAD, x1: g.x + (w || Math.max(g.w, TEXT_X + tl * TITLE_CW + sizes.titleExtra)), y1: bottom };
+  }
+
+  // Text rows above the IP pills: body lines, hardware strip, OS pill.
+  function rows(t) { return t.nb + (t.hw ? 1 : 0) + (t.os ? 1 : 0); }
+  function needW(t) {
+    var os = t.os ? TEXT_X + (t.ol + (t.oe ? sizes.eolExtra : sizes.noEolExtra)) * OS_CW + sizes.osExtra : 0;
+    return Math.ceil(Math.max(TEXT_X + t.tl * TITLE_CW + sizes.titleExtra, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + sizes.ipExtra : 0, os, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0));
+  }
+  function needH(t) { return sizes.boxPad + sizes.line * rows(t) + sizes.ipLine * t.ni; }
+
+  // The box of a server from its meta (text lengths and line counts): size and the text positions, for a box whose top-left corner (below the header) is x, y.
+  // The one definition shared by auto layout, saved-layout reconcile, fitBox and the card renderer.
+  function boxFor(t, x, y) {
+    var r = rows(t), body = [], ip = [], i;
+    for (i = 0; i < t.nb; i++) body.push([x + TEXT_X, y + sizes.bodyTop + sizes.line * i]);
+    for (i = 0; i < t.ni; i++) ip.push([x + TEXT_X, y + sizes.ipTop + sizes.line * r + sizes.ipLine * i]);
+    return { x: x, y: y, w: needW(t), h: needH(t), title: [x + TEXT_X, y - sizes.sketchTitleDy], body: body, ip: ip };
   }
 
   // Body and IP lines sit at the box's text padding; the box is wide enough for its title, body lines and IP pills plus network buttons.
   function fitBox(g, t) {
     g.body.forEach(function (p) { p[0] = g.x + TEXT_X; });
     g.ip.forEach(function (p) { p[0] = g.x + TEXT_X; });
-    var need = Math.max(TEXT_X + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0, t.os ? TEXT_X + (t.ol + (t.oe ? 4 : 1)) * OS_CW + 26 : 0, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0);
-    g.w = Math.max(g.w, Math.ceil(need));
+    g.w = Math.max(g.w, needW(t));
   }
 
   // Smallest rectangle that holds a region's visible servers with padding and the header band, or null when it has none.
@@ -107,8 +125,8 @@ export function geometryKit() {
   function shapes(s, meta, w) {
     var ent = {}, nodes = [], titles = [], clusters = [];
     Object.keys(meta.clusters).forEach(function (id, i) {
-      var c = s.clusters[id], hw = meta.clusters[id].tl * 3.9 + 4;
-      var r = { k: "c:" + id, i: i, x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.h };
+      var c = s.clusters[id], hw = meta.clusters[id].tl * sizes.regionTitleHalfCw + sizes.regionTitleHalfPad;
+      var r = { k: keyset.nodeKey("region", id), i: i, x0: c.x, y0: c.y, x1: c.x + c.w, y1: c.y + c.h };
       ent[r.k] = r; clusters.push(r);
       titles.push({ x0: c.title[0] - hw, y0: c.title[1] - 13, x1: c.title[0] + hw, y1: c.title[1] + 4 });
     });
@@ -116,8 +134,8 @@ export function geometryKit() {
       var g = s.nodes[id];
       if (!g || g.hidden) return;
       var r = boxExtent(g, meta.nodes[id].tl, w?.[id]);
-      r.k = "n:" + id;
-      r.cl = meta.nodes[id].cl ? ent["c:" + meta.nodes[id].cl].i : -1;
+      r.k = keyset.nodeKey("server", id);
+      r.cl = meta.nodes[id].cl ? ent[keyset.nodeKey("region", meta.nodes[id].cl)].i : -1;
       ent[r.k] = r; nodes.push(r);
     });
     var bands = [];
@@ -141,7 +159,49 @@ export function geometryKit() {
     });
     return mid;
   }
-  function inside(x, y, r, m) { return x > r.x0 - m + 0.01 && x < r.x1 + m - 0.01 && y > r.y0 - m + 0.01 && y < r.y1 + m - 0.01; }
+  function firstAbove(a, v) {
+    var lo = 0, hi = a.length;
+    while (lo < hi) {
+      var m = (lo + hi) >> 1;
+      if (a[m] > v) hi = m; else lo = m + 1;
+    }
+    return lo;
+  }
+  function firstAtLeast(a, v) {
+    var lo = 0, hi = a.length;
+    while (lo < hi) {
+      var m = (lo + hi) >> 1;
+      if (a[m] >= v) hi = m; else lo = m + 1;
+    }
+    return lo;
+  }
+  function mids(a) {
+    var out = [];
+    for (var k = 0; k + 1 < a.length; k++) out.push((a[k] + a[k + 1]) / 2);
+    return out;
+  }
+  // Writes val (OR-ed in when or is set) into arr, a nx x ny table (row stride ny), at every point (X[i], Y[j]) strictly inside rectangle r grown by m.
+  function paint(arr, ny, X, Y, r, m, val, or) {
+    var i0 = firstAbove(X, r.x0 - m + 0.01), i1 = firstAtLeast(X, r.x1 + m - 0.01), j0 = firstAbove(Y, r.y0 - m + 0.01), j1 = firstAtLeast(Y, r.y1 + m - 0.01);
+    for (var i = i0; i < i1; i++) {
+      for (var j = j0; j < j1; j++) {
+        if (or) arr[i * ny + j] |= val; else arr[i * ny + j] = val;
+      }
+    }
+  }
+  // ORs 1 into arr where a segment midpoint lies within 9px of a region's border line (along the border, strictly between its ends).
+  function paintHug(arr, ny, A, B, c, horiz) {
+    var lo = horiz ? c.x0 : c.y0, hi = horiz ? c.x1 : c.y1, sides = horiz ? [c.y0, c.y1] : [c.x0, c.x1];
+    var s0 = firstAbove(A, lo), s1 = firstAtLeast(A, hi);
+    sides.forEach(function (a) {
+      for (var k = firstAbove(B, a - 10); k < B.length && B[k] < a + 10; k++) {
+        if (Math.abs(B[k] - a) >= 9) continue;
+        for (var q = s0; q < s1; q++) {
+          if (horiz) arr[q * ny + k] |= 1; else arr[k * ny + q] |= 1;
+        }
+      }
+    });
+  }
 
   // Sparse orthogonal grid over obstacle borders (servers +M, titles +4, regions +-M), extra points and channel midpoints.
   function grid(S, extra) {
@@ -158,163 +218,172 @@ export function geometryKit() {
     xs = uniq(xs); ys = uniq(ys);
     var nx = xs.length, ny = ys.length, P = nx * ny;
     var blk = new Uint8Array(P), hb = new Uint8Array(P), vb = new Uint8Array(P), hc = new Int16Array(P), vc = new Int16Array(P), hh = new Uint8Array(P), vh = new Uint8Array(P);
-    var obst = S.nodes.map(function (r) { return [r, M]; }).concat(S.titles.map(function (r) { return [r, 4]; }));
-    function hit(x, y) {
-      for (const o of obst) if (inside(x, y, o[0], o[1])) return 1;
-      return 0;
+    var mx = mids(xs), my = mids(ys), i, j;
+    for (i = 0; i + 1 < nx; i++) for (j = 0; j < ny; j++) hc[i * ny + j] = -1;
+    for (i = 0; i < nx; i++) for (j = 0; j + 1 < ny; j++) vc[i * ny + j] = -1;
+    function obstacle(r, m) {
+      paint(blk, ny, xs, ys, r, m, 1); paint(hb, ny, mx, ys, r, m, 1); paint(vb, ny, xs, my, r, m, 1);
     }
-    // Bit 2: a segment within 5px of the narrowest allowed clearance (narrow channel).
-    function tight(x, y) {
-      for (const r of S.nodes) if (inside(x, y, r, M + 5)) return 2;
-      return 0;
+    S.nodes.forEach(function (r) { obstacle(r, M); });
+    S.titles.forEach(function (r) { obstacle(r, 4); });
+    // A point's region is the first (lowest index) one that holds it: paint from the last region to the first.
+    for (var k = S.clusters.length - 1; k >= 0; k--) { paint(hc, ny, mx, ys, S.clusters[k], 0, k); paint(vc, ny, xs, my, S.clusters[k], 0, k); }
+    // Bit 1: a segment hugging a region border. Bit 2: a segment within 5px of the narrowest allowed clearance (narrow channel).
+    S.clusters.forEach(function (c) { paintHug(hh, ny, mx, ys, c, true); paintHug(vh, ny, my, xs, c, false); });
+    S.nodes.forEach(function (r) { paint(hh, ny, mx, ys, r, M + 5, 2, true); paint(vh, ny, xs, my, r, M + 5, 2, true); });
+    // Cost of the segment starting at table point p with every penalty but the region one (cheap), and with it (dear): length x multiplier, summed in the order the search used to.
+    var hcost = [new Float64Array(P), new Float64Array(P)], vcost = [new Float64Array(P), new Float64Array(P)];
+    function costs(out, flags, len, p) {
+      var a = 1, b = 1 + REGION;
+      if (flags[p] & 1) { a += HUG; b += HUG; }
+      if (flags[p] & 2) { a += TIGHT; b += TIGHT; }
+      out[0][p] = len * a; out[1][p] = len * b;
     }
-    function region(x, y) {
-      for (const [k, r] of S.clusters.entries()) if (inside(x, y, r, 0)) return k;
-      return -1;
-    }
-    function hug(x, y, horiz) {
-      for (const c of S.clusters) {
-        if (horiz ? x > c.x0 && x < c.x1 && (Math.abs(y - c.y0) < 9 || Math.abs(y - c.y1) < 9) : y > c.y0 && y < c.y1 && (Math.abs(x - c.x0) < 9 || Math.abs(x - c.x1) < 9)) return 1;
+    for (i = 0; i < nx; i++) {
+      for (j = 0; j < ny; j++) {
+        if (i + 1 < nx) costs(hcost, hh, Math.abs(xs[i + 1] - xs[i]), i * ny + j);
+        if (j + 1 < ny) costs(vcost, vh, Math.abs(ys[j + 1] - ys[j]), i * ny + j);
       }
-      return 0;
     }
-    for (var i = 0; i < nx; i++) for (var j = 0; j < ny; j++) {
-      var p = i * ny + j;
-      blk[p] = hit(xs[i], ys[j]);
-      if (i + 1 < nx) { var mx = (xs[i] + xs[i + 1]) / 2; hb[p] = hit(mx, ys[j]); hc[p] = region(mx, ys[j]); hh[p] = hug(mx, ys[j], true) | tight(mx, ys[j]); }
-      if (j + 1 < ny) { var my = (ys[j] + ys[j + 1]) / 2; vb[p] = hit(xs[i], my); vc[p] = region(xs[i], my); vh[p] = hug(xs[i], my, false) | tight(xs[i], my); }
-    }
-    return { xs: xs, ys: ys, nx: nx, ny: ny, blk: blk, hb: hb, vb: vb, hc: hc, vc: vc, hh: hh, vh: vh };
+    return { xs: xs, ys: ys, nx: nx, ny: ny, blk: blk, hb: hb, vb: vb, hc: hc, vc: vc, hh: hh, vh: vh, hcost: hcost, vcost: vcost };
+  }
+  function nearIdx(a, v) {
+    for (var k = firstAbove(a, v - 0.7); k < a.length && a[k] < v + 0.7; k++) if (Math.abs(a[k] - v) < 0.6) return k;
+    return -1;
   }
   function at(G, x, y) {
-    var i = G.xs.findIndex(function (v) { return Math.abs(v - x) < 0.6; }), j = G.ys.findIndex(function (v) { return Math.abs(v - y) < 0.6; });
+    var i = nearIdx(G.xs, x), j = nearIdx(G.ys, y);
     return i < 0 || j < 0 ? -1 : i * G.ny + j;
   }
 
-  function heapPush(heap, f, st) {
-    heap.push([f, st]);
-    var i = heap.length - 1;
-    while (i > 0) {
-      var q = (i - 1) >> 1;
-      if (heap[q][0] <= heap[i][0]) break;
-      var t = heap[q];
-      heap[q] = heap[i];
-      heap[i] = t;
-      i = q;
-    }
-  }
-  function heapPop(heap) {
-    var top = heap[0], last = heap.pop();
-    if (!heap.length) return top;
-    heap[0] = last;
-    var i = 0;
-    for (;;) {
-      var l = 2 * i + 1, r = l + 1, m = i;
-      if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
-      if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
-      if (m === i) break;
-      var t = heap[m];
-      heap[m] = heap[i];
-      heap[i] = t;
-      i = m;
-    }
-    return top;
-  }
-  function manhattan(G, hx, p) {
-    var x = G.xs[Math.floor(p / G.ny)], y = G.ys[p % G.ny], m = Infinity;
-    for (const q of hx) m = Math.min(m, Math.abs(x - q[0]) + Math.abs(y - q[1]));
-    return m;
-  }
   // Extra cost of reaching a goal with heading gd (-1: any) when arriving with heading d.
   function turnCost(gd, d) {
     if (gd < 0 || gd === d) return 0;
     return gd === (d + 2) % 4 ? Infinity : BEND;
   }
-  // Cost of moving from grid point p (column i, row j) in heading d2 after heading d, and the point reached; null when blocked.
-  function step(G, p, i, j, d, d2, home) {
-    var i2 = i + DX[d2], j2 = j + DY[d2];
-    if (i2 < 0 || j2 < 0 || i2 >= G.nx || j2 >= G.ny) return null;
-    var p2 = i2 * G.ny + j2;
-    if (G.blk[p2]) return null;
-    var horiz = d2 % 2 === 0, lowFirst = horiz ? d2 === 0 : d2 === 1, si = lowFirst ? p : p2;
-    if ((horiz ? G.hb : G.vb)[si]) return null;
-    var cl = (horiz ? G.hc : G.vc)[si], flags = (horiz ? G.hh : G.vh)[si];
-    var len = horiz ? Math.abs(G.xs[i2] - G.xs[i]) : Math.abs(G.ys[j2] - G.ys[j]);
-    var mul = 1;
-    if (cl >= 0 && !home.includes(cl)) mul += REGION;
-    if (flags & 1) mul += HUG;
-    if (flags & 2) mul += TIGHT;
-    return { p2: p2, cost: len * mul + (d2 === d ? 0 : BEND) };
-  }
-  function firstState(prev, st) {
-    while (prev[st] >= 0) st = prev[st];
+  // The state a state was reached from (-1: a start). Per state the search keeps two numbers side by side: the best cost and
+  // a code gen * SCALE + previous state + 1, so the entry belongs to the current search exactly when code >= gen * SCALE.
+  function firstState(st) {
+    var sd = cache.sd, gmin = cache.gen * cache.scale;
+    while (sd[2 * st + 1] > gmin) st = sd[2 * st + 1] - gmin - 1;
     return st;
   }
 
+  // Search tables shared by every search; an entry written by an earlier search reads as unvisited (see firstState), so nothing is cleared between searches.
   function searchBuffers(n) {
     if (cache.n < n) {
       cache.n = n;
-      cache.dist = new Float64Array(n);
-      cache.prev = new Int32Array(n);
+      cache.scale = 2 ** Math.ceil(Math.log2(n + 2));
+      cache.sd = new Float64Array(2 * n);
+      cache.hp = new Float64Array(2 * n);
+      cache.gmark = new Int32Array(n);
+      cache.gen = 0;
+      cache.hf = new Float64Array(1024);
+      cache.hs = new Int32Array(1024);
     }
-    cache.dist.fill(Infinity, 0, n);
-    cache.prev.fill(-1, 0, n);
-  }
-  // Relaxes the moves out of state st (point p, heading d, cost d0): improved neighbours are queued.
-  function expand(G, st, d0, h, heap, home) {
-    var dist = cache.dist, prev = cache.prev, p = Math.floor(st / 4), d = st % 4, i = Math.floor(p / G.ny), j = p % G.ny;
-    for (var d2 = 0; d2 < 4; d2++) {
-      if (d2 === (d + 2) % 4) continue;
-      var mv = step(G, p, i, j, d, d2, home);
-      if (!mv) continue;
-      var st2 = mv.p2 * 4 + d2, nd = d0 + mv.cost;
-      if (nd < dist[st2]) {
-        dist[st2] = nd;
-        prev[st2] = st;
-        heapPush(heap, nd + h(mv.p2), st2);
-      }
-    }
+    cache.gen++;
   }
   function traceBack(G, starts, best) {
-    var prev = cache.prev, pts = [];
-    for (var s2 = best.st; s2 >= 0; s2 = prev[s2]) {
+    var sd = cache.sd, gmin = cache.gen * cache.scale, pts = [];
+    for (var s2 = best.st; s2 >= 0; s2 = sd[2 * s2 + 1] - gmin - 1) {
       var pp = Math.floor(s2 / 4);
-      pts.unshift([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]);
+      pts.push([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]);
     }
-    var origin = firstState(prev, best.st);
+    pts.reverse();
+    var origin = firstState(best.st);
     var first = starts.find(function (s) { return s.p * 4 + s.d === origin; });
     return { pts: pts, start: first, goal: best.goal, cost: best.cost };
   }
 
   // A* over (grid point, heading); cost = length (x region / hug penalties) + bends. starts / goals: {p, d, c}.
+  // Ties pop in the order of a binary min-heap on the estimate alone, so the route chosen is a pure function of the grid and the ends.
   function search(G, starts, goals, home) {
     searchBuffers(G.nx * G.ny * 4);
-    var dist = cache.dist, prev = cache.prev;
-    var goalAt = {}, hx = [], heap = [];
+    var sd = cache.sd, gen = cache.gen, gmin = gen * cache.scale, hp = cache.hp, gmark = cache.gmark, hf = cache.hf, hs = cache.hs, hn = 0;
+    var nx = G.nx, ny = G.ny, xs = G.xs, ys = G.ys, blk = G.blk, hb = G.hb, vb = G.vb, hc = G.hc, vc = G.vc, hcost = G.hcost, vcost = G.vcost;
+    var h0 = home.length > 0 ? home[0] : -2, h1 = home.length > 1 ? home[1] : -2;
+    var goalAt = new Map(), hx = [];
     goals.forEach(function (g) {
-      goalAt[g.p] = goalAt[g.p] || [];
-      goalAt[g.p].push(g);
-      hx.push([G.xs[Math.floor(g.p / G.ny)], G.ys[g.p % G.ny]]);
+      gmark[g.p] = gen;
+      if (!goalAt.has(g.p)) goalAt.set(g.p, []);
+      goalAt.get(g.p).push(g);
+      hx.push([xs[Math.floor(g.p / ny)], ys[g.p % ny]]);
     });
-    function h(p) { return manhattan(G, hx, p); }
+    function h(p) {
+      if (hp[2 * p + 1] === gen) return hp[2 * p];
+      var x = xs[Math.floor(p / ny)], y = ys[p % ny], m = Infinity;
+      for (var k = 0; k < hx.length; k++) m = Math.min(m, Math.abs(x - hx[k][0]) + Math.abs(y - hx[k][1]));
+      hp[2 * p] = m;
+      hp[2 * p + 1] = gen;
+      return m;
+    }
+    function push(f, st) {
+      if (hn === hf.length) {
+        var nf = new Float64Array(hn * 2), ns = new Int32Array(hn * 2);
+        nf.set(hf); ns.set(hs);
+        hf = cache.hf = nf; hs = cache.hs = ns;
+      }
+      var i = hn++, q, t;
+      hf[i] = f; hs[i] = st;
+      while (i > 0) {
+        q = (i - 1) >> 1;
+        if (hf[q] <= hf[i]) break;
+        t = hf[q]; hf[q] = hf[i]; hf[i] = t;
+        t = hs[q]; hs[q] = hs[i]; hs[i] = t;
+        i = q;
+      }
+    }
     starts.forEach(function (s) {
       var st = s.p * 4 + s.d;
-      if (s.c < dist[st]) {
-        dist[st] = s.c;
-        prev[st] = -1;
-        heapPush(heap, s.c + h(s.p), st);
+      if (sd[2 * st + 1] < gmin || s.c < sd[2 * st]) {
+        sd[2 * st] = s.c;
+        sd[2 * st + 1] = gmin;
+        push(s.c + h(s.p), st);
       }
     });
     var best = { cost: Infinity, st: -1, goal: null };
-    while (heap.length) {
-      var e = heapPop(heap), st = e[1], d0 = dist[st], p = Math.floor(st / 4), d = st % 4;
-      if (e[0] >= best.cost) break;
-      if (e[0] > d0 + h(p) + 1e-6) continue;
-      for (const g of goalAt[p] || []) {
-        var total = d0 + turnCost(g.d, d) + g.c;
-        if (total < best.cost) best = { cost: total, st: st, goal: g };
+    while (hn) {
+      var f = hf[0], st = hs[0];
+      hn--;
+      if (hn) {
+        hf[0] = hf[hn]; hs[0] = hs[hn];
+        for (var a = 0; ;) {
+          var l = 2 * a + 1, r = l + 1, mm = a, t;
+          if (l < hn && hf[l] < hf[mm]) mm = l;
+          if (r < hn && hf[r] < hf[mm]) mm = r;
+          if (mm === a) break;
+          t = hf[mm]; hf[mm] = hf[a]; hf[a] = t;
+          t = hs[mm]; hs[mm] = hs[a]; hs[a] = t;
+          a = mm;
+        }
       }
-      expand(G, st, d0, h, heap, home);
+      var d0 = sd[2 * st], p = st >> 2, d = st & 3;
+      if (f >= best.cost) break;
+      if (f > d0 + h(p) + 1e-6) continue;
+      var gl = gmark[p] === gen ? goalAt.get(p) : null;
+      if (gl) {
+        for (var gi = 0; gi < gl.length; gi++) {
+          var total = d0 + turnCost(gl[gi].d, d) + gl[gi].c;
+          if (total < best.cost) best = { cost: total, st: st, goal: gl[gi] };
+        }
+      }
+      var i = (p / ny) | 0, j = p - i * ny;
+      for (var d2 = 0; d2 < 4; d2++) {
+        if (d2 === ((d + 2) & 3)) continue;
+        var i2 = i + DX[d2], j2 = j + DY[d2];
+        if (i2 < 0 || j2 < 0 || i2 >= nx || j2 >= ny) continue;
+        var p2 = i2 * ny + j2;
+        if (blk[p2]) continue;
+        var horiz = d2 % 2 === 0, si = (horiz ? d2 === 0 : d2 === 1) ? p : p2;
+        if ((horiz ? hb : vb)[si]) continue;
+        var cl = (horiz ? hc : vc)[si], dear = cl >= 0 && cl !== h0 && cl !== h1 ? 1 : 0;
+        var st2 = (p2 << 2) + d2, nd = d0 + ((horiz ? hcost : vcost)[dear][si] + (d2 === d ? 0 : BEND));
+        if (sd[2 * st2 + 1] < gmin || nd < sd[2 * st2]) {
+          sd[2 * st2] = nd;
+          sd[2 * st2 + 1] = gmin + st + 1;
+          push(nd + (hp[2 * p2 + 1] === gen ? hp[2 * p2] : h(p2)), st2);
+        }
+      }
     }
     return best.st < 0 ? null : traceBack(G, starts, best);
   }
@@ -376,10 +445,35 @@ export function geometryKit() {
   }
 
   function overlap(a, b) { return Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0)); }
-  function cost(boxes, list) {
-    var s = 0;
-    boxes.forEach(function (b) { list.forEach(function (o) { s += overlap(b, o); }); });
-    return s;
+  // Boxes in a uniform bucket grid, numbered in insertion order; cost() sums the overlaps with a probe box in that order (touching and far boxes add exactly 0, so they are skipped).
+  var BUCKET = 64;
+  function boxIndex() { return { map: new Map(), boxes: [], seen: [], tick: 0 }; }
+  function bucketKey(cx, cy) { return cx * 4194304 + cy; }
+  function bucketsOf(b, fn) {
+    var x1 = Math.floor(b.x0 / BUCKET), x2 = Math.floor(b.x1 / BUCKET), y1 = Math.floor(b.y0 / BUCKET), y2 = Math.floor(b.y1 / BUCKET);
+    for (var cx = x1; cx <= x2; cx++) for (var cy = y1; cy <= y2; cy++) fn(bucketKey(cx, cy));
+  }
+  function addBox(ix, b) {
+    var id = ix.boxes.length;
+    ix.boxes.push(b);
+    ix.seen.push(0);
+    bucketsOf(b, function (key) {
+      var list = ix.map.get(key);
+      if (list) list.push(id); else ix.map.set(key, [id]);
+    });
+  }
+  function cost(boxes, ix) {
+    var total = 0;
+    boxes.forEach(function (b) {
+      var ids = [], tick = ++ix.tick;
+      bucketsOf(b, function (key) {
+        var list = ix.map.get(key);
+        if (list) list.forEach(function (id) { if (ix.seen[id] !== tick) { ix.seen[id] = tick; ids.push(id); } });
+      });
+      ids.sort(num);
+      ids.forEach(function (id) { total += overlap(b, ix.boxes[id]); });
+    });
+    return total;
   }
   // Candidate points along straight pieces, nearest the path's arc midpoint first.
   function stations(sh, margin, ends) {
@@ -446,7 +540,7 @@ export function geometryKit() {
     }
     // A process endpoint (body line) is a port on its server's left or right side at that line's height; end 0 = from, 1 = to.
     function lineY(e, end) {
-      var li = end ? e.tl : e.fl, id = (end ? e.to : e.from).slice(2);
+      var li = end ? e.tl : e.fl, id = keyset.parseKey(end ? e.to : e.from).id;
       return li === null || li === undefined || !s.nodes[id] ? null : Math.round(s.nodes[id].body[li][1] - 4);
     }
     function endCands(e, end, r, other) {
@@ -539,7 +633,9 @@ export function geometryKit() {
     });
 
     // Firewall markers, then connection labels, each clear of servers, region titles and borders where possible.
-    var hard = S.nodes.concat(S.titles), placed = [];
+    var hard = boxIndex(), soft = boxIndex();
+    S.nodes.concat(S.titles).forEach(function (b) { addBox(hard, b); });
+    S.bands.forEach(function (b) { addBox(soft, b); });
     E.forEach(function (e) {
       var rt = res[e.k];
       if (!rt) return;
@@ -547,8 +643,8 @@ export function geometryKit() {
       rt.d = sh.d; rt.sh = sh;
       rt.fw = null;
       if (e.fw) {
-        var f = placeFirewall(sh, hard.concat(placed), S.bands);
-        if (f) { placed = placed.concat(f.boxes); rt.fw = { at: f.at, a: f.a, label: f.label, anchor: f.anchor }; }
+        var f = placeFirewall(sh, hard, soft);
+        if (f) { f.boxes.forEach(function (b) { addBox(hard, b); }); rt.fw = { at: f.at, a: f.a, label: f.label, anchor: f.anchor }; }
       }
     });
     E.forEach(function (e) {
@@ -559,8 +655,8 @@ export function geometryKit() {
         var fix = ov[e.k]?.label;
         if (fix) rt.label = fix.slice();
         else {
-          var lw = o.lw?.[e.k] || e.ll * 6 + 14, l = placeLabel(rt.sh, lw, hard.concat(placed), S.bands);
-          if (l) { placed.push(l.box); rt.label = l.label; }
+          var lw = o.lw?.[e.k] || e.ll * 6 + 14, l = placeLabel(rt.sh, lw, hard, soft);
+          if (l) { addBox(hard, l.box); rt.label = l.label; }
         }
       }
       delete rt.sh;
@@ -595,5 +691,7 @@ export function geometryKit() {
     return bad;
   }
 
-  return { headerTitle: headerTitle, boxExtent: boxExtent, fitBox: fitBox, fitRegion: fitRegion, regionBounds: regionBounds, resizeRegion: resizeRegion, route: route, problems: problems };
+  return { headerTitle: headerTitle, boxExtent: boxExtent, boxFor: boxFor, rows: rows, fitBox: fitBox, fitRegion: fitRegion, regionBounds: regionBounds, resizeRegion: resizeRegion, route: route, problems: problems };
 }
+
+export const geometryKit = () => geometryKitOf(METRICS, keysKit());

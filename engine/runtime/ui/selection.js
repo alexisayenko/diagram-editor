@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels"], function (core, details, panels) {
+InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels", "ui/keys"], function (core, details, panels, keys) {
   var D = core.D, ctx = core.ctx;
 
   function related(key) {
@@ -6,14 +6,15 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels"], func
     B[key] = 1;
     var near = [key];
     D.edges.forEach(function (e) {
-      if (e.from === key) { B[e.to] = 1; near.push(e.to); B["e:" + e.k] = 1; }
-      else if (e.to === key) { B[e.from] = 1; near.push(e.from); B["e:" + e.k] = 1; }
+      if (e.from === key) { B[e.to] = 1; near.push(e.to); B[keys.nodeKey("edge", e.k)] = 1; }
+      else if (e.to === key) { B[e.from] = 1; near.push(e.from); B[keys.nodeKey("edge", e.k)] = 1; }
     });
     near.forEach(function (k) {
-      if (k.startsWith("c")) (D.kids[k.slice(2)] || []).forEach(function (n) { B["n:" + n] = 1; });
+      var pk = keys.parseKey(k);
+      if (pk.kind === "region") (D.kids[pk.id] || []).forEach(function (n) { B[keys.nodeKey("server", n)] = 1; });
     });
     Object.keys(B).forEach(function (k) {
-      if (k.startsWith("n") && D.ent[k]?.cl) B["c:" + D.ent[k].cl] = 1;
+      if (keys.isKind(k, "server") && D.ent[k]?.cl) B[keys.nodeKey("region", D.ent[k].cl)] = 1;
     });
     return B;
   }

@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { geometryKit } from "../render/geometry.mjs";
 import { css, script } from "../page/assets.mjs";
+import { keys } from "./runtime-kits.mjs";
 
 const kit = geometryKit();
 const meta = { clusters: { a: { tl: 1 } }, nodes: { s1: { tl: 2, cl: "a" }, s2: { tl: 2, cl: "a" }, s3: { tl: 2, cl: null } } };
@@ -89,7 +90,7 @@ function harness() {
   const $ = (id) => (nodes[id] ||= el());
   runInNewContext(readFileSync(new URL("../runtime/canvas/edit-mode.js", import.meta.url), "utf8"), {
     window: { InfraDiagramFileBacked: true, InfraDiagram: {} }, location: { search: "" }, requestAnimationFrame: (f) => f(), setTimeout() {},
-    InfraDiagram: { define: (n, d, f) => f({ svg, els: [], $, D: { meta: { nodes: {} } }, host: {}, lsGet() {}, lsSet() {}, lsDel() {} }, { init() {}, editChanged() {} }, model, { fit: () => fits.push(1) }) },
+    InfraDiagram: { define: (n, d, f) => f({ svg, els: [], $, D: { meta: { nodes: {} } }, host: {}, lsGet() {}, lsSet() {}, lsDel() {} }, { init() {}, editChanged() {} }, model, { fit: () => fits.push(1) }, keys) },
   });
   const handle = (id, side) => ({ closest: (q) => (q === "[data-rc]" ? { getAttribute: (k) => (k === "data-rc" ? id : side) } : null) });
   const fire = (t, ev) => (svg.listeners[t] || []).forEach((f) => f({ button: 0, pointerId: 1, type: t, preventDefault() {}, ...ev }));

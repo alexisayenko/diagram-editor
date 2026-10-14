@@ -3,6 +3,7 @@
 import { parseToml } from "./toml.mjs";
 import { cmpBig, parseIp, parseCidr, contains, derivedCidr, derivedCidrs } from "../lib/net.mjs";
 import { FormatError } from "../lib/errors.mjs";
+import { nodeKey } from "../lib/keys.mjs";
 
 export function parseNetworksFile(src) {
   let root;
@@ -68,7 +69,7 @@ export function buildNetworks(items, model, layout) {
   }
   const entry = (it, depth, set) => {
     const nodes = [...set], cl = [...new Set(nodes.map((n) => n.cluster).filter(Boolean))];
-    return { cidr: it, name: "", depth, hosts: nodes.length, m: [...nodes.map((n) => "n:" + n.id), ...cl.map((c) => "c:" + c)] };
+    return { cidr: it, name: "", depth, hosts: nodes.length, m: [...nodes.map((n) => nodeKey("server", n.id)), ...cl.map((c) => nodeKey("region", c))] };
   };
   const nets = order.map((orig, k) => {
     const it = items[orig], depth = items.filter((o) => o !== it && o.v === it.v && o.lo <= it.lo && o.hi >= it.hi && o.len < it.len).length;

@@ -1,5 +1,6 @@
-InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], function (core, skins, geometry) {
+InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "ui/keys", "ui/metrics"], function (core, skins, geometry, keys, metrics) {
   var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx;
+  var M = metrics.METRICS;
   var base = D.layout;
   // Shared canvas state: st is the draft layout, on is edit mode.
   var state = { st: clone(base), on: false };
@@ -10,11 +11,11 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
   function shift(p, dx, dy) { p[0] += dx; p[1] += dy; }
 
   function move(s, key, dx, dy) {
-    var t = key.charAt(0), id = key.slice(2), g;
-    if (t === "c") {
+    var k = keys.parseKey(key), id = k.id, g;
+    if (k.kind === "region") {
       g = s.clusters[id];
       g.x += dx; g.y += dy; shift(g.title, dx, dy);
-    } else if (t === "n") {
+    } else if (k.kind === "server") {
       g = s.nodes[id];
       if (g.hidden) return;
       g.x += dx; g.y += dy;
@@ -24,9 +25,9 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
 
   // A dragged server grows its region (from the drag-start size) so padding and header band hold.
   function apply(from, key, dx, dy) {
-    var s = clone(from), id = key.slice(2), m = D.meta.nodes[id];
+    var s = clone(from), k = keys.parseKey(key), id = k.id, m = D.meta.nodes[id];
     move(s, key, dx, dy);
-    if (key.charAt(0) === "c") (D.kids[id] || []).forEach(function (n) { move(s, "n:" + n, dx, dy); });
+    if (k.kind === "region") (D.kids[id] || []).forEach(function (n) { move(s, keys.nodeKey("server", n), dx, dy); });
     else if (m?.cl) geometry.fitRegion(s, D.meta, m.cl, from.clusters[m.cl], skins.widths());
     return s;
   }
@@ -79,11 +80,11 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
   function each(fn) {
     Object.keys(D.idx.clusters).forEach(function (id) {
       var e = D.idx.clusters[id];
-      fn("c:" + id, [e[0], e[1], e[2]]);
+      fn(keys.nodeKey("region", id), [e[0], e[1], e[2]]);
     });
     Object.keys(D.idx.nodes).forEach(function (id) {
       var e = D.idx.nodes[id];
-      fn("n:" + id, [e.c, e.t, e.r].concat(e.b, e.i, e.o === undefined ? [] : [e.o]));
+      fn(keys.nodeKey("server", id), [e.c, e.t, e.r].concat(e.b, e.i, e.o === undefined ? [] : [e.o]));
     });
   }
 
@@ -109,11 +110,11 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
   function markBad(s) {
     var bad = state.on ? geometry.problems(s, D.meta, skins.widths()) : {};
     Object.keys(D.idx.nodes).forEach(function (id) {
-      var e = D.idx.nodes[id], on = !!bad["n:" + id];
+      var e = D.idx.nodes[id], on = !!bad[keys.nodeKey("server", id)];
       els[e.r].classList.toggle("bad", on);
       els[e.c].classList.toggle("bad", on);
     });
-    Object.keys(D.idx.clusters).forEach(function (id) { els[D.idx.clusters[id][0]].classList.toggle("bad", !!bad["c:" + id]); });
+    Object.keys(D.idx.clusters).forEach(function (id) { els[D.idx.clusters[id][0]].classList.toggle("bad", !!bad[keys.nodeKey("region", id)]); });
   }
 
   // Display geometry: with the system information off, a card loses its OS and hardware rows (IP pills move up, the box shrinks). The saved state keeps the full size.
@@ -121,8 +122,8 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     var m = D.meta.nodes[id], r = 0;
     if (!ctx.sys && m) r = Number(!!m.hw) + Number(!!m.os);
     if (!r) return g;
-    var need = 20 + 16 * m.nb + 18 * m.ni;
-    return { ...g, h: Math.max(g.h - 16 * r, need), ip: g.ip.map(function (p) { return [p[0], p[1] - 16 * r]; }) };
+    var need = geometry.boxFor({ ...m, hw: "", os: 0 }, 0, 0).h;
+    return { ...g, h: Math.max(g.h - M.line * r, need), ip: g.ip.map(function (p) { return [p[0], p[1] - M.line * r]; }) };
   }
   function view(s) {
     if (ctx.sys) return s;

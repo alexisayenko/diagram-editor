@@ -5,6 +5,7 @@ import { runInNewContext } from "node:vm";
 import { mergeFolder, tomlModel } from "../parse/toml.mjs";
 import { addServer, duplicateServer } from "../parse/toml-write.mjs";
 import { demo, mini, withFile } from "./helpers.mjs";
+import { keys } from "./runtime-kits.mjs";
 
 test("addServer creates a uniquely named servers/<id>.toml in the region or with a fallback type", () => {
   const files = demo(), first = addServer(files, { region: "web" });
@@ -35,7 +36,7 @@ function harness({ on = true, add = () => null, duplicate, regions, nets, rename
   const state = { on, st: { clusters: { big: { x: 0, y: 0, w: 500, h: 500 }, small: { x: 100, y: 100, w: 100, h: 100 } } } };
   let mod;
   const src = readFileSync(new URL("../runtime/canvas/context-menu.js", import.meta.url), "utf8");
-  runInNewContext(src, { window: win, document: doc, InfraDiagram: { define: (n, d, f) => { mod = f({ svg, $: () => tm, D: { nets }, host }, { state, point: (e) => ({ x: e.clientX, y: e.clientY }), regionAt }, { editName: (i) => calls.push(["edit-name", i]) }); } } });
+  runInNewContext(src, { window: win, document: doc, InfraDiagram: { define: (n, d, f) => { mod = f({ svg, $: () => tm, D: { nets }, host }, { state, point: (e) => ({ x: e.clientX, y: e.clientY }), regionAt }, { editName: (i) => calls.push(["edit-name", i]) }, keys); } } });
   const fire = (target, t, ev = {}) => (target.listeners[t] || []).forEach((f) => f({ target: svg, preventDefault() { prevented.push(t); }, stopPropagation() {}, ...ev }));
   return { svg, tm, doc, win, calls, prevented, state, mod, fire, menu: () => doc.body.children.find((c) => !c.removed) };
 }

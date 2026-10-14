@@ -1,4 +1,5 @@
 import { fail } from "../lib/errors.mjs";
+import { nodeKey } from "../lib/keys.mjs";
 
 const BUILT_IN = {
   web: { label: "Web Server", color: "#C2185B", dark: "#F28FB0" },
@@ -27,13 +28,13 @@ export function mergeTypes(custom = []) {
   return out;
 }
 
-function classDefColors(classDefs, TYPES) {
+function typeStyleColors(typeStyles, TYPES) {
   const typeColors = {};
-  for (const [name, def] of classDefs) {
+  for (const [name, def] of typeStyles) {
     if (MODS.has(name)) continue;
-    if (!TYPES[name]) fail(`classDef "${name}" is neither a known server type (${Object.keys(TYPES).join(", ")}) nor a modifier (${[...MODS].join(", ")})`);
+    if (!TYPES[name]) fail(`type style "${name}" is neither a known server type (${Object.keys(TYPES).join(", ")}) nor a modifier (${[...MODS].join(", ")})`);
     const m = def.match(/stroke:(#[0-9A-Fa-f]{6})/);
-    if (!m) fail(`classDef "${name}" has no stroke:#rrggbb colour`);
+    if (!m) fail(`type style "${name}" has no stroke:#rrggbb colour`);
     typeColors[name] = m[1];
   }
   return typeColors;
@@ -50,15 +51,15 @@ function classProblems(key, cls, TYPES, typeColors) {
   return problems;
 }
 
-export function resolveTypes({ clusters, nodes, classDefs, classes, types }, layout, proposedLabel) {
+export function resolveTypes({ clusters, nodes, typeStyles, nodeTypes, types }, layout, proposedLabel) {
   const TYPES = mergeTypes(types);
-  const typeColors = classDefColors(classDefs, TYPES);
+  const typeColors = typeStyleColors(typeStyles, TYPES);
 
   if (types) for (const k of Object.keys(TYPES)) typeColors[k] ||= TYPES[k].color;
   const ent = {};
   const typeProblems = [];
   const addEnt = (key, id, base) => {
-    const cls = classes.get(id) || [];
+    const cls = nodeTypes.get(id) || [];
     typeProblems.push(...classProblems(key, cls, TYPES, typeColors));
     const ty = cls.find((c) => TYPES[c]);
     const prop = cls.includes("proposed");
@@ -66,8 +67,8 @@ export function resolveTypes({ clusters, nodes, classDefs, classes, types }, lay
     const tag = ty ? TYPES[ty].tag + suffix : "";
     ent[key] = { ...base, ty, prop, tk: prop ? "proposed" : ty, tag };
   };
-  for (const c of clusters.values()) addEnt("c:" + c.id, c.id, { title: c.title, cl: null, db: false });
-  for (const n of nodes.values()) if (!layout.nodes[n.id].hidden) addEnt("n:" + n.id, n.id, { title: n.title, cl: n.cluster, db: n.db, body: n.body, ip: n.ip, ...(n.hwc?.length ? { hwc: n.hwc } : {}) });
+  for (const c of clusters.values()) addEnt(nodeKey("region", c.id), c.id, { title: c.title, cl: null, db: false });
+  for (const n of nodes.values()) if (!layout.nodes[n.id].hidden) addEnt(nodeKey("server", n.id), n.id, { title: n.title, cl: n.cluster, db: n.db, body: n.body, ip: n.ip, ...(n.hwc?.length ? { hwc: n.hwc } : {}) });
   if (typeProblems.length) fail("\n  " + typeProblems.join("\n  "));
 
   const used = new Set(Object.values(ent).map((e) => e.tk));

@@ -1,3 +1,5 @@
+import { keysKit } from "../lib/keys.mjs";
+import { METRICS, metricsKit } from "../render/metrics.mjs";
 import { readFileSync } from "node:fs";
 import { osIconKit } from "../render/os-icons.mjs";
 import { serverFieldsKit } from "../model/server-fields.mjs";
@@ -352,6 +354,8 @@ export function loadUi(names, { D, html, storage, stubs = {}, globals = {}, conf
   function load(name) {
     if (name in stubs) return stubs[name];
     if (name in modules) return modules[name];
+    if (name === "ui/keys") { modules[name] = keysKit(); return modules[name]; }
+    if (name === "ui/metrics") { modules[name] = metricsKit(METRICS); return modules[name]; }
     if (name === "ui/os-icons") { modules[name] = osIconKit(); return modules[name]; }
     if (name === "ui/server-fields") { modules[name] = serverFieldsKit(); return modules[name]; }
     const file = UI + name.replace(/^ui\//, "") + ".js";

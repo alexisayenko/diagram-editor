@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
+import { geometryKit } from "../render/geometry.mjs";
+import { METRICS } from "../render/metrics.mjs";
 
 function load({ sel = null, net = null, pending } = {}) {
   const calls = [], listeners = {}, classes = new Set();
@@ -90,7 +92,7 @@ function loadNode(o) { return { nodeType: 1, tagName: "g", id: "", classList: { 
 
 const modelSrc = readFileSync(new URL("../runtime/canvas/model.js", import.meta.url), "utf8");
 const legendSrc = readFileSync(new URL("../runtime/ui/legend.js", import.meta.url), "utf8");
-const viewNode = (sys, meta) => new Function("D", "ctx", "return " + modelSrc.match(/function viewNode[\s\S]*?\n  }\n/)[0])({ meta: { nodes: { a: meta } } }, { sys });
+const viewNode = (sys, meta) => new Function("D", "ctx", "geometry", "M", "return " + modelSrc.match(/function viewNode[\s\S]*?\n  }\n/)[0])({ meta: { nodes: { a: meta } } }, { sys }, geometryKit(), METRICS);
 const card = () => ({ x: 0, y: 0, w: 100, h: 20 + 16 * 3 + 18, body: [[10, 18]], ip: [[10, 70]] });
 
 test("system information off: OS and hardware rows leave the card, saved geometry is untouched", () => {

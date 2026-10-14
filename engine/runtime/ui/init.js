@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/networks", "ui/legend", "ui/panels", "ui/selection", "ui/copy", "ui/export-image"], function (core, details, skins, networks, legend, panels, selection, copy, exportImage) {
+InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/networks", "ui/legend", "ui/panels", "ui/selection", "ui/copy", "ui/export-image", "ui/keys"], function (core, details, skins, networks, legend, panels, selection, copy, exportImage, keys) {
   const { D, svg, els, ctx, STYLES, $ } = core, hooks = core.services;
 
   function ipText(tg, id) {
@@ -11,15 +11,16 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
     if (nb) { networks.toggleNet(+nb.dataset.n); return; }
     const t = tg.closest?.("[data-ent]");
     const k = t?.dataset.ent;
-    if (!k || (k.charAt(0) !== "n" && k.charAt(0) !== "c")) { selection.select(null); return; }
-    const cl = tg.classList, id = k.slice(2);
-    if (k.charAt(0) === "n" && (cl.contains("nb") || cl.contains("ni") || cl.contains("ip"))) {
+    const pk = k ? keys.parseKey(k) : null;
+    if (!pk || (pk.kind !== "server" && pk.kind !== "region")) { selection.select(null); return; }
+    const cl = tg.classList, id = pk.id;
+    if (pk.kind === "server" && (cl.contains("nb") || cl.contains("ni") || cl.contains("ip"))) {
       const txt = cl.contains("ip") ? ipText(tg, id) : tg.textContent;
       copy.copyText(txt, e.clientX, e.clientY);
       return;
     }
     if (cl.contains("nt") || cl.contains("ct") || t.classList.contains("osg")) { selection.select(k); return; }
-    if (k.charAt(0) === "n" && t.classList.contains("ch")) {
+    if (pk.kind === "server" && t.classList.contains("ch")) {
       const m = svg.getScreenCTM(), y = m ? (e.clientY - m.f) / m.d : 0;
       if (y < hooks.getState().nodes[id].y) selection.select(k);
     }
@@ -33,7 +34,8 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
 
   function focusKey(el) {
     const k = el?.getAttribute?.("tabindex") === "0" ? el.dataset?.ent : null;
-    return k && (k.charAt(0) === "n" || k.charAt(0) === "c") ? k : null;
+    const kind = k ? keys.parseKey(k).kind : null;
+    return kind === "server" || kind === "region" ? k : null;
   }
 
   function onSvgKeydown(e) {
@@ -74,8 +76,8 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
   function ringBox(key) {
     const s = hooks.getState?.();
     if (!s) return null;
-    const id = key.slice(2);
-    if (key.charAt(0) === "c") return s.clusters[id] || null;
+    const pk = keys.parseKey(key), id = pk.id;
+    if (pk.kind === "region") return s.clusters[id] || null;
     const g = s.nodes[id];
     return g && hooks.viewNode ? hooks.viewNode(id, g) : g || null;
   }

@@ -5,6 +5,7 @@ import { drawKit } from "../render/draw-kit.mjs";
 import { demo } from "./helpers.mjs";
 import { El, define } from "./cov-dom.mjs";
 import { createRegistry } from "./registry-helper.mjs";
+import { keys, metrics } from "./runtime-kits.mjs";
 
 export const dataOf = (html) => JSON.parse(html.match(/id="layout-data">([\s\S]*?)<\/script>/)[1]);
 export const demoData = (saved = null) => dataOf(renderDiagram(demo(), "demo", saved, { cssSvg: "", cssPage: "", js: "" }, []).html);
@@ -75,7 +76,7 @@ export function makePage({ saved = null, sys = true } = {}) {
 }
 
 export function loadModel(page) {
-  return define("runtime/canvas/model.js", page.g, [page.core, page.skins, geometry]);
+  return define("runtime/canvas/model.js", page.g, [page.core, page.skins, geometry, keys, metrics]);
 }
 export function loadZoomPan(page, model) {
   return define("runtime/canvas/zoom-pan.js", page.g, [page.core, model]);
@@ -89,12 +90,12 @@ function makeInit() {
 }
 
 export function loadEdit(page, model, zoomPan, init = makeInit()) {
-  const mod = define("runtime/canvas/edit-mode.js", page.g, [page.core, init, model, zoomPan]);
+  const mod = define("runtime/canvas/edit-mode.js", page.g, [page.core, init, model, zoomPan, keys]);
   return { mod, init };
 }
 const makeNetworks = () => ({ editName: () => {} });
 
 export function loadMenu(page, model, networks = makeNetworks()) {
-  return define("runtime/canvas/context-menu.js", page.g, [page.core, model, networks]);
+  return define("runtime/canvas/context-menu.js", page.g, [page.core, model, networks, keys]);
 }
 export { clone, El } from "./cov-dom.mjs";

@@ -1,4 +1,4 @@
-InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "canvas/zoom-pan"], function (core, init, model, zoomPan) {
+InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "canvas/zoom-pan", "ui/keys"], function (core, init, model, zoomPan, keys) {
   var svg = core.svg, els = core.els, $ = core.$, state = model.state, base = model.base, fit = zoomPan.fit;
   var GRID = 5;
   var drag = null, frame = 0;
@@ -83,8 +83,8 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   function snapDelta(start, d) { return Math.round((start + d) / GRID) * GRID - start; }
 
   function origin(s, key) {
-    var t = key.charAt(0), id = key.slice(2);
-    return (t === "c" ? s.clusters : s.nodes)[id];
+    var k = keys.parseKey(key);
+    return (k.kind === "region" ? s.clusters : s.nodes)[k.id];
   }
 
   svg.addEventListener("pointerdown", function (e) {
@@ -93,7 +93,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     if (!t && !h) return;
     e.preventDefault();
     var p = model.point(e);
-    drag = { key: h ? "c:" + h.getAttribute("data-rc") : t.getAttribute("data-e"), side: h ? h.getAttribute("data-rs") : null, x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
+    drag = { key: h ? keys.nodeKey("region", h.getAttribute("data-rc")) : t.getAttribute("data-e"), side: h ? h.getAttribute("data-rs") : null, x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
     try { svg.setPointerCapture(e.pointerId); } catch (error_) { /* capture is optional */ }
   });
 
@@ -106,7 +106,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   }
 
   function dragState(e, dx, dy) {
-    var snap = $("ts").checked && !e.shiftKey, regionId = drag.key.slice(2);
+    var snap = $("ts").checked && !e.shiftKey, regionId = keys.parseKey(drag.key).id;
     if (drag.side) {
       if (snap) [dx, dy] = snapSide(drag.from.clusters[regionId], drag.side, dx, dy);
       return model.resize(drag.from, regionId, drag.side, dx, dy);
@@ -144,8 +144,8 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   });
 
   function drop(d, e) {
-    var api = core.host.serverEditor, id = d.key.slice(2), meta = core.D.meta.nodes[id];
-    if (d.key.charAt(0) !== "n" || !api?.move || !meta) return false;
+    var api = core.host.serverEditor, k = keys.parseKey(d.key), id = k.id, meta = core.D.meta.nodes[id];
+    if (k.kind !== "server" || !api?.move || !meta) return false;
     var from = meta.cl || null, to = model.regionAt(d.from, model.point(e));
     if (to === from) return false;
     if (from) state.st.clusters[from] = model.clone(d.from.clusters[from]);

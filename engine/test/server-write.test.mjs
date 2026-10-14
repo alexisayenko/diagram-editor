@@ -7,6 +7,7 @@ import { setServer } from "../parse/toml-write.mjs";
 import { mergeTypes } from "../parse/types.mjs";
 import { demo as loadDemo, mod, withFile, mini } from "./helpers.mjs";
 import { serverFieldsKit } from "../model/server-fields.mjs";
+import { keys } from "./runtime-kits.mjs";
 
 const demoFiles = loadDemo(), ctx = mergeFolder(demoFiles);
 const file = (id) => demoFiles.get(`servers/${id}.toml`);
@@ -101,7 +102,7 @@ test("server_type: write-back, inherited type is not written, unknown id fails",
   const out = set("app01", { ...f, server_type: "batch" });
   assert.equal(server(out).server_type, "batch");
   assert.equal(out, file("app01") + 'server_type = "batch"\n');
-  assert.equal(tomlModel(withFile(demoFiles, "servers/app01.toml", out), "demo").model.classes.get("app01")[0], "batch");
+  assert.equal(tomlModel(withFile(demoFiles, "servers/app01.toml", out), "demo").model.nodeTypes.get("app01")[0], "batch");
   const changed = set("stats01", { ...fieldsOf(file("stats01")), server_type: "nas" });
   assert.equal(changed, file("stats01").replace('server_type = "statistics"', 'server_type = "nas"'));
   assert.throws(() => set("app01", { ...f, server_type: "ghost" }), /Unknown server type 'ghost'/);
@@ -116,18 +117,18 @@ test("server types: built-ins merged with server-types.toml, override by id, unk
   assert.ok(types.oracle.db && types.application);
   const typed = (typesText, serverText = 'id = "a"\nserver_type = "batch"\n') => mini('title = "t"\n', { "server-types.toml": typesText }, serverText);
   const base = '[[server_types]]\nid = "batch"\nlabel = "Batch"\ncolor = "#112233"\n';
-  assert.equal(tomlModel(typed(base), "t").model.classDefs.get("batch"), "stroke:#112233");
+  assert.equal(tomlModel(typed(base), "t").model.typeStyles.get("batch"), "stroke:#112233");
   assert.throws(() => tomlModel(typed(base, 'id = "a"\nserver_type = "ghost"\n'), "t"), /server_type must be one of .*batch/);
   assert.throws(() => tomlModel(typed(base.replace('label = "Batch"\n', "")), "t"), /needs label and color/);
   assert.throws(() => tomlModel(typed(base.replace("#112233", "red")), "t"), /#rrggbb/);
   assert.throws(() => tomlModel(typed(base.replace('id = "batch"', 'id = "proposed"')), "t"), /invalid id/);
   assert.throws(() => tomlModel(typed('title = "x"\n'), "t"), /server-types\.toml: unknown key title/);
   const override = '[[server_types]]\nid = "web"\nlabel = "Front"\n';
-  assert.equal(tomlModel(typed(override, 'id = "a"\nserver_type = "web"\n'), "t").model.classDefs.get("web"), "stroke:#C2185B");
+  assert.equal(tomlModel(typed(override, 'id = "a"\nserver_type = "web"\n'), "t").model.typeStyles.get("web"), "stroke:#C2185B");
   const inRegion = mini('title = "t"\n[[regions]]\nid = "r"\ntitle = "R"\nserver_type = "batch"\n', { "server-types.toml": base }, 'id = "a"\nregion = "r"\n');
   const { model } = tomlModel(inRegion, "t");
-  assert.equal(model.classes.get("r")[0], "batch");
-  assert.equal(model.classes.get("a")[0], "batch");
+  assert.equal(model.nodeTypes.get("r")[0], "batch");
+  assert.equal(model.nodeTypes.get("a")[0], "batch");
 });
 
 test("new server keys: types validated, details panel sections built", () => {
@@ -165,7 +166,7 @@ test("server editor: type picker and field edits feed the dirty state; Done send
   let mod;
   const window = { InfraDiagramFileBacked: true }, host = { serverEditor: { source: () => raw, apply: (id, f) => { applied.push([id, f]); return f.ips.includes("bad") ? "bad ip" : null; } } };
   const src = readFileSync(new URL("../runtime/ui/server-edit.js", import.meta.url), "utf8");
-  runInNewContext(src, { window, document: { createElement: make }, InfraDiagram: { define: (n, d, f) => { mod = f({ $: () => pn, host, provide() {}, on: (e, fn) => { hooks.panel = fn; } }, { select: (k) => selected.push(k) }, { placeChrome() {} }, serverFieldsKit()); } } });
+  runInNewContext(src, { window, document: { createElement: make }, InfraDiagram: { define: (n, d, f) => { mod = f({ $: () => pn, host, provide() {}, on: (e, fn) => { hooks.panel = fn; } }, { select: (k) => selected.push(k) }, { placeChrome() {} }, serverFieldsKit(), keys); } } });
   hooks.panel("n:web01", pn);
   assert.equal(mod.isDirty(), false);
   pn.fire("click", { target: tg });

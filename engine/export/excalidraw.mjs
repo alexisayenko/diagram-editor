@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { isDashed } from "../model/edges.mjs";
 import { geometryKit } from "../render/geometry.mjs";
+import { isKind, nodeKey, parseKey } from "../lib/keys.mjs";
+import { METRICS } from "../render/metrics.mjs";
 
 // Monochrome whiteboard look like the Sketch skin: red only for connection groups and firewalls, yellow notes.
 
@@ -10,7 +12,7 @@ const MONO = 5;
 const CHAR_W = { 1: 0.6, 2: 0.56, 3: 0.6, 5: 0.6 };
 const LINE_H = { 1: 1.25, 2: 1.15, 3: 1.2, 5: 1.25 };
 const ASCENT = { 1: 0.9, 2: 0.85, 3: 0.9, 5: 0.9 };
-const HEAD = 20;
+const HEAD = METRICS.head;
 const INK = "#1e1e1e";
 const MUTED = "#6b7280";
 const FW_RED = "#d62728";
@@ -135,9 +137,9 @@ function addClusters(cx) {
   const { b, model, layout, shapeOf } = cx;
   for (const c of model.clusters.values()) {
     const g = layout.clusters[c.id];
-    const r = b.rect("c:" + c.id, g.x, g.y, g.w, g.h, { dashed: true, round: true });
-    b.text("c:" + c.id + ":title", c.title, { container: r, x: g.x + g.w / 2, top: g.y + 5, align: "center", fs: 14 });
-    shapeOf["c:" + c.id] = r;
+    const r = b.rect(nodeKey("region", c.id), g.x, g.y, g.w, g.h, { dashed: true, round: true });
+    b.text(nodeKey("region", c.id) + ":title", c.title, { container: r, x: g.x + g.w / 2, top: g.y + 5, align: "center", fs: 14 });
+    shapeOf[nodeKey("region", c.id)] = r;
   }
 }
 
@@ -169,13 +171,13 @@ function addServers(cx) {
   const { b, config, model, layout, meta, kit, shapeOf } = cx;
   const procLine = {};
   for (const m of meta.edges) {
-    if (m.fl !== null) procLine[m.from.slice(2) + ":" + m.fl] = m.g;
-    if (m.tl !== null) procLine[m.to.slice(2) + ":" + m.tl] = m.g;
+    if (m.fl !== null) procLine[parseKey(m.from).id + ":" + m.fl] = m.g;
+    if (m.tl !== null) procLine[parseKey(m.to).id + ":" + m.tl] = m.g;
   }
   for (const n of model.nodes.values()) {
     const g = layout.nodes[n.id];
     if (g.hidden) continue;
-    const k = "n:" + n.id;
+    const k = nodeKey("server", n.id);
     const b0 = kit.boxExtent(g, meta.nodes[n.id].tl);
     const { card, grp } = addServerCard(cx, n, k);
     n.body.forEach((s, i) => {
@@ -196,7 +198,7 @@ function initialBusy(cx) {
   const { model, layout, meta, kit } = cx;
   const busy = [...model.nodes.values()].filter((n) => !layout.nodes[n.id].hidden).map((n) => kit.boxExtent(layout.nodes[n.id], meta.nodes[n.id].tl));
   for (const c of model.clusters.values()) {
-    const [tx, ty] = layout.clusters[c.id].title, hw = c.title.length * 3.9 + 4;
+    const [tx, ty] = layout.clusters[c.id].title, hw = c.title.length * METRICS.regionTitleHalfCw + METRICS.regionTitleHalfPad;
     busy.push({ x0: tx - hw, y0: ty - 13, x1: tx + hw, y1: ty + 4 });
   }
   return busy;
@@ -214,9 +216,9 @@ function bindArrow(cx, a, m) {
 function addFirewall(cx, m, fw, busy, fwDraw) {
   const { b } = cx;
   const [fx, fy] = fw.at, [lx, ly] = fw.label, rot = fw.a === 90 ? ([x, y]) => [-y, x] : (p) => p;
-  fwDraw.push(() => b.linear("e:" + m.k + ":fw", "line", FW_PTS.map((p) => rot(p)).map(([x, y]) => [fx + x, fy + y]), { stroke: FW_RED, sw: 2 }));
+  fwDraw.push(() => b.linear(nodeKey("edge", m.k) + ":fw", "line", FW_PTS.map((p) => rot(p)).map(([x, y]) => [fx + x, fy + y]), { stroke: FW_RED, sw: 2 }));
   const align = { start: "left", middle: "center", end: "right" }[fw.anchor];
-  b.text("e:" + m.k + ":fwtext", "firewall", { x: lx, baseline: ly, align, fs: 10, color: FW_RED });
+  b.text(nodeKey("edge", m.k) + ":fwtext", "firewall", { x: lx, baseline: ly, align, fs: 10, color: FW_RED });
   const tx0 = { start: lx, middle: lx - 26, end: lx - 52 }[fw.anchor];
   busy.push(
     fw.a === 90 ? { x0: fx - 12, y0: fy - 6, x1: fx + 12, y1: fy + 6 } : { x0: fx - 6, y0: fy - 12, x1: fx + 6, y1: fy + 12 },
@@ -231,7 +233,7 @@ function addConnections(cx, routes) {
     const rt = routes[m.k];
     if (!rt || rt.pts.length < 2) return;
     const color = m.g ? config.groups[m.g].color : INK;
-    const a = b.linear("e:" + m.k, "arrow", rt.pts, { stroke: color, sw: m.g ? 2 : 1, dashed: isDashed(model, ei) });
+    const a = b.linear(nodeKey("edge", m.k), "arrow", rt.pts, { stroke: color, sw: m.g ? 2 : 1, dashed: isDashed(model, ei) });
     bindArrow(cx, a, m);
     if (rt.fw) addFirewall(cx, m, rt.fw, busy, fwDraw);
     const lbl = model.edges[ei].label;
@@ -256,8 +258,8 @@ function placeLabels(cx, labels, busy) {
     const tries = forms.flatMap((s) => LABEL_DY.flatMap((dy) => LABEL_DX.map((dx) => labelBox(s, dx, dy, cxm, at[1])))).sort((p, q) => p.cost - q.cost);
     const pick = tries.find((t) => !hit(t)) || tries[0];
     busy.push(pick);
-    b.rect("e:" + k + ":pill", pick.x0, pick.y0, pick.x1 - pick.x0, pick.y1 - pick.y0, { stroke: "transparent", bg: "#ffffff", round: true });
-    b.text("e:" + k + ":label", pick.s, { x: cxm + pick.dx, baseline: at[1] + pick.dy, align: "center", fs: 10, color, original: lbl });
+    b.rect(nodeKey("edge", k) + ":pill", pick.x0, pick.y0, pick.x1 - pick.x0, pick.y1 - pick.y0, { stroke: "transparent", bg: "#ffffff", round: true });
+    b.text(nodeKey("edge", k) + ":label", pick.s, { x: cxm + pick.dx, baseline: at[1] + pick.dy, align: "center", fs: 10, color, original: lbl });
   }
 }
 
@@ -270,9 +272,9 @@ function legendConnections(cx, L) {
   const { b, config, model } = cx;
   const rows = [["request", INK, false, cx.edgeLabels.request]];
   if (model.edges.some((e, ei) => isDashed(model, ei))) rows.push(["dashed", INK, true, cx.edgeLabels.dashed]);
-  for (const [g, d] of Object.entries(config.groups)) rows.push(["g:" + g, d.color, false, d.label]);
+  for (const [g, d] of Object.entries(config.groups)) rows.push([nodeKey("group", g), d.color, false, d.label]);
   for (const [k, col, dashed, label] of rows) {
-    b.linear("legend:a:" + k, "arrow", [[L.x, L.y + 7], [L.x + 34, L.y + 7]], { stroke: col, dashed, sw: k.startsWith("g:") ? 2 : 1, groups: L.groups });
+    b.linear("legend:a:" + k, "arrow", [[L.x, L.y + 7], [L.x + 34, L.y + 7]], { stroke: col, dashed, sw: isKind(k, "group") ? 2 : 1, groups: L.groups });
     b.text("legend:l:" + k, label, { x: L.x + 44, top: L.y, fs: 11, groups: L.groups });
     L.y += 20;
   }

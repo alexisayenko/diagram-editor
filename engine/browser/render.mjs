@@ -29,15 +29,14 @@ function restoreClusters(model, saved, layout) {
   }
 }
 
-function restoreNodes(model, saved, layout, refit) {
-  for (const [id, n] of model.nodes) {
+function restoreNodes(model, saved, layout, refit, meta, kit) {
+  for (const id of model.nodes.keys()) {
     const g = saved?.nodes?.[id];
     if (!g) continue;
     if (![g.x, g.y, g.w, g.h].every(Number.isFinite) || g.w <= 0 || g.h <= 0 || !point(g.title)) throw new Error(`Invalid saved server geometry: ${id}`);
     // Text positions depend on the current services, preserving the server's position.
-    const rows = n.body.length + (n.hw ? 1 : 0) + (n.os ? 1 : 0), need = 20 + 16 * rows + 18 * n.ip.length;
-    layout.nodes[id] = { x: g.x, y: g.y, w: refit.includes(id) ? 0 : g.w, h: refit.includes(id) ? need : Math.max(g.h, need), title: g.title.slice(),
-      body: n.body.map((_, i) => [g.x + 10, g.y + 18 + 16 * i]), ip: n.ip.map((_, i) => [g.x + 10, g.y + 22 + 16 * rows + 18 * i]) };
+    const fresh = kit.boxFor(meta.nodes[id], g.x, g.y);
+    layout.nodes[id] = { x: g.x, y: g.y, w: refit.includes(id) ? 0 : g.w, h: refit.includes(id) ? fresh.h : Math.max(g.h, fresh.h), title: g.title.slice(), body: fresh.body, ip: fresh.ip };
   }
 }
 
@@ -79,7 +78,7 @@ export function prepareDiagram(files, folder, saved = null, refit = []) {
   checkSaved(saved);
   const warnings = saved?.diagramId && saved.diagramId !== config.id ? [`Saved layout was made for diagram "${saved.diagramId}"; using it for "${config.id}"`] : [];
   restoreClusters(model, saved, layout);
-  restoreNodes(model, saved, layout, refit);
+  restoreNodes(model, saved, layout, refit, meta, kit);
   restoreEdges(model, saved, layout);
   autoLayoutKit(kit).fill(layout, meta);
   for (const id of model.nodes.keys()) kit.fitBox(layout.nodes[id], meta.nodes[id]);
@@ -88,8 +87,8 @@ export function prepareDiagram(files, folder, saved = null, refit = []) {
   return { config, model, sections, notes, docs, meta, layout, kit, drawings, networks, warnings };
 }
 
-export function renderDiagram(files, folder, saved, assets, refit = []) {
+export function renderDiagram(files, folder, saved, assets, refit = [], routeCache = null) {
   const { config, model, sections, notes, docs, meta, layout, kit, drawings, networks, warnings } = prepareDiagram(files, folder, saved, refit);
-  const { html } = renderModel({ config, model, layout, meta, kit, sections, notes, docs, drawings, assets, networks });
-  return { html, layout, id: config.id, notes: notes.map((n) => n.text), problems: Object.keys(kit.problems(layout, meta)).length, warnings };
+  const { html, routeCache: nextRouteCache } = renderModel({ config, model, layout, meta, kit, sections, notes, docs, drawings, assets, networks, routeCache });
+  return { html, routeCache: nextRouteCache, layout, id: config.id, notes: notes.map((n) => n.text), problems: Object.keys(kit.problems(layout, meta)).length, warnings };
 }

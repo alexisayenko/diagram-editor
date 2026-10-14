@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/export-columns", ["ui/core"], function (core) {
+InfraDiagram.define("ui/export-columns", ["ui/core", "ui/metrics"], function (core, metrics) {
   var D = core.D, ctx = core.ctx, esc = core.esc;
 
   function legendSvg(x0, y0) {
@@ -49,7 +49,7 @@ InfraDiagram.define("ui/export-columns", ["ui/core"], function (core) {
     return out;
   }
   function notesSvg(x0, y0) {
-    var S = ctx.style, CWN = { sketch: 6.6, clean: 5.6, dark: 6.4, swiss: 5.7 }[S];
+    var S = ctx.style, CWN = metrics.METRICS.noteCharWidth[S];
     var W = 250, P = 10, LH = 14, h = "", y = y0;
     var rx = { swiss: 0, dark: 4 }[S] ?? 2;
     D.notes.forEach(function (n) {

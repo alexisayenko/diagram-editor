@@ -12,9 +12,9 @@ const CSS = {
   page: ["base", "toolbar", "draw", "interaction", "legend", "details", "panels"].map((f) => `css/page/${f}.css`),
 };
 // Runtime modules in load order; a module may only depend on modules listed before it.
-// "canvas/geometry" is generated from render/geometry.mjs (geometryKit) so build and edit mode route connections identically.
+// "ui/keys", "ui/metrics" and "canvas/geometry" are generated from lib/keys.mjs, render/metrics.mjs and render/geometry.mjs (see kits.mjs) so build and edit mode route connections identically.
 const RUNTIME = [
-  "ui/core", "ui/os-icons", "ui/details", "ui/skins", "ui/panels", "ui/networks", "ui/legend", "ui/selection", "ui/clear-click",
+  "ui/keys", "ui/metrics", "ui/core", "ui/os-icons", "ui/details", "ui/skins", "ui/panels", "ui/networks", "ui/legend", "ui/selection", "ui/clear-click",
   "ui/export-columns", "ui/copy", "ui/export-image", "ui/init", "ui/notes-edit", "ui/server-fields", "ui/server-edit",
   "canvas/geometry", "canvas/draw-kit", "canvas/model", "canvas/zoom-pan", "canvas/draw", "canvas/edit-mode", "canvas/context-menu",
 ];
@@ -26,13 +26,12 @@ export const css = (group) => CSS[group].map(load).join("").trim();
 const COMMENT = /\/\/[^\n\r]*/g;
 const paramName = (mod) => mod.split("/").pop().replace(/-(\w)/g, (_, c) => c.toUpperCase());
 
-const kitSource = (name, fn, names) => {
+const indent = (fn) => fn.toString().split("\n").map((l, i) => (l && i ? "  " + l : l)).join("\n");
+const argSource = (a) => ("kit" in a ? `(${indent(a.kit)})()` : JSON.stringify(a.json));
+
+const kitSource = (name, { fn, args = [], names }) => {
   const exportList = names.map((n) => `${n}: kit.${n}`).join(", ");
-  return (
-    `InfraDiagram.define("${name}", [], function () {\n  var kit = (` +
-    fn.toString().split("\n").map((l, i) => (l && i ? "  " + l : l)).join("\n") +
-    `)();\n\n  return { ${exportList} };\n});`
-  );
+  return `InfraDiagram.define("${name}", [], function () {\n  var kit = (${indent(fn)})(${args.map(argSource).join(", ")});\n\n  return { ${exportList} };\n});`;
 };
 
 // Each module file is exactly: InfraDiagram.define("<name>", [deps], function (<params>) { ... return { exports }; });
@@ -88,7 +87,7 @@ function checkModules(mods) {
 
 // One <script> body: the define() loader, then every module in RUNTIME order.
 export function script() {
-  const src = (name) => (KITS[name] ? kitSource(name, KITS[name].fn, KITS[name].names) : load(`runtime/${name}.js`).trim());
+  const src = (name) => (KITS[name] ? kitSource(name, KITS[name]) : load(`runtime/${name}.js`).trim());
   const file = (name) => (KITS[name] ? KITS[name].file : `engine/runtime/${name}.js`);
   const mods = RUNTIME.map((name) => parseModule(name, src(name), file(name)));
   checkModules(mods);
