@@ -121,7 +121,7 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
       if (h.clipDenied) throw new Error("denied");
       h.copied.push(t);
     } } },
-    TextDecoder, TextEncoder, Uint8Array, Map, Set, Blob: class { constructor(parts, o) { this.parts = parts; this.type = o?.type; } },
+    TextDecoder, TextEncoder, Uint8Array, Map, Set, AbortSignal, Blob: class { constructor(parts, o) { this.parts = parts; this.type = o?.type; } },
     URL: { createObjectURL: (b) => { h.lastBlob = b; return "blob:" + h.downloads.length; }, revokeObjectURL: (u) => { h.revoked = u; } },
     setTimeout: (f, ms) => { h.timers.push([f, ms]); return h.timers.length; }, clearTimeout: () => {}, setInterval: (f, ms) => { h.intervals.push([f, ms]); return 1; },
     require: (id) => {

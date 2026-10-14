@@ -12,7 +12,6 @@ const rejects = (s, re) => assert.throws(() => prepareDiagram(demo(), "demo", s)
 test("a saved layout must be an object of the same diagram, version 1, with object sections", () => {
   rejects([], /Layout must be a JSON object/);
   rejects("text", /Layout must be a JSON object/);
-  rejects(saved({ diagramId: "other" }), /belongs to another diagram id/);
   rejects(saved({ version: 2 }), /Unsupported saved layout version/);
   for (const k of ["nodes", "clusters", "edges"]) rejects(saved({ [k]: [] }), new RegExp(`Layout '${k}' must be an object`));
   assert.doesNotThrow(() => prepareDiagram(demo(), "demo", null));
@@ -93,4 +92,25 @@ test("an extra networks.toml changes the networks shown in the page data", () =>
   const files = withFile(demo(), "networks.toml", '[[networks]]\ncidr = "198.51.100.0/24"\nname = "Extra"\n');
   const nets = dataOf(renderDiagram(files, "demo", null, assets).html).nets;
   assert.ok(JSON.stringify(nets).includes("Extra"));
+});
+
+test("a layout of another diagram id is a warning, not an error", () => {
+  const r = prepareDiagram(demo(), "demo", saved({ diagramId: "other" }));
+  assert.equal(r.warnings.length, 1);
+  assert.match(r.warnings[0], /"other".*"demo"/);
+  assert.deepEqual(prepareDiagram(demo(), "demo", saved()).warnings, []);
+});
+
+test("the diagram page carries a CSP meta that blocks connections and external scripts, and hostile text stays escaped", () => {
+  const files = demo();
+  files.set("topology.toml", files.get("topology.toml") + "\n");
+  const { html } = renderDiagram(files, "demo", null, assets, []);
+  const csp = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/)?.[1];
+  assert.ok(csp, "CSP meta present");
+  assert.ok(html.indexOf("Content-Security-Policy") < html.indexOf("<style"));
+  assert.match(csp, /default-src 'none'/);
+  assert.match(csp, /connect-src 'none'/);
+  assert.match(csp, /img-src data: blob:/);
+  assert.doesNotMatch(csp, /script-src[^;]*https?:/);
+  assert.equal([...html.matchAll(/<script(?![^>]*type="application\/json")[^>]*\bsrc=/g)].length, 0);
 });

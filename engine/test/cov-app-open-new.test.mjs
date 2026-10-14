@@ -94,7 +94,7 @@ test("a storage listing failure at start is shown as a plain error", async () =>
   const h2 = await boot({ boot: false });
   h2.override = async () => ({ ok: false, status: 503, json: async () => { throw new Error("not json"); } });
   await h2.start();
-  assert.equal(h2.status(), "Server error 503");
+  assert.equal(h2.status(), "Server error: HTTP 503");
 });
 
 test("a diagram folder that vanishes between listing and loading reports it", async () => {
@@ -312,4 +312,31 @@ test("a render failure while creating a diagram shows the error instead of openi
   await h.click("nwok");
   assert.equal(h.statusError(), true);
   assert.equal(h.frame.srcdoc, original);
+});
+
+test("a stored layout made for another diagram id opens with a warning", async () => {
+  const files = demoFiles("demo");
+  const first = await boot({ files });
+  const layout = JSON.parse(JSON.stringify(first.D.layout));
+  const h = await boot({ files: { ...files, "demo/diagram.layout.json": JSON.stringify({ version: 1, diagramId: "renamed", ...layout }) } });
+  assert.match(h.status(), /Warning: Saved layout was made for diagram "renamed"/);
+  assert.equal(h.statusError(), false);
+  assert.equal(h.$("welcome").hidden, true);
+});
+
+test("API fetches carry a timeout signal and a stalled server is reported as such", async () => {
+  const h = await boot({ boot: false });
+  const seen = [];
+  h.override = async (path, options) => { seen.push(options.signal); const e = new Error("timed out"); e.name = "TimeoutError"; throw e; };
+  await h.start();
+  assert.ok(seen[0] instanceof AbortSignal);
+  assert.match(h.status(), /did not answer within 15 s/);
+  assert.equal(h.statusError(), true);
+});
+
+test("an unhandled promise rejection is reported in the toolbar message area", async () => {
+  const h = await boot();
+  h.listeners.unhandledrejection[0]({ reason: new Error("boom") });
+  assert.equal(h.status(), "Unexpected error: boom");
+  assert.equal(h.statusError(), true);
 });

@@ -39,13 +39,17 @@ function controls() {
   importButton.disabled = busy || !ready || !impPanel.hidden;
 }
 function discard() { return !dirty() || window.confirm("Discard unsaved changes?"); }
+const FETCH_TIMEOUT_MS = 15000;
 async function call(path, options) {
   let response;
-  try { response = await fetch(path, options); }
-  catch (e) { throw new Error("The local server is not reachable. Run node engine/serve.mjs."); }
+  try { response = await fetch(path, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS), ...options }); }
+  catch (e) {
+    if (e?.name === "TimeoutError") throw new Error(`The local server did not answer within ${FETCH_TIMEOUT_MS / 1000} s.`);
+    throw new Error("The local server is not reachable. Run node engine/serve.mjs.");
+  }
   let body = {};
   try { body = await response.json(); } catch (_) {}
-  if (!response.ok) { const err = new Error(body.error || `Server error ${response.status}`); err.status = response.status; err.saved = body.saved || []; throw err; }
+  if (!response.ok) { const err = new Error(body.error || `Server error: HTTP ${response.status}${response.statusText ? " " + response.statusText : ""}`); err.status = response.status; err.saved = body.saved || []; throw err; }
   return body;
 }
 async function stored(name) {
@@ -70,7 +74,7 @@ function load(folder, files, layoutText) {
   frame.srcdoc = result.html;
   document.querySelector("#welcome").hidden = true;
   frame.hidden = false;
-  message(`${folder} · ${layoutText === null ? "Automatically arranged" : "Saved layout restored"}${result.problems ? " · Open Edit layout to resolve highlighted spacing" : ""}`);
+  message(`${folder} · ${layoutText === null ? "Automatically arranged" : "Saved layout restored"}${result.problems ? " · Open Edit layout to resolve highlighted spacing" : ""}${result.warnings.map((w) => " · Warning: " + w).join("")}`);
 }
 async function loadStored(folder) {
   const { files: listed } = await call("/api/files"), prefix = folder + "/";
@@ -185,6 +189,7 @@ async function importArchive(file) {
   finally { busy = false; controls(); }
 }
 const reportError = (e) => message(e.message, true);
+window.addEventListener("unhandledrejection", (e) => { message("Unexpected error: " + (e.reason?.message ?? e.reason), true); });
 diagButton.addEventListener("click", () => diagFile.click());
 diagFile.addEventListener("change", () => {
   const f = diagFile.files[0];

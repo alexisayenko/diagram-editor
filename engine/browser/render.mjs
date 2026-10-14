@@ -17,9 +17,8 @@ import { renderLayoutHtml } from "../page/layout-html.mjs";
 const point = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
 const plainObject = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 
-function checkSaved(saved, config) {
+function checkSaved(saved) {
   if (saved !== null && !plainObject(saved)) throw new Error("Layout must be a JSON object");
-  if (saved?.diagramId && saved.diagramId !== config.id) throw new Error("Saved layout belongs to another diagram id");
   if (saved?.version !== undefined && saved.version !== 1) throw new Error("Unsupported saved layout version");
   for (const kind of ["nodes", "clusters", "edges"]) {
     if (saved?.[kind] !== undefined && !plainObject(saved[kind])) throw new Error(`Layout '${kind}' must be an object`);
@@ -82,7 +81,8 @@ export function prepareDiagram(files, folder, saved = null, refit = []) {
   checkConnections(config, model.edges.map(edgeKey), model.nodes);
   const meta = geometryMeta(model, config.groups, config.processes), kit = geometryKit();
   const layout = { clusters: {}, nodes: {}, edges: {} };
-  checkSaved(saved, config);
+  checkSaved(saved);
+  const warnings = saved?.diagramId && saved.diagramId !== config.id ? [`Saved layout was made for diagram "${saved.diagramId}"; using it for "${config.id}"`] : [];
   restoreClusters(model, saved, layout);
   restoreNodes(model, saved, layout, refit);
   restoreEdges(model, saved, layout);
@@ -90,11 +90,11 @@ export function prepareDiagram(files, folder, saved = null, refit = []) {
   for (const id of model.nodes.keys()) kit.fitBox(layout.nodes[id], meta.nodes[id]);
   for (const id of model.clusters.keys()) kit.fitRegion(layout, meta, id);
   const drawings = drawKit().validate(saved?.drawings);
-  return { config, model, sections, notes, docs, meta, layout, kit, drawings, networks };
+  return { config, model, sections, notes, docs, meta, layout, kit, drawings, networks, warnings };
 }
 
 export function renderDiagram(files, folder, saved, assets, refit = []) {
-  const { config, model, sections, notes, docs, meta, layout, kit, drawings, networks } = prepareDiagram(files, folder, saved, refit);
+  const { config, model, sections, notes, docs, meta, layout, kit, drawings, networks, warnings } = prepareDiagram(files, folder, saved, refit);
   const { nets, ipNet } = networks ? buildNetworks(networks, model, layout) : { nets: null, ipNet: {} };
   const routes = kit.route(layout, meta);
   const { ent, typeList, typeCss } = resolveTypes(model, layout, config.proposedLabel);
@@ -105,5 +105,5 @@ export function renderDiagram(files, folder, saved, assets, refit = []) {
   const dataJson = buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes, nets, ipNet, edgeKeyRows: edgeKeys.rows, drawings });
   const html = renderLayoutHtml({ title: config.title, cssSvg: assets.cssSvg + "\n" + typeCss + groupKit.css, cssPage: assets.cssPage,
     viewBox, svgBody, drawings, markers: groupKit.markers, edgeKeyHtml: edgeKeys.html, notes, docs, nets, dataJson, js: assets.js });
-  return { html, layout, id: config.id, notes: notes.map((n) => n.text), problems: Object.keys(kit.problems(layout, meta)).length };
+  return { html, layout, id: config.id, notes: notes.map((n) => n.text), problems: Object.keys(kit.problems(layout, meta)).length, warnings };
 }

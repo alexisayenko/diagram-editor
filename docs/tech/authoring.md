@@ -161,16 +161,20 @@ The relation is derived: each server IP (a host prefix such as `/24` is ignored)
 
 Save writes the geometry file `diagram.layout.json`: schema version, diagram id, region/server positions and sizes, text positions, connection overrides and, when there are any, `drawings`. TOML files are rewritten only when notes (`notes.toml`) or a server (`servers/<id>.toml`) changed, and only those values (see above). Copy the whole folder to another computer to move a diagram.
 
-Malformed TOML or invalid saved geometry leaves the current diagram open. A failed save keeps edits in memory. Use **Export** or **Download** (edit mode) as a manual backup.
+Malformed TOML or invalid saved geometry leaves the current diagram open. A layout whose `diagramId` differs from the folder's diagram (a renamed or copied folder) opens with a warning in the toolbar message area; the next Save writes the current id. A failed save keeps edits in memory. Use **Export** or **Download** (edit mode) as a manual backup.
 
 ## Local server API
 
-`node engine/serve.mjs` (port 8080, or `PORT`) binds 127.0.0.1 only and serves the engine page plus a small JSON API over `local/`. Every response is `Cache-Control: no-store`; requests with a foreign `Host`, `Origin` or `Sec-Fetch-Site` are refused (403).
+`node engine/serve.mjs` (port 8080, or `PORT`) binds 127.0.0.1 only and serves the engine page plus a small JSON API over `local/`. Every response is `Cache-Control: no-store` and carries `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff` and `Cross-Origin-Resource-Policy: same-origin`; the page also gets a `Content-Security-Policy` (no framing: `frame-ancestors 'none'`). The Host, Origin and Sec-Fetch-Site checks run on every request, page GETs included, and a foreign value is refused (403). A body over 8 MB is refused with 413 as soon as its `Content-Length` says so, and the server times out slow requests (30 s) and slow headers (10 s). The diagram frame carries its own CSP meta (`connect-src 'none'`, no external scripts), so an imported archive cannot call this API.
 
 - `GET /api/files` lists `{ files: [{ name, size, mtime }] }`, recursively; names are relative paths such as `my-diagram/servers/app01.toml`.
 - `GET /api/file?name=<name>` returns `{ name, text }` (404 if missing).
 - `PUT /api/files` (`application/json`) takes `{ files: [{ name, text, base }] }`, 1 to 256 files. `base` is the text the page loaded (`null` = the file must not exist); if any file on disk differs the answer is 409 with `conflicts` and nothing is written. `overwrite: true` replaces `base` (used when opening a folder). Each file is written to a temp file beside its target and renamed; missing folders are created; a failure returns 500 with the names already `saved`.
 - A name that collides with an existing file or folder (for example `a/b.toml` when `a` is a file) answers 400 "Name collides with an existing file or folder". Names must match `^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*){0,2}[.](toml|json)$` (no `..`, at most three path segments, at most 150 characters); each file is at most 2 MB.
+
+## Browser support
+
+Use a current desktop Edge or Chrome (the tested pair). The page needs regular-expression lookbehind (`engine/runtime/ui/details.js`), so the minimum is Chrome / Edge 62, Firefox 78 and Safari 16.4; older Safari fails to parse the diagram script. `AbortSignal.timeout` (API fetch timeouts) needs Chrome / Edge 103, Firefox 100 and Safari 16.
 
 ## Engine development
 

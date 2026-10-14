@@ -139,3 +139,41 @@ test("browser.mjs --check passes when diagram.html is current and the page is se
   assert.match(html, /<iframe id="view"/);
   assert.doesNotMatch(html, /<script[^>]+src=/);
 });
+
+test("every response carries the security headers; the page CSP forbids framing", async () => {
+  await withApp(({ page }) => writeFileSync(page, "<h1>page</h1>"), async ({ call }) => {
+    for (const path of ["/", "/api/files", "/missing"]) {
+      const r = await call("GET", path);
+      assert.equal(r.headers["referrer-policy"], "no-referrer");
+      assert.equal(r.headers["x-content-type-options"], "nosniff");
+      assert.equal(r.headers["cross-origin-resource-policy"], "same-origin");
+      assert.match(r.headers["content-security-policy"], /frame-ancestors 'none'/);
+      assert.match(r.headers["content-security-policy"], /default-src 'none'/);
+    }
+  });
+});
+
+test("Host and Origin are checked on every request, including page GETs", async () => {
+  await withApp(({ page }) => writeFileSync(page, "<h1>page</h1>"), async ({ call, port }) => {
+    assert.equal((await call("GET", "/", { headers: { host: "evil.example.test" } })).status, 403);
+    assert.equal((await call("GET", "/diagram.html", { headers: { origin: "http://evil.example.test" } })).status, 403);
+    assert.equal((await call("GET", "/other", { headers: { host: "evil.example.test" } })).status, 403);
+    assert.equal((await call("GET", "/", { headers: { "sec-fetch-site": "cross-site" } })).status, 403);
+    assert.equal((await call("GET", "/", { headers: { origin: `http://127.0.0.1:${port}` } })).status, 200);
+  });
+});
+
+test("an oversize Content-Length is refused with 413 before the body is read", async () => {
+  await withApp(null, async ({ call }) => {
+    const r = await call("PUT", "/api/files", { headers: { "content-type": "application/json", "content-length": String(MAX_BYTES * 4 + 1) } });
+    assert.equal(r.status, 413);
+    assert.match(r.text, /Request too large/);
+  });
+});
+
+test("the server sets request and header timeouts", async () => {
+  const server = createApp({});
+  assert.ok(server.requestTimeout > 0 && server.requestTimeout <= 60000);
+  assert.ok(server.headersTimeout > 0 && server.headersTimeout <= 30000);
+  server.close();
+});

@@ -59,7 +59,7 @@ test("restore, update service count, add and remove objects without losing exist
   assert.deepEqual(second.kit.problems(second.layout, second.meta), {});
 });
 test("invalid saved geometry and mismatched model identity are rejected", () => {
-  assert.throws(() => prepareDiagram(demo, "demo", { diagramId: "another" }), /another diagram/);
+  assert.match(prepareDiagram(demo, "demo", { diagramId: "another" }).warnings[0], /another/);
   assert.throws(() => prepareDiagram(demo, "demo", { version: 2 }), /version/);
   assert.throws(() => prepareDiagram(demo, "demo", { nodes: [] }), /object/);
   assert.throws(() => prepareDiagram(demo, "demo", { nodes: { app01: { x: "bad" } } }), /server geometry/);
