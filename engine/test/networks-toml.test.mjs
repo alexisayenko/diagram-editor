@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseIp, parseCidr, parseNetworksFile, assignNetwork, buildNetworks } from "../parse/shared-networks.mjs";
+import { parseIp, parseCidr, parseNetworksFile, assignNetwork, buildNetworks, derivedCidr, derivedCidrs, withDerived } from "../parse/shared-networks.mjs";
 import { tomlModel } from "../parse/toml.mjs";
 import { renderDiagram } from "../browser/render.mjs";
 import { createStore, handleApi, MAX_BYTES } from "../lib/store.mjs";
@@ -52,7 +52,9 @@ test("file validation names the entry", () => {
   assert.throws(one('[[networks]]\ncidr = "192.0.2.0/24"\nname = "a"\n[[networks]]\ncidr = "192.0.2.0/24"\nname = "b"\n'), /networks\[2\] \(192\.0\.2\.0\/24\): duplicate cidr, already networks\[1\]/);
   assert.throws(one('[[networks]]\ncidr = "192.0.2.1/24"\nname = "a"\n'), /networks\[1\] \(192\.0\.2\.1\/24\): '192\.0\.2\.1\/24' has host bits set/);
   assert.throws(one('[[networks]]\ncidr = "999.0.0.0/8"\nname = "a"\n'), /networks\[1\] \(999\.0\.0\.0\/8\): invalid CIDR/);
-  assert.throws(one('[[networks]]\ncidr = "192.0.2.0/24"\n'), /name must be a non-empty string/);
+  assert.throws(one('[[networks]]\ncidr = "192.0.2.0/24"\nname = ""\n'), /name must be a non-empty string/);
+  assert.throws(one('[[networks]]\ncidr = "192.0.2.0/24"\nname = ["x"]\n'), /name must be a non-empty string/);
+  assert.equal(one('[[networks]]\ncidr = "192.0.2.0/24"\n')()[0].name, "");
   assert.throws(one('[[networks]]\ncidr = "192.0.2.0/24"\nname = "a"\nzone = "x"\n'), /unknown key zone/);
   assert.throws(one('title = "x"\n[[networks]]\ncidr = "192.0.2.0/24"\nname = "a"\n'), /unknown key title/);
   assert.deepEqual(one("# nothing\n")(), []);
@@ -79,17 +81,17 @@ test("demo servers: multi-homed server in each network, most specific segment, r
 });
 
 test("unassigned IPs get an Unassigned network row and a labelled line in the details", () => {
-  const src = mini('title = "t"\n', { "networks.toml": '[[networks]]\ncidr = "192.0.2.0/24"\nname = "Lab"\n' }, 'id = "a"\nserver_type = "web"\nname = "a.test"\nips = ["192.0.2.5/24", "10.1.1.1/8"]\n');
+  const src = mini('title = "t"\n', { "networks.toml": '[[networks]]\ncidr = "192.0.2.0/24"\nname = "Lab"\n' }, 'id = "a"\nserver_type = "web"\nname = "a.test"\nips = ["192.0.2.5/24", "10.1.1.1/32"]\n');
   const out = renderDiagram(src, "t", null, stub);
   assert.match(out.html, /<aside id="wp"/);
   assert.match(out.html, /Unassigned network/);
   assert.ok(out.html.includes("192.0.2.5/24 — Lab"));
-  assert.ok(out.html.includes("10.1.1.1/8 — unassigned network"));
+  assert.ok(out.html.includes("10.1.1.1/32 — unassigned network"));
   assert.equal(JSON.parse(out.html.match(/id="layout-data">(.*?)<\/script>/s)[1]).nets.length, 2);
 });
 
-test("without a networks file nothing changes: no panel, plain IP lines", () => {
-  const out = renderDiagram(without(demo, "networks.toml"), "demo", null, stub);
+test("without a networks file and without prefixed IPs nothing changes: no panel, plain IP lines", () => {
+  const out = renderDiagram(mini('title = "t"\n', {}, 'id = "a"\nserver_type = "web"\nname = "a.test"\nips = ["192.0.2.5/32", "198.51.100.7/32"]\n'), "t", null, stub);
   assert.ok(!out.html.includes('id="wp"'));
   assert.ok(!out.html.includes("unassigned network"));
 });
@@ -106,4 +108,62 @@ test("store and API: networks.toml is stored in the diagram folder, read back, v
   const big = handleApi(store, { method: "PUT", url: "/api/files", headers }, JSON.stringify({ files: [{ name: "demo/networks.toml", text: "#".repeat(MAX_BYTES + 1), overwrite: true }] }));
   assert.equal(big.status, 413);
   assert.equal(handleApi(store, { method: "GET", url: "/api/file?name=demo%2F..%2Fnetworks.toml", headers }).status, 400);
+});
+
+test("derived CIDRs: masked host bits, /32, no prefix and IPv6 skipped, duplicates collapse, address order", () => {
+  assert.equal(derivedCidr("192.0.2.10/24"), "192.0.2.0/24");
+  assert.equal(derivedCidr("192.0.2.77/29"), "192.0.2.72/29");
+  for (const t of ["192.0.2.10/32", "192.0.2.10", "2001:db8::1/64", "nope/24", "192.0.2.10/0"]) assert.equal(derivedCidr(t), null, t);
+  assert.deepEqual(derivedCidrs(["203.0.113.5/24", "192.0.2.10/24", "192.0.2.99/24", "192.0.2.5/32", "192.0.2.40/29"]), ["192.0.2.0/24", "192.0.2.40/29", "203.0.113.0/24"]);
+});
+
+test("derived networks merge with defined ones: defined name wins, own prefix network beats other servers' derived ones, defined narrower wins", () => {
+  const defined = parseNetworksFile('[[networks]]\ncidr = "192.0.2.0/24"\nname = "Lab"\n[[networks]]\ncidr = "198.51.100.8/29"\nname = "Narrow"\n');
+  const all = withDerived(defined, ["192.0.2.10/24", "192.0.2.8/29", "198.51.100.9/24", "203.0.113.1/24"]);
+  assert.deepEqual(all.map((n) => [n.cidr, n.name, !!n.derived]), [["192.0.2.0/24", "Lab", false], ["198.51.100.8/29", "Narrow", false], ["192.0.2.8/29", "", true], ["198.51.100.0/24", "", true], ["203.0.113.0/24", "", true]]);
+  const at = (ip) => all[assignNetwork(all, ip)].cidr;
+  assert.equal(at("192.0.2.10/24"), "192.0.2.0/24");
+  assert.equal(at("192.0.2.9/29"), "192.0.2.8/29");
+  assert.equal(at("198.51.100.9/24"), "198.51.100.8/29");
+  assert.equal(at("198.51.100.200/24"), "198.51.100.0/24");
+});
+
+test("derived networks reach the panel and the details without a networks file; unnamed rows use the CIDR", () => {
+  const src = mini('title = "t"\n', {}, 'id = "a"\nserver_type = "web"\nname = "a.test"\nips = ["192.0.2.5/24", "10.1.1.1/32"]\n');
+  const out = renderDiagram(src, "t", null, stub);
+  assert.match(out.html, /<aside id="wp"/);
+  assert.ok(out.html.includes("192.0.2.5/24 — 192.0.2.0/24"));
+  assert.ok(out.html.includes("10.1.1.1/32 — unassigned network"));
+});
+
+test("append: creates the file, appends only missing CIDRs in address order, keeps existing bytes and CRLF", async () => {
+  const { appendNetworks } = await import("../parse/networks-append.mjs");
+  const ips = ["203.0.113.5/24", "192.0.2.10/24", "192.0.2.20/24", "192.0.2.5/32", "2001:db8::1/64"];
+  const created = appendNetworks(null, ips);
+  assert.deepEqual(created.added, ["192.0.2.0/24", "203.0.113.0/24"]);
+  assert.equal(created.text, '[[networks]]\ncidr = "192.0.2.0/24"\n\n[[networks]]\ncidr = "203.0.113.0/24"\n');
+  assert.deepEqual(parseNetworksFile(created.text).map((n) => n.name), ["", ""]);
+  const old = '# keep me\n[[networks]]\ncidr = "192.0.2.0/24"\nname = "Lab"   # note\n';
+  const next = appendNetworks(old, ips);
+  assert.deepEqual(next.added, ["203.0.113.0/24"]);
+  assert.ok(next.text.startsWith(old));
+  assert.equal(next.text.slice(old.length), '\n[[networks]]\ncidr = "203.0.113.0/24"\n');
+  const noEol = appendNetworks('[[networks]]\ncidr = "198.51.100.0/24"', ["192.0.2.1/24"]);
+  assert.equal(noEol.text, '[[networks]]\ncidr = "198.51.100.0/24"\n\n[[networks]]\ncidr = "192.0.2.0/24"\n');
+  const crlf = appendNetworks('[[networks]]\r\ncidr = "198.51.100.0/24"\r\n', ["192.0.2.1/24"]);
+  assert.equal(crlf.text, '[[networks]]\r\ncidr = "198.51.100.0/24"\r\n\r\n[[networks]]\r\ncidr = "192.0.2.0/24"\r\n');
+  const none = appendNetworks(old, ["192.0.2.9/24"]);
+  assert.deepEqual(none.added, []);
+  assert.equal(none.text, old);
+  assert.equal(appendNetworks("# empty\n", ["192.0.2.9/24"]).text, '# empty\n\n[[networks]]\ncidr = "192.0.2.0/24"\n');
+  assert.throws(() => appendNetworks('[[networks]]\ncidr = "bad"\n', ips), /networks.toml/);
+});
+
+test("store: appended networks.toml is written with a base check; a stale base answers 409", () => {
+  const dir = mkdtempSync(join(tmpdir(), "nets-"));
+  const store = createStore(dir), headers = { host: "127.0.0.1:8080", "content-type": "application/json" };
+  const put = (files) => handleApi(store, { method: "PUT", url: "/api/files", headers }, JSON.stringify({ files }));
+  assert.equal(put([{ name: "demo/networks.toml", text: '[[networks]]\ncidr = "192.0.2.0/24"\n', base: null }]).status, 200);
+  assert.equal(put([{ name: "demo/networks.toml", text: "x", base: null }]).status, 409);
+  assert.equal(put([{ name: "demo/networks.toml", text: '[[networks]]\ncidr = "192.0.2.0/24"\n\n[[networks]]\ncidr = "203.0.113.0/24"\n', base: '[[networks]]\ncidr = "192.0.2.0/24"\n' }]).status, 200);
 });

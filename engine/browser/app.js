@@ -1,6 +1,7 @@
 // A saved diagram is a folder in local/ behind engine/serve.mjs; the model and geometry stay in this tab. Files travel as .diag.zip archives.
 const { setNotes, setServer, addServer, duplicateServer, addRegion, moveServer, freeRegionTypes } = require("parse/toml-write.mjs");
-const { parseNoteText, mergeFolder, withRoot } = require("parse/toml.mjs");
+const { appendNetworks } = require("parse/networks-append.mjs");
+const { parseNoteText, mergeFolder, withRoot, tomlModel } = require("parse/toml.mjs");
 const { mergeTypes } = require("parse/types.mjs");
 const { newDiagram, DIAGRAM_ID } = require("parse/new-diagram.mjs");
 const { planImport, gridPlacements, summary } = require("parse/import-servers.mjs");
@@ -283,6 +284,19 @@ function pending() {
     layoutText: JSON.stringify({ version: 1, diagramId: active.id, ...active.extra, ...layout, ...(drawings.length || active.hadDrawings ? { drawings } : {}) }, null, 2) + "\n",
   };
 }
+const NETWORKS = "networks.toml";
+async function syncNetworks() {
+  const ips = [...tomlModel(active.work, active.folder).model.nodes.values()].flatMap((n) => n.ip), name = active.folder + "/" + NETWORKS;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const base = await stored(name), res = appendNetworks(base, ips);
+    if (!res.added.length) return { count: 0 };
+    try {
+      await putFiles([{ name, text: res.text, base }]);
+      active.source.set(NETWORKS, res.text); active.work.set(NETWORKS, res.text);
+      return { count: res.added.length };
+    } catch (e) { if (e.status !== 409 || attempt) return { count: 0, error: e.message }; }
+  }
+}
 saveButton.addEventListener("click", async () => {
   if (!editor()) return;
   busy = true; controls();
@@ -300,7 +314,9 @@ saveButton.addEventListener("click", async () => {
     await putFiles(files);
     active.fresh = false;
     afterSave(p, files.map((f) => f.name));
-    message(p.changed.length ? `Saved ${active.layoutName} and ${p.changed.length} file(s) in local/${active.folder}/` : `Saved ${active.layoutName} in local/`);
+    const net = await syncNetworks().catch((e) => ({ count: 0, error: e.message }));
+    const saved = p.changed.length ? `Saved ${active.layoutName} and ${p.changed.length} file(s) in local/${active.folder}/` : `Saved ${active.layoutName} in local/`;
+    message(saved + (net.count ? ` · ${net.count} new networks added to networks.toml` : "") + (net.error ? ` · networks.toml not updated: ${net.error}` : ""), !!net.error);
   } catch (e) {
     if (p && e.saved?.length) {
       afterSave(p, e.saved);

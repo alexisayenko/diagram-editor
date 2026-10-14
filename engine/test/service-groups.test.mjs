@@ -17,17 +17,17 @@ test("glob: * and ? are wildcards, case-insensitive, whole name, regex character
 
 test("units split by group: first match wins, .service suffix ignored, Other bucket, empty sections omitted", () => {
   const out = groupUnits(["app-1.service", "wildfly-main", "app-2", "cron-x"], groups);
-  assert.deepEqual(out, [["Application services", ["app-1.service", "app-2"]], ["Middleware", ["wildfly-main"]], ["Other services", ["cron-x"]]]);
+  assert.deepEqual(out, [["Application services", ["app-1.service", "app-2"]], ["Middleware", ["wildfly-main"]]]);
   assert.deepEqual(groupUnits(["wildfly-main"], groups), [["Middleware", ["wildfly-main"]]]);
   assert.deepEqual(groupUnits(["a", "b"], []), [["systemd services", ["a", "b"]]]);
   assert.deepEqual(groupUnits([], groups), []);
 });
 
-test("details sections of the demo use the groups, in group order, with Other last", () => {
+test("details sections of the demo use the groups, in group order, and no Other section", () => {
   const { sections } = tomlModel(demo(), "demo");
   const web = sections["web-01"] ?? Object.values(sections).find((s) => s.includes("nginx"));
   assert.ok(web.includes("## Middleware\n\n- nginx"));
-  assert.ok(web.includes("## Other services\n\n- demo-agent"));
+  assert.ok(!web.includes("Other services") && !web.includes("demo-agent"));
   assert.ok(!web.includes("## systemd services"));
   const app = Object.values(sections).find((s) => s.includes("tomcat-demo"));
   assert.ok(app.includes("## Application services\n\n- tomcat-demo"));

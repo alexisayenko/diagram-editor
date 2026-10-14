@@ -1,5 +1,5 @@
-// A diagram folder's networks.toml: [[networks]] tables (cidr, name, optional description).
-// The server-to-network relation is derived from IPs, never declared.
+// A diagram folder's networks.toml: [[networks]] tables (cidr, optional name, optional description).
+// The server-to-network relation is derived from IPs, never declared; networks implied by server IPs with a prefix are derived too.
 import { parseToml } from "./toml.mjs";
 
 export function parseIp(text) {
@@ -45,22 +45,47 @@ export function parseNetworksFile(src) {
     if (typeof d.cidr !== "string" || !d.cidr.trim()) fail(`${at}: cidr must be a non-empty string`);
     const cidr = d.cidr.trim(), parsed = parseCidr(cidr);
     if (parsed.error) fail(`${at} (${cidr}): ${parsed.error}`);
-    if (typeof d.name !== "string" || !d.name.trim()) fail(`${at} (${cidr}): name must be a non-empty string`);
+    if (d.name !== undefined && (typeof d.name !== "string" || !d.name.trim())) fail(`${at} (${cidr}): name must be a non-empty string`);
     if (d.description !== undefined && typeof d.description !== "string") fail(`${at} (${cidr}): description must be a string`);
     const dup = items.findIndex((x) => x.cidr === cidr);
-    if (dup >= 0) fail(`${at} (${cidr}): duplicate cidr, already networks[${dup + 1}] (${items[dup].name})`);
-    items.push({ cidr, name: d.name.trim(), description: (d.description || "").trim(), ...parsed });
+    if (dup >= 0) fail(`${at} (${cidr}): duplicate cidr, already networks[${dup + 1}]`);
+    items.push({ cidr, name: (d.name || "").trim(), description: (d.description || "").trim(), ...parsed });
   });
   return items;
 }
 
+// Network implied by an IPv4 entry with a prefix (192.0.2.10/24 -> 192.0.2.0/24); null for /32, /0, no prefix, IPv6 or junk.
+export function derivedCidr(text) {
+  const m = typeof text === "string" && text.trim().match(/^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/);
+  const ip = m && parseIp(m[1]), len = m && +m[2];
+  if (!ip || len < 1 || len > 31) return null;
+  const size = 1n << BigInt(32 - len), lo = ip.n - (ip.n % size), o = [24n, 16n, 8n, 0n].map((b) => (lo >> b) & 255n);
+  return o.join(".") + "/" + len;
+}
+
+// Distinct derived CIDRs of the given IP entries, in address order.
+export function derivedCidrs(ips) {
+  const set = new Set(ips.map(derivedCidr).filter(Boolean));
+  return [...set].sort((a, b) => { const x = parseCidr(a), y = parseCidr(b); return x.lo < y.lo ? -1 : x.lo > y.lo ? 1 : x.len - y.len; });
+}
+
+// Defined networks plus derived ones that are not defined (name "", derived: true), defined first.
+export function withDerived(defined, ips) {
+  const have = new Set(defined.map((d) => d.cidr));
+  const extra = derivedCidrs(ips).filter((c) => !have.has(c)).map((cidr) => ({ cidr, name: "", description: "", derived: true, ...parseCidr(cidr) }));
+  return [...defined, ...extra];
+}
+
 // Index of the most specific (longest prefix) network containing the address part of `text`, or -1.
+// An entry with a prefix competes only against defined networks and its own prefix network; other servers' derived networks never outrank it.
 export function assignNetwork(items, text) {
-  const ip = parseIp(String(text).split("/")[0]);
+  const ip = parseIp(String(text).split("/")[0]), own = derivedCidr(text);
   let best = -1;
   if (!ip) return best;
   items.forEach((it, i) => {
-    if (it.v === ip.v && ip.n >= it.lo && ip.n <= it.hi && (best < 0 || it.len > items[best].len)) best = i;
+    if (it.v !== ip.v || ip.n < it.lo || ip.n > it.hi) return;
+    if (own && it.derived && it.cidr !== own) return;
+    if (best < 0 || it.len > items[best].len) best = i;
   });
   return best;
 }

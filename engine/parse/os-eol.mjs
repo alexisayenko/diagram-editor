@@ -17,8 +17,10 @@ function eolOf(os) {
   return null;
 }
 
+import { displayOs } from "./os-display.mjs";
+
 export function osInfo(os, today = new Date()) {
   if (!os) return null;
   const eol = eolOf(os);
-  return { v: os, eol: eol && today.toISOString().slice(0, 7) > eol ? eol : null };
+  return { v: os, d: displayOs(os), eol: eol && today.toISOString().slice(0, 7) > eol ? eol : null };
 }

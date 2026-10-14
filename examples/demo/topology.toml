@@ -55,6 +55,7 @@ proposed = true
 id = "application"
 label = "Application services"
 patterns = ["app-*", "tomcat*"]
+card = true
 
 [[service_groups]]
 id = "middleware"

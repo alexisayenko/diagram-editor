@@ -181,11 +181,12 @@ export function tomlModel(files, folder = "diagram", nets = null) {
   }
   const groups = (t.service_groups || []).map((g, i) => {
     const at = "service_groups[" + (i + 1) + "]";
-    keys(g, ["id", "label", "patterns"], at);
+    keys(g, ["id", "label", "patterns", "card"], at);
+    bool(g.card, at + ".card");
     if (g.id !== undefined) str(g.id, at + ".id");
     str(g.label, at + ".label");
     if (!Array.isArray(g.patterns) || !g.patterns.length || g.patterns.some((p) => typeof p !== "string" || !p.trim())) fail(at + ".patterns must be a non-empty array of non-empty strings");
-    return { label: g.label.trim(), patterns: g.patterns.map(globRegExp) };
+    return { label: g.label.trim(), patterns: g.patterns.map(globRegExp), card: g.card === true };
   });
   const id = t.id ?? folder;
   if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) fail("id must contain lowercase letters, digits and hyphens");
@@ -252,7 +253,7 @@ export function tomlModel(files, folder = "diagram", nets = null) {
     const title = str(s.name ?? eid, eid + ".name");
     if (names.has(title)) fail(`${eid}: duplicate server name '${title}'`);
     names.add(title);
-    model.nodes.set(eid, { id: eid, title, cluster, db: !!TYPES[ty].db, body: serviceLines(list(s.services, eid + ".services"), list(s.jobs, eid + ".jobs"), list(s.rmi_services, eid + ".rmi_services"), list(s.systemd_services, eid + ".systemd_services")), jn: jobLines(list(s.jobs, eid + ".jobs")).length, svc: list(s.services, eid + ".services").length, hw: hardwareStrip(s), hwc: hardwareCells(s), ip: ips, os: typeof s.os === "string" && s.os && !/^TBD$/i.test(s.os) ? s.os : null });
+    model.nodes.set(eid, { id: eid, title, cluster, db: !!TYPES[ty].db, body: serviceLines(list(s.services, eid + ".services"), list(s.jobs, eid + ".jobs"), list(s.rmi_services, eid + ".rmi_services"), cardUnits(list(s.systemd_services, eid + ".systemd_services"), groups)), jn: jobLines(list(s.jobs, eid + ".jobs")).length, svc: list(s.services, eid + ".services").length, hw: hardwareStrip(s), hwc: hardwareCells(s), ip: ips, os: typeof s.os === "string" && s.os && !/^TBD$/i.test(s.os) ? s.os : null });
     classes(eid, ty, bool(s.proposed, eid + ".proposed"));
     for (const k of ["os", "hardware", "cpu", "ram", "swap", "disk", "role"]) if (s[k] !== undefined) str(s[k], eid + "." + k);
     if (s.details !== undefined && typeof s.details !== "string") fail(`${eid}.details must be a string`);
@@ -261,7 +262,7 @@ export function tomlModel(files, folder = "diagram", nets = null) {
     const rows = [["OS", s.os], ["Hardware", s.hardware], ["CPU", s.cpu], ["RAM", s.ram], ["Swap", s.swap], ["Disk", s.disk], ["Role", s.role]].filter(([, v]) => v).map(([k, v]) => `| ${k} | ${v.replace(/\|/g, "/")} |`);
     const block = (head, items) => items.length ? `## ${head}\n\n${items.map((i) => "- " + i).join("\n")}\n\n` : "";
     const groupedBlocks = (us, gs) => groupUnits(us, gs).map(([h, a]) => block(h, a)).join("");
-    sections[title] = (rows.length ? `| Key | Value |\n|---|---|\n${rows.join("\n")}\n\n` : "") + block("IPs", nets ? ips.map((ip) => `${ip} — ${nets.of(ip)?.name ?? "unassigned network"}`) : ips) + block("DNS", dns) + block("Jobs", jobs) + block("RMI services", rmi) + groupedBlocks(units, groups) + (s.details || "");
+    sections[title] = (rows.length ? `| Key | Value |\n|---|---|\n${rows.join("\n")}\n\n` : "") + block("IPs", nets ? ips.map((ip) => `${ip} — ${(({ name, cidr } = nets.of(ip) ?? {}) => cidr ? name || cidr : "unassigned network")()}`) : ips) + block("DNS", dns) + block("RMI services", rmi) + groupedBlocks(units, groups) + (s.details || "");
   }
   const edgeIds = new Set();
   for (const e of t.connections || []) {
@@ -330,13 +331,19 @@ export function globRegExp(p) {
   return new RegExp("^" + p.trim().replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".") + "$", "i");
 }
 // Splits systemd units by `[[service_groups]]` (first matching group wins, name compared without ".service"):
-// [[label, units], ...] in group order, then "Other services"; with no groups the single "systemd services" list; empty sections omitted.
+// [[label, units], ...] in group order; unmatched units are intentionally dropped; with no groups the single "systemd services" list; empty sections omitted.
+// Card body units: with at least one `card = true` group, only the units of those groups (group order); otherwise all units.
+export function cardUnits(units, groups) {
+  if (!groups.some((g) => g.card)) return units;
+  const flagged = new Set(groups.filter((g) => g.card).map((g) => g.label));
+  return groupUnits(units, groups).filter(([h]) => flagged.has(h)).flatMap(([, a]) => a);
+}
 export function groupUnits(units, groups) {
   if (!groups.length) return units.length ? [["systemd services", units]] : [];
-  const buckets = groups.map(() => []), other = [];
+  const buckets = groups.map(() => []);
   for (const u of units) {
     const name = u.replace(/\.service$/i, ""), i = groups.findIndex((g) => g.patterns.some((re) => re.test(name)));
-    (i < 0 ? other : buckets[i]).push(u);
+    if (i >= 0) buckets[i].push(u);
   }
-  return [...groups.map((g, i) => [g.label, buckets[i]]), ["Other services", other]].filter(([, a]) => a.length);
+  return groups.map((g, i) => [g.label, buckets[i]]).filter(([, a]) => a.length);
 }

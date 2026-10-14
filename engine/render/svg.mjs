@@ -50,7 +50,7 @@ export function renderSvgBody(model, layout, ent, nets, ipNet, routes, groups, m
     e.w = n.ip.map((s, i) => {
       const j = nets ? ipNet[s.split("/")[0]] : undefined;
       if (j === undefined) return -1;
-      const lbl = esc(`Show network ${nets[j].cidr} ${nets[j].name}`).replace(/"/g, "&quot;");
+      const lbl = esc(`Show network ${nets[j].cidr} ${nets[j].name}`.trim()).replace(/"/g, "&quot;");
       const at = `${g.ip[i][0] + s.length * 6 + 7} ${g.ip[i][1] - 10}`;
       return add(`<g class="nwb"${A(k)} data-n="${j}" data-i="${i}" role="button" tabindex="0" aria-pressed="false" aria-label="${lbl}" transform="translate(${at})"><title>${lbl}</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="${NET_ICON}"/></g>`);
     });

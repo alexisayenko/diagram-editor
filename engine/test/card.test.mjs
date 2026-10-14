@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { tomlModel, serviceLines, hardwareStrip } from "../parse/toml.mjs";
-import { shortTitle, TITLE_MAX, geometryKit } from "../render/geometry.mjs";
+import { shortTitle, TITLE_MAX, geometryKit, geometryMeta } from "../render/geometry.mjs";
 import { prepareDiagram, renderDiagram } from "../browser/render.mjs";
 import { css, script } from "../page/assets.mjs";
 import { mini } from "./helpers.mjs";
@@ -132,4 +133,39 @@ test("hardware normaliser: cpu number, sizes to <n>G, conversions, unknown forma
   assert.equal(normSize("2.0G"), "2G");
   for (const v of ["8", "about 8 gigs", "8 bytes"]) assert.equal(normSize(v), v);
   assert.equal(hardwareStrip({ cpu: "4", ram: "weird" }), "4 cpu · weird ram");
+});
+
+test("details panel has no Jobs section; card still lists jobs; editor keeps the jobs field", () => {
+  const { model, sections } = tomlModel(probe('jobs = ["Nightly import"]', 'dns = ["a.example.test"]'), "x");
+  assert.deepEqual(model.nodes.get("a").body, ["Nightly import"]);
+  const panel = Object.values(sections).join("\n");
+  assert.ok(panel.includes("## DNS"));
+  assert.ok(!/## Jobs/.test(panel));
+  assert.ok(!panel.includes("Nightly import"));
+  assert.match(readFileSync(new URL("../runtime/ui/server-edit.js", import.meta.url), "utf8"), /\["jobs", "Jobs", "Add job"/);
+});
+
+test("service group card flag: card lists only flagged groups' units; panel unchanged; non-boolean rejected", () => {
+  const topo = (card) => 'id = "d"\ntitle = "t"\n\n[[service_groups]]\nlabel = "Application services"\npatterns = ["app-*"]\n' + card;
+  const srv = 'id = "a"\nserver_type = "web"\nsystemd_services = ["nginx", "app-b", "app-a", "other"]\n';
+  const build = (card) => tomlModel(mini(topo(card), {}, srv), "x");
+  const on = build("card = true\n");
+  assert.deepEqual(on.model.nodes.get("a").body, ["app-b", "app-a"]);
+  const off = build("");
+  assert.deepEqual(off.model.nodes.get("a").body, ["nginx", "app-b", "app-a", "other"]);
+  for (const r of [on, off]) {
+    const panel = Object.values(r.sections)[0];
+    assert.ok(panel.includes("## Application services\n\n- app-b\n- app-a"));
+    assert.ok(!panel.includes("Other services") && !panel.includes("nginx") && !panel.includes("- other"));
+  }
+  assert.throws(() => build('card = "yes"\n'), /card must be true or false/);
+});
+
+test("card pill sizing uses the shortened OS text", () => {
+  const ol = (os) => {
+    const { model, config } = tomlModel(mini('id = "d"\ntitle = "t"\n', {}, `id = "a"\nserver_type = "web"\nos = "${os}"\n`), "x");
+    return geometryMeta(model, {}, {}).nodes.a.ol;
+  };
+  assert.equal(ol("Debian GNU/Linux 11 (bullseye)"), "Debian 11 bullseye".length);
+  assert.equal(ol("Debian 11.11 bullseye"), "Debian 11.11 bullseye".length);
 });

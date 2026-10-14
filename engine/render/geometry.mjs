@@ -1,11 +1,12 @@
 import { edgeKey, endKey } from "../parse/mmd.mjs";
 import { processAnchors } from "../parse/config.mjs";
+import { displayOs } from "../parse/os-display.mjs";
 
 // Longest server name drawn in a header; longer names are cut with an ellipsis (the full name stays in a tooltip).
 export const TITLE_MAX = 34;
 // Longest OS text drawn in the pill; the full text stays in the tooltip.
 export const OS_MAX = 40;
-export function shortOs(s) { return s.length > OS_MAX ? s.slice(0, OS_MAX - 1) + "…" : s; }
+export function shortOs(s) { s = displayOs(s); return s.length > OS_MAX ? s.slice(0, OS_MAX - 1) + "…" : s; }
 export function shortTitle(t) { return t.length > TITLE_MAX ? t.slice(0, TITLE_MAX - 1) + "…" : t; }
 
 // Header label of a server: the first DNS label when the name is a DNS name (has a dot, not an IPv4 / IPv6 literal), else the name as is.

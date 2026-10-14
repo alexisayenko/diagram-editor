@@ -161,7 +161,7 @@ export function renderExcalidraw({ config, model, layout, meta, routes, ent, typ
       text(`${k}:body:${i}`, s, { x: g.body[i][0], baseline: g.body[i][1], color, groups: grp });
     });
     n.ip.forEach((s, i) => text(`${k}:ip:${i}`, s, { x: g.ip[i][0], baseline: g.ip[i][1], ff: MONO, color: SKETCH ? INK : "#334155", groups: grp }));
-    const os = e.os, label = os ? os.v + (os.eol ? " (EOL)" : "") : "OS ?";
+    const os = e.os, label = os ? (os.d || os.v) + (os.eol ? " (EOL)" : "") : "OS ?";
     const lastBody = g.body.length ? g.body[g.body.length - 1][1] : g.y;
     const firstIp = g.ip.length ? g.ip[0][1] : b.y1;
     const osBase = SKETCH ? g.y + g.h - 4 : firstIp - 15;

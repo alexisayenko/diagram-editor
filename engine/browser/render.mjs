@@ -1,5 +1,5 @@
 import { NETWORKS_FILE, tomlModel } from "../parse/toml.mjs";
-import { assignNetwork, buildNetworks, parseNetworksFile } from "../parse/shared-networks.mjs";
+import { assignNetwork, buildNetworks, parseNetworksFile, withDerived } from "../parse/shared-networks.mjs";
 import { parseConfig, checkConnections } from "../parse/config.mjs";
 import { resolveTypes } from "../parse/types.mjs";
 import { osOf } from "../parse/details.mjs";
@@ -17,7 +17,9 @@ import { renderLayoutHtml } from "../page/layout-html.mjs";
 // Restore positions by stable object id; prune removed objects and refresh text geometry.
 // `files` maps folder-relative paths (topology.toml, servers/<id>.toml, ...) to their text.
 export function prepareDiagram(files, folder, saved = null, refit = []) {
-  const networks = files.has(NETWORKS_FILE) ? parseNetworksFile(files.get(NETWORKS_FILE)) : null;
+  const defined = files.has(NETWORKS_FILE) ? parseNetworksFile(files.get(NETWORKS_FILE)) : [];
+  const ips = [...tomlModel(files, folder).model.nodes.values()].flatMap((n) => n.ip);
+  const all = withDerived(defined, ips), networks = all.length ? all : null;
   const nets = networks && { of: (ip) => networks[assignNetwork(networks, ip)] ?? null };
   const { config: raw, model, sections, notes, docs } = tomlModel(files, folder, nets);
   const config = parseConfig(JSON.stringify(raw), raw.id);

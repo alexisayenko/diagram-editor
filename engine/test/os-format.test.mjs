@@ -46,3 +46,29 @@ test("pill text is shown in full up to a sane maximum, then cut with an ellipsis
   assert.equal(shortOs(long).length, OS_MAX);
   assert.ok(shortOs(long).endsWith("…"));
 });
+
+test("display normaliser shortens PRETTY_NAME forms and leaves short values alone", async () => {
+  const { displayOs } = await import("../parse/os-display.mjs");
+  const cases = [
+    ["Debian GNU/Linux 11 (bullseye)", "Debian 11 bullseye"],
+    ["Ubuntu 16.04.7 LTS", "Ubuntu 16.04 LTS"],
+    ["CentOS Linux 7 (Core)", "CentOS 7"],
+    ["Red Hat Enterprise Linux 8.6 (Ootpa)", "RHEL 8.6 Ootpa"],
+    ["Rocky Linux 9.3 (Blue Onyx)", "Rocky 9.3 Blue Onyx"],
+    ["AlmaLinux 9.2 (Turquoise Kodkod)", "AlmaLinux 9.2 Turquoise Kodkod"],
+    ["Oracle Linux Server 8.8", "Oracle Linux 8.8"],
+    ["Red Hat Enterprise Linux Server 7.9 (Maipo)", "RHEL Server 7.9 Maipo"],
+    ["Debian 11.11 bullseye", "Debian 11.11 bullseye"],
+    ["Ubuntu 16.04 LTS Xenial", "Ubuntu 16.04 LTS Xenial"],
+    ["Windows Server 2016", "Windows Server 2016"],
+  ];
+  for (const [from, to] of cases) { assert.equal(displayOs(from), to, from); assert.equal(displayOs(to), to, "idempotent " + to); }
+});
+
+test("osInfo keeps the stored text and EOL detection on the original; the pill uses the shortened text", () => {
+  const info = osInfo("Debian GNU/Linux 11 (bullseye)", new Date("2026-01-01"));
+  assert.equal(info.v, "Debian GNU/Linux 11 (bullseye)");
+  assert.equal(info.d, "Debian 11 bullseye");
+  assert.equal(info.eol, "2024-08");
+  assert.equal(shortOs("Red Hat Enterprise Linux 8.6 (Ootpa)"), "RHEL 8.6 Ootpa");
+});

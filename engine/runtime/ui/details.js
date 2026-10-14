@@ -51,9 +51,10 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
       if (!cell && td.textContent.trim() === "OS" && td.nextElementSibling) cell = td.nextElementSibling;
     });
     if (!cell) {
-      pn.querySelector(".tg").insertAdjacentHTML("afterend", '<table class="po"><tbody><tr><td>OS</td><td>' + esc(os ? os.v : "TBD") + "</td></tr></tbody></table>");
+      pn.querySelector(".tg").insertAdjacentHTML("afterend", '<table class="po"><tbody><tr><td>OS</td><td>' + esc(os ? (os.d || os.v) : "TBD") + "</td></tr></tbody></table>");
       cell = pn.querySelector(".po td:last-child");
     }
+    if (os && os.d && os.d !== os.v) { cell.textContent = os.d; cell.title = os.v; }
     if (os && os.eol) cell.insertAdjacentHTML("beforeend", ' <span class="eolb" title="End of standard support: ' + esc(os.eol) + '">EOL</span>');
   }
 
@@ -70,7 +71,7 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
         var j = D.ipNet[m[1]];
         if (j === undefined) continue;
         frag = frag || document.createDocumentFragment();
-        var end = m.index + m[0].length, b = document.createElement("button"), net = D.nets[j], lbl = "Show network " + net.cidr + " " + net.name;
+        var end = m.index + m[0].length, b = document.createElement("button"), net = D.nets[j], lbl = ("Show network " + net.cidr + " " + net.name).trim();
         frag.appendChild(document.createTextNode(s.slice(last, end)));
         b.type = "button";
         b.className = "nwd" + (core.ctx.net === j ? " on" : "");

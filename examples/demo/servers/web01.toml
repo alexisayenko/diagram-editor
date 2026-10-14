@@ -10,4 +10,4 @@ swap = "2G"
 disk = "50G"
 role = "Reverse proxy"
 dns = ["portal.example.test", "www.example.test"]
-systemd_services = ["nginx", "demo-agent"]
+systemd_services = ["nginx", "demo-agent", "app-frontend"]
