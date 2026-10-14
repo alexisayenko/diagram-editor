@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { tomlModel, globRegExp, groupUnits } from "../parse/toml.mjs";
+import { tomlModel } from "../parse/toml.mjs";
+import { globRegExp, groupUnits } from "../model/server.mjs";
 import { addRegion } from "../parse/toml-write.mjs";
 import { demo, mod } from "./helpers.mjs";
 

@@ -1,7 +1,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readText } from "../lib/util.mjs";
-import { fail } from "../parse/errors.mjs";
+import { fail } from "../lib/errors.mjs";
 import { KITS } from "./kits.mjs";
 
 const ENGINE = join(dirname(fileURLToPath(import.meta.url)), "..");

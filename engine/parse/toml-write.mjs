@@ -2,7 +2,7 @@
 import { parseToml, mergeFolder, tomlModel, ipProblem, dnsProblem } from "./toml.mjs";
 import { mergeTypes } from "./types.mjs";
 import { TOPOLOGY_FILE, serverPath } from "../lib/files.mjs";
-import { SERVER_ROW_FIELDS, SERVER_LIST_FIELDS, SERVER_FORM_KEYS } from "../render/server-fields.mjs";
+import { SERVER_ROW_FIELDS, SERVER_LIST_FIELDS, SERVER_FORM_KEYS } from "../model/server-fields.mjs";
 import { tomlBasic, tomlMultilineBody } from "./toml-escape.mjs";
 
 function eolOf(src) {

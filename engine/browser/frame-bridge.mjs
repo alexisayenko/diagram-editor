@@ -3,7 +3,7 @@ const MODULES = { editor: "canvas/edit-mode", notes: "ui/notes-edit", server: "u
 const ACTIVITY = ["pointerup", "keyup", "input", "change", "click"];
 
 /**
- * @typedef {object} Host what the runtime may call on the page; installed on InfraDiagram once the runtime is ready
+ * @typedef {object} Host what the runtime may call on the page; handed to the runtime through InfraDiagram.attachHost(host) once it is ready
  * @property {(text: string) => {title: string, date: string, paras: string[]}} noteParser
  * @property {object} serverEditor  source, apply, add, duplicate, regionTypes, addRegion, move, renameNetwork
  */
@@ -27,8 +27,7 @@ export function createFrameBridge(frame, { host, onLoad, onChange, defer = (fn) 
     if (!expecting) return;
     ready = !!diagram()?.modules[MODULES.editor];
     if (ready) {
-      diagram().noteParser = host.noteParser;
-      diagram().serverEditor = host.serverEditor;
+      diagram().attachHost(host);
       for (const type of ACTIVITY) frame.contentDocument.addEventListener(type, notify, true);
     }
     onLoad(ready);

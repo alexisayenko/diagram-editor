@@ -1,5 +1,5 @@
 InfraDiagram.define("ui/clear-click", ["ui/core", "ui/selection", "ui/networks"], function (core, selection, networks) {
-  var ctx = core.ctx, hooks = core.hooks, svg = core.svg;
+  var ctx = core.ctx, hooks = core.services, svg = core.svg;
   var BLOCK = "a,button,input,textarea,select,label,summary,[role=dialog],[role=menu],[role=menuitem],[contenteditable],.dlg,[data-ent],[data-e],[data-rc],.nwb,.nwd,.nw,#ta";
   var CONTAINERS = { rc: 1, wb: 1, wl: 1, pn: 1, nl: 1, dl: 1 };
   var MOVE = 4;

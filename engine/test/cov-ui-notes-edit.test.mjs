@@ -14,7 +14,7 @@ function notes({ enabled = true, over, confirm, parser = noteParser, selection =
   const f = fixture(over);
   f.html = f.html.replace('<div id="nl"></div>', '<div id="nl">' + CARD + "</div>");
   const t = loadUi(["ui/notes-edit"], { ...f, confirm, globals: { ...(enabled ? { InfraDiagramFileBacked: true } : {}), getSelection: () => selection } });
-  if (parser) t.ID.noteParser = parser;
+  if (parser) t.modules["ui/core"].host.noteParser = parser;
   t.mod = t.modules["ui/notes-edit"];
   t.D = t.modules["ui/core"].D;
   t.host = t.$("nl");
@@ -222,7 +222,7 @@ test("deleting a brand-new note just discards it", () => {
 test("starting to edit another note commits the open one first, and refuses while it is invalid", () => {
   const f = fixture({ notes: [{ title: "N0", date: "Note", paras: ["a"], text: "N0\na" }, { title: "N1", date: "Note", paras: ["b"], text: "N1\nb" }] });
   const t = loadUi(["ui/notes-edit"], { ...f, html: f.html.replace('<div id="nl"></div>', '<div id="nl"><article class="note"><h3>N0</h3><time></time></article><article class="note"><h3>N1</h3><time></time></article></div>'), globals: { InfraDiagramFileBacked: true, getSelection: () => null } });
-  t.ID.noteParser = noteParser;
+  t.modules["ui/core"].host.noteParser = noteParser;
   const cards = () => t.$("nl").querySelectorAll(".note");
   t.fire(cards()[0], "click");
   t.$("nl").querySelector("textarea").value = "BAD";

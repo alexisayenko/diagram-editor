@@ -127,8 +127,24 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     if (!frame) frame = requestAnimationFrame(function () { frame = 0; model.render(state.st); });
   });
 
+  var ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+
+  // Edit mode: arrow keys move the focused, selected server or region by the snap step (1px with snap off); Shift is ten times that.
+  svg.addEventListener("keydown", function (e) {
+    var dir = ARROWS[e.key], t = e.target, key = t?.getAttribute?.("tabindex") === "0" ? t.dataset?.ent : null;
+    if (!state.on || !dir || !key || key !== core.ctx.sel || e.altKey || e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    var step = ($("ts").checked ? GRID : 1) * (e.shiftKey ? 10 : 1), o = origin(state.st, key), snap = $("ts").checked;
+    var dx = dir[0] * step, dy = dir[1] * step;
+    if (snap) { dx = dir[0] ? snapDelta(o.x, dx) : 0; dy = dir[1] ? snapDelta(o.y, dy) : 0; }
+    state.st = model.apply(state.st, key, dx, dy);
+    model.render(state.st);
+    saveDraft();
+    fit();
+  });
+
   function drop(d, e) {
-    var api = window.InfraDiagram.serverEditor, id = d.key.slice(2), meta = core.D.meta.nodes[id];
+    var api = core.host.serverEditor, id = d.key.slice(2), meta = core.D.meta.nodes[id];
     if (d.key.charAt(0) !== "n" || !api?.move || !meta) return false;
     var from = meta.cl || null, to = model.regionAt(d.from, model.point(e));
     if (to === from) return false;

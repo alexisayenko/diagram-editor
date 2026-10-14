@@ -1,7 +1,6 @@
-import { edgeKey, endKey } from "../parse/mmd.mjs";
-import { processAnchors } from "../parse/config.mjs";
-import { displayOs } from "../parse/os-display.mjs";
-import { osInfo } from "../parse/os-eol.mjs";
+import { edgeKey, endKey } from "../model/edges.mjs";
+import { processAnchors } from "../model/config.mjs";
+import { displayOs, osInfo } from "../model/os.mjs";
 
 // Longest server name drawn in a header; longer names are cut with an ellipsis (the full name stays in a tooltip).
 export const TITLE_MAX = 34;

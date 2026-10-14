@@ -49,3 +49,14 @@ test("the page bundle never pulls in Node-only modules", () => {
   assert.ok(m.has("lib/text.mjs"));
   for (const [id, src] of m) assert.ok(!/from "node:|require\("node:(?!path)/.test(src), id);
 });
+
+test("a re-export line links the module and exports its names", () => {
+  tree({
+    "a.mjs": 'export { one, two } from "./b.mjs";\nexport const a = 1;\n',
+    "b.mjs": "export const one = 1;\nexport const two = 2;\n",
+  }, (root) => {
+    const m = bundleModules(["a.mjs"], root);
+    assert.ok(m.get("a.mjs").includes('Object.assign(exports, (({ one, two }) => ({ one, two }))(require("b.mjs")));'));
+    assert.ok(m.get("a.mjs").endsWith("Object.assign(exports, {a});"));
+  });
+});

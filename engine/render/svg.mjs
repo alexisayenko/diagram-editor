@@ -1,8 +1,8 @@
 import { esc } from "../lib/util.mjs";
-import { edgeKey, endKey, isDashed } from "../parse/mmd.mjs";
+import { edgeKey, endKey, isDashed } from "../model/edges.mjs";
 import { fwGlyph } from "./firewall.mjs";
 import { shortTitle, shortOs, displayLabels } from "./geometry.mjs";
-import { osFamily } from "../parse/os-display.mjs";
+import { osFamily } from "../model/os.mjs";
 import { osIcons } from "./os-icons.mjs";
 
 const NET_ICON = "M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75";

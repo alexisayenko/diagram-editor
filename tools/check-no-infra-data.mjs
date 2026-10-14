@@ -82,7 +82,7 @@ export function scanText(text, file, { allow = parseAllow(""), owner = "", deny 
 }
 
 const git = (args, cwd) => {
-  const r = spawnSync("git", args, { cwd, encoding: "buffer", maxBuffer: 256 * 1024 * 1024 });
+  const r = spawnSync("git", args, { cwd, encoding: "buffer", maxBuffer: 256 * 1024 * 1024 }); // NOSONAR: dev tool run from the developer's own shell; git resolved from their PATH
   if (r.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${r.stderr}`);
   return r.stdout;
 };

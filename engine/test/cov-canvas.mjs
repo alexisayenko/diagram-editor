@@ -4,6 +4,7 @@ import { geometryKit } from "../render/geometry.mjs";
 import { drawKit } from "../render/draw-kit.mjs";
 import { demo } from "./helpers.mjs";
 import { El, define } from "./cov-dom.mjs";
+import { createRegistry } from "./registry-helper.mjs";
 
 export const dataOf = (html) => JSON.parse(html.match(/id="layout-data">([\s\S]*?)<\/script>/)[1]);
 export const demoData = (saved = null) => dataOf(renderDiagram(demo(), "demo", saved, { cssSvg: "", cssPage: "", js: "" }, []).html);
@@ -58,9 +59,9 @@ export function makePage({ saved = null, sys = true } = {}) {
     fg.text = text; fg.paths = paths;
   }
   const ctx = { style: "clean", hidden: {}, sel: null, net: null, sys, ready: false };
-  const hooks = { getState: null, isEdit: null, fit: null, route: null, title: null, panel: null, beforeSelect: null, pending: null, view: null, viewNode: null, rerender: null };
+  const reg = createRegistry(), hooks = reg.services;
   const store = new Map();
-  const core = { D, svg, els, ctx, hooks, $: (id) => doc.getElementById(id), lsGet: (k) => (store.has(k) ? store.get(k) : null), lsSet: (k, v) => store.set(k, v), lsDel: (k) => store.delete(k), store,
+  const core = { D, svg, els, ctx, services: reg.services, provide: reg.provide, revoke: reg.revoke, on: reg.on, emit: reg.emit, host: reg.host, attachHost: reg.attachHost, $: (id) => doc.getElementById(id), lsGet: (k) => (store.has(k) ? store.get(k) : null), lsSet: (k, v) => store.set(k, v), lsDel: (k) => store.delete(k), store,
     clipboard: (t, done) => { core.copied = t; done(core.clipOk !== false); }, save: (b, n) => { core.saved = [b, n]; } };
   const skins = { widths: () => ({}), labelWidths: () => ({}), sync: (s) => { skins.synced = s; } };
   const g = { document: doc, location: { search: "" }, requestAnimationFrame: (f) => { g.frames.push(f); return g.frames.length; }, setTimeout: (f, ms) => { g.timers.push([f, ms]); return g.timers.length; }, frames: [], timers: [], innerHeight: 600, innerWidth: 800, structuredClone, Date, clearTimeout, console };

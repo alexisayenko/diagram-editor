@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { SERVER_FIELDS, SERVER_KEYS, SERVER_ROW_FIELDS, SERVER_LIST_FIELDS, SERVER_FORM_KEYS } from "../render/server-fields.mjs";
+import { SERVER_FIELDS, SERVER_KEYS, SERVER_ROW_FIELDS, SERVER_LIST_FIELDS, SERVER_FORM_KEYS } from "../model/server-fields.mjs";
 import { SERVER_STRINGS, SERVER_LISTS } from "../parse/toml-write.mjs";
 import { tomlModel } from "../parse/toml.mjs";
 import { KITS } from "../page/kits.mjs";

@@ -203,14 +203,14 @@ test("with system information on, view returns the state itself", () => {
   assert.equal(page.hooks.viewNode("batch01", model.base.nodes.batch01), model.base.nodes.batch01);
 });
 
-test("hooks: rerender and route use the current state, and do nothing without one", () => {
+test("services: rerender and route use the current state, and do nothing without one", () => {
   const { page, model } = setup();
   page.hooks.rerender();
   page.hooks.route();
   assert.equal(page.skins.synced, undefined);
   assert.equal(page.ctx.routes, undefined);
   const s = model.apply(model.base, "n:app02", 20, 0);
-  page.hooks.getState = () => s;
+  page.core.provide("getState", () => s);
   page.hooks.rerender();
   assert.equal(page.skins.synced, s);
   page.hooks.route();

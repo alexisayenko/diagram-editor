@@ -13,12 +13,12 @@ function harness({ move, cl = "a" } = {}) {
   const state = { on: true, st: layout() }, base = layout(), clone = (o) => JSON.parse(JSON.stringify(o)), fits = [];
   const model = { state, base, clone, regionAt, point: (e) => ({ x: e.x, y: e.y }), render: (s) => rendered.push(s),
     apply: (from, key, dx) => { const s = clone(from); s.clusters.a.w += dx; s.nodes.s1.x += dx; return s; } };
-  const win = { InfraDiagramFileBacked: true, InfraDiagram: { serverEditor: move === null ? undefined : { move: (id, to) => { calls.push([id, to]); return move ? move(id, to) : null; } } } };
+  const win = { InfraDiagramFileBacked: true }, host = { serverEditor: move === null ? undefined : { move: (id, to) => { calls.push([id, to]); return move ? move(id, to) : null; } } };
   const $ = (id) => (nodes[id] ||= el());
   let mod;
   runInNewContext(readFileSync(new URL("../runtime/canvas/edit-mode.js", import.meta.url), "utf8"), {
     window: win, location: { search: "" }, requestAnimationFrame: (f) => f(), setTimeout() {},
-    InfraDiagram: { define: (n, d, f) => { mod = f({ svg, els: [], $, D: { meta: { nodes: { s1: { cl } } } }, lsGet() {}, lsSet() {}, lsDel() {} }, { init() {}, editChanged() {} }, model, { fit: () => fits.push(1) }); } },
+    InfraDiagram: { define: (n, d, f) => { mod = f({ svg, els: [], $, D: { meta: { nodes: { s1: { cl } } } }, host, lsGet() {}, lsSet() {}, lsDel() {} }, { init() {}, editChanged() {} }, model, { fit: () => fits.push(1) }); } },
   });
   const target = (key) => ({ closest: () => ({ getAttribute: () => key }) });
   const fire = (t, ev) => (svg.listeners[t] || []).forEach((f) => f({ button: 0, pointerId: 1, type: t, preventDefault() {}, ...ev }));

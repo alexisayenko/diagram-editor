@@ -2,7 +2,7 @@
 // The server-to-network relation is derived from IPs, never declared; networks implied by server IPs with a prefix are derived too.
 import { parseToml } from "./toml.mjs";
 import { cmpBig, parseIp, parseCidr, contains, derivedCidr, derivedCidrs } from "../lib/net.mjs";
-import { FormatError } from "./errors.mjs";
+import { FormatError } from "../lib/errors.mjs";
 
 export function parseNetworksFile(src) {
   let root;

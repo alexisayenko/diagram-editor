@@ -1,4 +1,4 @@
-import { edgeKey } from "../parse/mmd.mjs";
+import { edgeKey } from "../model/edges.mjs";
 
 const PAD = 20;
 const CW = 7;

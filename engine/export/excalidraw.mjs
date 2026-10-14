@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { isDashed } from "../parse/mmd.mjs";
+import { isDashed } from "../model/edges.mjs";
 import { geometryKit } from "../render/geometry.mjs";
 
 // Monochrome whiteboard look like the Sketch skin: red only for connection groups and firewalls, yellow notes.

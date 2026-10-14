@@ -1,5 +1,5 @@
 import { esc } from "../lib/util.mjs";
-import { isDashed } from "../parse/mmd.mjs";
+import { isDashed } from "../model/edges.mjs";
 import { fwGlyph } from "./firewall.mjs";
 
 // labels: { request, dashed, firewall } from diagram.json edgeLabels. kinds feeds the index.html legend.

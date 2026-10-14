@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { FormatError, fail } from "../parse/errors.mjs";
+import { FormatError, fail } from "../lib/errors.mjs";
 import { mergeFolder, parseToml, tomlModel, FORMAT_VERSION } from "../parse/toml.mjs";
 import { newDiagram } from "../parse/new-diagram.mjs";
 import { packDiagram, unpackDiagram } from "../lib/diagrams.mjs";

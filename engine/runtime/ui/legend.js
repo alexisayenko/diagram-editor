@@ -54,7 +54,7 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
     svg.classList.toggle("showsys", on);
     $("osv").setAttribute("aria-checked", on ? "true" : "false");
     if (persist) core.lsSet("os", on ? "1" : "0");
-    if (ctx.ready) { skins.rebuildChrome(); if (core.hooks.rerender) core.hooks.rerender(); }
+    if (ctx.ready) { skins.rebuildChrome(); if (core.services.rerender) core.services.rerender(); }
   }
   function setLabels(on, persist) {
     ctx.labels = on;

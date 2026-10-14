@@ -1,4 +1,4 @@
-import { FormatError } from "../parse/errors.mjs";
+import { FormatError } from "../lib/errors.mjs";
 
 export function runCli(name, main) {
   try {

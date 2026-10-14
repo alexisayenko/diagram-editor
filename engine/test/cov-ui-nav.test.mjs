@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadUi, fixture, makeStorage } from "./cov-ui-env.mjs";
+import { loadUi, fixture, makeStorage, setService } from "./cov-ui-env.mjs";
 
 const names = (list) => Array.from(list, (e) => e.dataset.ent);
 const ents = (t, cls) => names(t.modules["ui/core"].ents.filter((e) => e.classList.contains(cls)));
@@ -35,10 +35,10 @@ test("selection.select: dims unrelated entities, marks the selection and shows i
 test("selection.select: beforeSelect returning false vetoes the change", () => {
   const t = loadUi(["ui/selection"], fixture());
   const core = t.modules["ui/core"];
-  core.hooks.beforeSelect = () => false;
+  setService(core, "beforeSelect", () => false);
   t.modules["ui/selection"].select("n:a");
   assert.equal(core.ctx.sel, null);
-  core.hooks.beforeSelect = () => true;
+  setService(core, "beforeSelect", () => true);
   t.modules["ui/selection"].select("n:a");
   assert.equal(core.ctx.sel, "n:a");
 });
@@ -168,7 +168,7 @@ test("networks.toggleNet activates, reveals the collapsed Networks panel and scr
 function nameEditor(over) {
   const t = loadUi(["ui/networks"], fixture(over));
   const renames = [];
-  t.ID.serverEditor = { renameNetwork: (cidr, v) => { renames.push([cidr, v]); return t.err || null; } };
+  t.modules["ui/core"].host.serverEditor = { renameNetwork: (cidr, v) => { renames.push([cidr, v]); return t.err || null; } };
   t.$("wl").innerHTML = '<button class="nw" data-n="0"><span class="l">192.0.2.0/24 <b>Net One</b> tail</span></button><button class="nw" data-n="1"><span class="l">198.51.100.0/24</span></button>';
   t.renames = renames;
   t.input = () => t.$("wl").querySelector(".nwe");
@@ -238,7 +238,7 @@ test("editName: editing an unnamed network starts from an empty value; missing b
   t.fire(t.input(), "keydown", { key: "Escape" });
   t.modules["ui/networks"].editName(9);
   assert.ok(t.input() === null);
-  t.ID.serverEditor = null;
+  t.modules["ui/core"].host.serverEditor = null;
   t.modules["ui/networks"].editName(0);
   assert.ok(t.input() === null);
   const u = nameEditor({ nets: [{ name: "x", m: [] }] });
@@ -351,7 +351,7 @@ test("legend: Display System Information is on by default, toggles, persists and
   assert.match(t.$("osv").innerHTML, /Display System Information/);
   assert.deepEqual(t.rebuilds, [], "not ready yet: no rebuild at init");
   let rerenders = 0;
-  t.core.hooks.rerender = () => { rerenders++; };
+  setService(t.core, "rerender", () => { rerenders++; });
   t.core.ctx.ready = true;
   t.fire(t.$("osv"), "click");
   assert.equal(t.core.ctx.sys, false);
@@ -359,7 +359,7 @@ test("legend: Display System Information is on by default, toggles, persists and
   assert.equal(t.sandbox.localStorage.getItem("d1-os"), "0");
   assert.deepEqual(t.rebuilds, ["rebuild"]);
   assert.equal(rerenders, 1);
-  t.core.hooks.rerender = null;
+  setService(t.core, "rerender", null);
   t.fire(t.$("osv"), "click");
   assert.equal(t.core.ctx.sys, true);
   assert.equal(t.sandbox.localStorage.getItem("d1-os"), "1");
@@ -445,9 +445,9 @@ test("clear-click: moved pointers, drawing, other buttons and a pending edit kee
   core.svg.classList.add("draw-eraser");
   assert.equal(run({ clientX: 0, clientY: 0, button: 0 }, { clientX: 0, clientY: 0, button: 0 }), "n:a");
   core.svg.classList.remove("draw-eraser");
-  core.hooks.pending = () => true;
+  setService(core, "pending", () => true);
   assert.equal(run({ clientX: 0, clientY: 0, button: 0 }, { clientX: 0, clientY: 0, button: 0 }), "n:a");
-  core.hooks.pending = null;
+  setService(core, "pending", null);
   assert.equal(run({ clientX: 0, clientY: 0, button: 0 }, { clientX: 1, clientY: 1, button: 0 }), null);
   t.fire(core.svg, "click", { clientX: 0, clientY: 0, button: 0 });
 });

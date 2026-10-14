@@ -119,7 +119,7 @@ test("saved diagram list: detection, server count, newest first, filter", () => 
 test("page: toolbar, dialogs, no folder picker, archive-only input", () => {
   const html = readFileSync(new URL("../../diagram.html", import.meta.url), "utf8");
   assert.ok(html.includes('id="open">Open saved diagram<') && html.includes('id="importdiag">Import diagram<'));
-  assert.ok(html.includes('id="diagfile" type="file" accept=".diag.zip"'));
+  assert.ok(html.includes('id="diagfile" aria-label="Diagram file" type="file" accept=".diag.zip"'));
   assert.ok(!html.includes("webkitdirectory") && !html.includes("Open diagram folder"));
   assert.ok(html.includes('id="op" class="dlg"') && html.includes('id="nw" class="dlg"'));
   assert.ok(html.includes("No saved diagrams yet") && html.includes("Only .diag.zip files can be opened"));

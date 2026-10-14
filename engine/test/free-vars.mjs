@@ -100,5 +100,5 @@ export function freeVariables(fn) {
     if (/^\s*\(/.test(after) && /[{,]\s*$/.test(before) === false && /^\s*\([^)]*\)\s*\{/.test(after)) continue;
     free.add(name);
   }
-  return [...free].sort();
+  return [...free].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }

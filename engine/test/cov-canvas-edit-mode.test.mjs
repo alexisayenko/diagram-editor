@@ -10,7 +10,7 @@ function setup({ fileBacked = false, search = "", store, bridge } = {}) {
   page.g.Blob = class { constructor(parts, opts) { this.parts = parts; this.opts = opts; } };
   page.g.JSON = JSON;
   if (store) for (const [k, v] of store) page.store.set(k, v);
-  if (bridge) page.g.InfraDiagram.serverEditor = bridge;
+  if (bridge) page.core.host.serverEditor = bridge;
   const model = loadModel(page), fits = [];
   const { mod, init } = loadEdit(page, model, { fit: () => fits.push(1) });
   const $ = page.core.$;
@@ -328,4 +328,77 @@ test("dropping a server into another region asks the server editor to move it, a
   refuse.fire("pointerup", { clientX: w.x + 5, clientY: w.y + 5 });
   assert.equal(refuse.say(), "no way");
   assert.equal(refuse.model.state.st.nodes.db01.x, refuse.model.base.nodes.db01.x);
+});
+
+const focused = (key) => ({ getAttribute: (k) => (k === "tabindex" ? "0" : null), dataset: { ent: key } });
+function nudger(over) {
+  const h = setup(over);
+  h.$("te").click();
+  h.page.ctx.sel = "n:db01";
+  h.press = (key, ev = {}) => h.fire("keydown", { key, target: focused("n:db01"), prevented: 0, preventDefault() { h.prevented = (h.prevented || 0) + 1; }, ...ev });
+  return h;
+}
+
+test("arrow keys nudge the selected, focused server by the snap step and Shift by ten times that", () => {
+  const h = nudger();
+  h.$("ts").checked = true;
+  const n0 = h.model.base.nodes.db01, x0 = Math.round(n0.x / 5) * 5;
+  h.model.state.st.nodes.db01.x = x0;
+  h.press("ArrowRight");
+  assert.equal(h.model.state.st.nodes.db01.x, x0 + 5);
+  h.press("ArrowLeft");
+  h.press("ArrowLeft");
+  assert.equal(h.model.state.st.nodes.db01.x, x0 - 5);
+  h.model.state.st.nodes.db01.y = Math.round(n0.y / 5) * 5;
+  const y0 = h.model.state.st.nodes.db01.y;
+  h.press("ArrowDown", { shiftKey: true });
+  assert.equal(h.model.state.st.nodes.db01.y, y0 + 50);
+  assert.ok(h.prevented >= 4);
+  assert.equal(h.mod.isDirty(), true);
+  assert.ok(h.draftKey(), "the nudge is kept as a draft");
+  assert.ok(h.fits.length >= 2);
+});
+
+test("a nudge snaps an off-grid server onto the grid and moves 1px with Snap off", () => {
+  const h = nudger();
+  h.$("ts").checked = true;
+  h.model.state.st.nodes.db01.x = 12;
+  h.press("ArrowRight");
+  assert.equal(h.model.state.st.nodes.db01.x, 15);
+  h.$("ts").checked = false;
+  h.press("ArrowRight");
+  assert.equal(h.model.state.st.nodes.db01.x, 16);
+  h.press("ArrowUp", { shiftKey: true });
+  assert.equal(h.model.state.st.nodes.db01.y, h.model.base.nodes.db01.y - 10);
+});
+
+test("a nudge on a region moves its servers with it", () => {
+  const h = nudger();
+  h.$("ts").checked = false;
+  h.page.ctx.sel = "c:web";
+  const c0 = h.model.state.st.clusters.web.x, kids = h.page.D.kids.web, before = kids.map((n) => h.model.state.st.nodes[n].x);
+  assert.ok(kids.length > 0);
+  h.fire("keydown", { key: "ArrowRight", target: focused("c:web"), preventDefault() {} });
+  assert.equal(h.model.state.st.clusters.web.x, c0 + 1);
+  kids.forEach((n, i) => assert.equal(h.model.state.st.nodes[n].x, before[i] + 1, n));
+});
+
+test("nudging needs edit mode, a selected focused node, an arrow key and no Ctrl, Alt or Meta", () => {
+  const h = nudger();
+  h.$("ts").checked = false;
+  const x0 = h.model.state.st.nodes.db01.x;
+  h.press("a");
+  h.press("ArrowRight", { ctrlKey: true });
+  h.press("ArrowRight", { altKey: true });
+  h.press("ArrowRight", { metaKey: true });
+  h.fire("keydown", { key: "ArrowRight", target: focused("c:web"), preventDefault() {} });
+  h.fire("keydown", { key: "ArrowRight", target: { getAttribute: () => null, dataset: { ent: "n:db01" } }, preventDefault() {} });
+  h.fire("keydown", { key: "ArrowRight", target: {}, preventDefault() {} });
+  h.page.ctx.sel = null;
+  h.press("ArrowRight");
+  h.page.ctx.sel = "n:db01";
+  h.model.state.on = false;
+  h.press("ArrowRight");
+  assert.equal(h.model.state.st.nodes.db01.x, x0);
+  assert.equal(h.mod.isDirty(), false);
 });

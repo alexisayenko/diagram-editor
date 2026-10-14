@@ -2,7 +2,7 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
   var state = model.state;
   var menu = null;
 
-  function bridge() { return window.InfraDiagram.serverEditor || null; }
+  function bridge() { return core.host.serverEditor || null; }
 
   function close() {
     if (!menu) return;

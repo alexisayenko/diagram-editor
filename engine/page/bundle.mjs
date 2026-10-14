@@ -10,6 +10,7 @@ const ALIASES = { "lib/util.mjs": "lib/text.mjs" };
 const NODE_SHIMS = { "node:path": String.raw`exports.basename = s => s.split(/[\\/]/).pop();` };
 
 const IMPORT = /^import\s*\{([^}]+)\}\s*from\s*"([^"]+)";?[ \t]*$/gm;
+const REEXPORT = /^export\s*\{([^}]+)\}\s*from\s*"([^"]+)";?[ \t]*$/gm;
 const EXPORT = /^export (async function|function|const|let|class) ([\w$]+)/gm;
 
 export const readSource = (path) => readFileSync(path, "utf8").replaceAll("\r\n", "\n");
@@ -29,13 +30,15 @@ export function bundleModules(entries, root = ENGINE) {
     if (id.startsWith("node:")) throw new Error("Unsupported browser import: " + id);
     modules.set(id, "");
     let src = readSource(resolve(root, id));
-    src = src.replace(IMPORT, (_, names, target) => {
+    const exports = [];
+    const link = (target) => {
       let dep = target.startsWith("node:") ? target : relative(root, resolve(root, dirname(id), target)).replaceAll("\\", "/");
       dep = ALIASES[dep] ?? dep;
       bundle(dep);
-      return `const {${names}} = require(${JSON.stringify(dep)});`;
-    });
-    const exports = [];
+      return JSON.stringify(dep);
+    };
+    src = src.replace(IMPORT, (_, names, target) => `const {${names}} = require(${link(target)});`);
+    src = src.replace(REEXPORT, (_, names, target) => `Object.assign(exports, (({${names}}) => ({${names}}))(require(${link(target)})));`);
     src = src.replace(EXPORT, (_, kind, name) => { exports.push(name); return `${kind} ${name}`; });
     if (/^import |^export /m.test(src)) throw new Error("Unsupported module syntax: " + id);
     modules.set(id, src + "\nObject.assign(exports, {" + exports.join(",") + "});");

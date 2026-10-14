@@ -394,7 +394,7 @@ test("the server editor bridge reads a server with its type choices, and refuses
   assert.equal(ed.source("ghost"), null);
   assert.equal(typeof ed.regionTypes, "function");
   assert.ok(ed.regionTypes().some((t) => t.id === "batch"));
-  assert.equal(h.frame.contentWindow.InfraDiagram.noteParser("A title\nDate: 2026-01-02\n\nText").title, "A title");
+  assert.equal(h.frame.contentWindow.InfraDiagram.host.noteParser("A title\nDate: 2026-01-02\n\nText").title, "A title");
 });
 
 test("editing a server rewrites its file, reloads the diagram and keeps the edit pending for Save", async () => {

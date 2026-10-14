@@ -49,7 +49,6 @@ test("renderPanel: node section renders title, tag, markdown and the Confluence 
   assert.ok(!pn.innerHTML.includes("Confluence |"), "the Confluence row is lifted out of the table");
   assert.ok(pn.querySelector("#pc"));
   assert.match(pn.innerHTML, /Part of Region 1/);
-  assert.equal(sandbox.InfraDiagram.modules["ui/core"].hooks.panel, null);
 });
 
 test("renderPanel: unknown key leaves the panel untouched", () => {
@@ -204,10 +203,10 @@ test("network buttons are skipped without nets/ipNet data", () => {
   assert.equal(t.$("pn").querySelectorAll(".nwd").length, 0);
 });
 
-test("hooks.panel is called with the key and the panel element", () => {
+test("the panel event is emitted with the key and the panel element", () => {
   const { details, core, $ } = setup();
   const calls = [];
-  core.hooks.panel = (k, pn) => calls.push([k, pn]);
+  core.on("panel", (k, pn) => calls.push([k, pn]));
   details.renderPanel("n:a");
   assert.equal(calls.length, 1);
   assert.equal(calls[0][0], "n:a");

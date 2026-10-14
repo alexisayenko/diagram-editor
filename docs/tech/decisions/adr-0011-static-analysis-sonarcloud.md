@@ -31,7 +31,11 @@ so small, plain functions matter.
     fallback where the Clipboard API is missing (page opened from
     disk).
   - **S1523** on `new vm.Script` in the two test loaders: the code
-    run is the repo's own source; `.sonarcloud.properties` ignores this rule for `engine/test/cov-*.mjs` only.
+    run is the repo's own source. `.sonarcloud.properties` ignores this rule for `engine/test/cov-*.mjs`, but automatic analysis does not apply
+    `multicriteria` ignores, so the two lines also carry a
+    `// NOSONAR: test harness evaluates this repository's own sources to measure coverage` comment. The same inline comment marks the
+    `spawnSync("git")` call in `tools/check-no-infra-data.mjs` (**S4036**: git is resolved from the developer's own PATH).
+  - **Automatic analysis limits**: it reads `sonar.exclusions` and `sonar.cpd.exclusions` but not rule-level ignores, so use an inline NOSONAR with a reason.
 - Status at the last analysed push (2026-10-14): 0 bugs, 2
   vulnerabilities (the S1523 test loaders), 119 code smells, 0.0%
   duplication; the quality gate is not passed. The numbers reflect

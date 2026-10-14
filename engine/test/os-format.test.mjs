@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { osInfo } from "../parse/os-eol.mjs";
+import { osInfo } from "../model/os.mjs";
 import { shortOs, OS_MAX } from "../render/geometry.mjs";
 
 const probe = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../tools/host-probe.sh"), "utf8");
@@ -48,7 +48,7 @@ test("pill text is shown in full up to a sane maximum, then cut with an ellipsis
 });
 
 test("display normaliser shortens PRETTY_NAME forms and leaves short values alone", async () => {
-  const { displayOs } = await import("../parse/os-display.mjs");
+  const { displayOs } = await import("../model/os.mjs");
   const cases = [
     ["Debian GNU/Linux 11 (bullseye)", "Debian 11 bullseye"],
     ["Ubuntu 16.04.7 LTS", "Ubuntu 16.04 LTS"],

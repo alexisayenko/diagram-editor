@@ -1,4 +1,4 @@
-import { fail } from "./errors.mjs";
+import { fail } from "../lib/errors.mjs";
 
 export function parseDocuments(src) {
   const docs = [];

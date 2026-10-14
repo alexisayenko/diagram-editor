@@ -1,5 +1,6 @@
-import { fail } from "./errors.mjs";
+import { fail } from "../lib/errors.mjs";
 import { unq } from "../lib/util.mjs";
+export { edgeKey } from "../model/edges.mjs";
 
 const IP = /^(\d{1,3}(?:\.\d{1,3}){3}\/\d+)/;
 const FW = /·\s*firewall$/;
@@ -7,7 +8,6 @@ const ENT = { quot: '"', amp: "&", lt: "<", gt: ">" };
 // Mermaid entity codes (#quot;, #35;) become plain characters in the view and details.
 const decode = (s) => s.replace(/#(\w+);/g, (m, c) => (/^\d+$/.test(c) ? String.fromCodePoint(+c) : ENT[c] ?? m));
 
-export const edgeKey = (e) => `${e.from}>${e.to}`;
 
 function nodeEntry(line, lineNo, cluster) {
   const m = /^(\w+)(\[\(|\[)"(.*)"(\)\]|\])$/.exec(line);
@@ -74,5 +74,3 @@ export function parseMmd(src) {
   return { clusters, nodes, edges, linkStyles, classDefs, classes };
 }
 
-export const isDashed = (model, ei) => /stroke-dasharray/.test(model.linkStyles.get(ei) || "");
-export const endKey = (model, id) => (model.nodes.has(id) ? "n:" : "c:") + id;

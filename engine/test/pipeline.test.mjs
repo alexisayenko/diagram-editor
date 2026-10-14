@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { deriveNetworks, renderModel } from "../render/pipeline.mjs";
 import { prepareDiagram } from "../browser/render.mjs";
-import { parseConfig } from "../parse/config.mjs";
+import { parseConfig } from "../model/config.mjs";
 import { parseMmd } from "../parse/mmd.mjs";
 import { parseLayout } from "../parse/layout.mjs";
 import { parseDetails } from "../parse/details.mjs";

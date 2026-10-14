@@ -5,7 +5,7 @@ import { makePage, loadModel, loadMenu, El } from "./cov-canvas.mjs";
 function setup({ on = true, bridge, nets } = {}) {
   const page = makePage();
   const calls = [];
-  page.g.InfraDiagram.serverEditor = bridge === null ? undefined : {
+  page.core.host.serverEditor = bridge === null ? undefined : {
     add: (...a) => { calls.push(["add", ...a]); return null; },
     duplicate: (id) => { calls.push(["dup", id]); return null; },
     regionTypes: () => [{ id: "batch", label: "Batch Server" }, { id: "mongo", label: "Mongo" }],

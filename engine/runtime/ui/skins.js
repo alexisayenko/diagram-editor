@@ -1,5 +1,5 @@
 InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, details) {
-  var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx, CW = core.CW, STYLES = core.STYLES, hooks = core.hooks;
+  var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx, CW = core.CW, STYLES = core.STYLES, hooks = core.services;
   var pillW = {}, boxW = {}, btn = {}, TEXT_X = 10;
 
   function measure(el, n, cw) {

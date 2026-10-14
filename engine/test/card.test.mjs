@@ -1,12 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { tomlModel, serviceLines, hardwareStrip } from "../parse/toml.mjs";
+import { tomlModel } from "../parse/toml.mjs";
+import { serviceLines, hardwareStrip } from "../model/server.mjs";
 import { shortTitle, TITLE_MAX, geometryKit, geometryMeta } from "../render/geometry.mjs";
 import { prepareDiagram, renderDiagram } from "../browser/render.mjs";
 import { css, script } from "../page/assets.mjs";
 import { mini } from "./helpers.mjs";
-import { SERVER_FIELDS } from "../render/server-fields.mjs";
+import { SERVER_FIELDS } from "../model/server-fields.mjs";
 
 const assets = { cssSvg: css("svg"), cssPage: css("page"), js: script() };
 const long = "very-long-server-name-" + "x".repeat(60) + ".example.test";
@@ -113,7 +114,7 @@ test("header text is centred in the header bar and left padded in chrome skins",
 });
 
 test("hardware cells feed the details panel strip: four cells in card order, omitted when empty", async () => {
-  const { hardwareCells } = await import("../parse/toml.mjs");
+  const { hardwareCells } = await import("../model/server.mjs");
   assert.deepEqual(hardwareCells({ cpu: "11 cores", ram: "21 GiB", swap: "2 GiB", disk: "50G" }), [["cpu", "11"], ["ram", "21G"], ["swap", "2G"], ["sd", "50G"]]);
   assert.deepEqual(hardwareCells({ ram: "8 GiB", hardware: "free text" }), [["ram", "8G"]]);
   assert.deepEqual(hardwareCells({ hardware: "free text" }), []);
@@ -123,7 +124,7 @@ test("hardware cells feed the details panel strip: four cells in card order, omi
 });
 
 test("hardware normaliser: cpu number, sizes to <n>G, conversions, unknown formats as stored", async () => {
-  const { normCpu, normSize, SIZE_UNIT } = await import("../parse/toml.mjs");
+  const { normCpu, normSize, SIZE_UNIT } = await import("../model/server.mjs");
   assert.equal(SIZE_UNIT, "G");
   for (const v of ["4 cores", "4", "4 cpu", "4cores", "4 vCPU"]) assert.equal(normCpu(v), "4");
   assert.equal(normCpu("2 sockets x 4"), "2 sockets x 4");

@@ -129,7 +129,7 @@ InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons"], function (core, os
     if (key.charAt(0) === "n") osRow(pn, e.os);
     netButtons(pn);
     pn.dataset.ty = e.ty;
-    if (core.hooks.panel) core.hooks.panel(key, pn);
+    core.emit("panel", key, pn);
   }
 
   return { md: md, renderPanel: renderPanel };

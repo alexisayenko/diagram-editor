@@ -38,7 +38,7 @@ InfraDiagram.define("ui/networks", ["ui/core", "ui/panels"], function (core, pan
 
   // Inline name editor on a network entry (edit mode, via the context menu): Enter or blur commits, Esc cancels; empty removes the name.
   function editName(i) {
-    var net = D.nets?.[i], b = document.querySelector('#wl .nw[data-n="' + i + '"]'), api = window.InfraDiagram.serverEditor;
+    var net = D.nets?.[i], b = document.querySelector('#wl .nw[data-n="' + i + '"]'), api = core.host.serverEditor;
     if (!net?.cidr || !b || !api?.renameNetwork || b.querySelector(".nwe")) return;
     var label = b.firstElementChild, saved = label.innerHTML, input = document.createElement("input"), done = false;
     while (label.lastChild?.nodeType === 3) label.lastChild.remove();

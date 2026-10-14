@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadUi, fixture, makeStorage } from "./cov-ui-env.mjs";
+import { loadUi, fixture, makeStorage, setService } from "./cov-ui-env.mjs";
 
 const state = () => ({
   nodes: {
@@ -16,7 +16,7 @@ function skins(over, opts = {}) {
   t.core = t.modules["ui/core"];
   t.els = t.core.els;
   t.core.ctx.ready = true;
-  t.core.hooks.getState = state;
+  setService(t.core, "getState", state);
   return t;
 }
 const chrome = (t, i = 0) => t.els[i].innerHTML;
@@ -88,7 +88,7 @@ test("job divider appears when the body is longer than the job count", () => {
   f.D.layout.nodes.a.body = [[20, 50], [20, 66]];
   const t = loadUi(["ui/skins"], f);
   t.modules["ui/core"].ctx.ready = true;
-  t.modules["ui/core"].hooks.getState = state;
+  setService(t.modules["ui/core"], "getState", state);
   t.modules["ui/skins"].setStyle("clean");
   assert.match(t.modules["ui/core"].els[0].innerHTML, /d="M8 24H112"/);
   assert.match(t.modules["ui/core"].els[0].innerHTML, /d="M8 40H112"/);
@@ -100,7 +100,7 @@ test("node without hardware, OS, IPs or body only has the frame", () => {
   f.D.layout.nodes.b = { x: 0, y: 0, w: 100, h: 40, ip: [], body: [], title: [0, 0] };
   const t = loadUi(["ui/skins"], f);
   t.modules["ui/core"].ctx.ready = true;
-  t.modules["ui/core"].hooks.getState = () => ({ nodes: { a: state().nodes.a, b: { x: 0, y: 0, w: 100, h: 40, ip: [], body: [], title: [0, 0] } }, clusters: { r1: { x: 0, y: 0 } } });
+  setService(t.modules["ui/core"], "getState", () => ({ nodes: { a: state().nodes.a, b: { x: 0, y: 0, w: 100, h: 40, ip: [], body: [], title: [0, 0] } }, clusters: { r1: { x: 0, y: 0 } } }));
   t.modules["ui/skins"].setStyle("clean");
   assert.ok(!t.modules["ui/core"].els[5].innerHTML.includes('class="dv"'));
 });
@@ -128,8 +128,8 @@ test("rebuildChrome clears cluster chrome, sizes the OS pill and measures label 
 test("rebuildChrome calls the routing hook and honours viewNode", () => {
   const t = skins();
   const seen = [];
-  t.core.hooks.route = () => seen.push("route");
-  t.core.hooks.viewNode = (id, g) => { seen.push(id); return { ...g, h: 200 }; };
+  setService(t.core, "route", () => seen.push("route"));
+  setService(t.core, "viewNode", (id, g) => { seen.push(id); return { ...g, h: 200 }; });
   t.skins.setStyle("clean");
   assert.deepEqual(seen.filter((x) => x === "route"), ["route"]);
   assert.deepEqual(seen.filter((x) => x !== "route").sort(), ["a", "b"]);
@@ -147,7 +147,7 @@ test("sync positions nodes, clusters, titles, the OS pill and the network button
   assert.equal(t.els[3].getAttribute("transform"), "translate(111 80)");
   assert.equal(t.els[3].getAttribute("visibility"), "visible");
   assert.ok(!t.els[3].classList.contains("tight"));
-  t.core.hooks.title = (g, style) => [g.x + 1, style.length];
+  setService(t.core, "title", (g, style) => [g.x + 1, style.length]);
   t.skins.sync(state());
   assert.equal(t.els[1].getAttribute("x"), "11");
   assert.equal(t.els[1].getAttribute("y"), "5");
@@ -212,13 +212,13 @@ test("sync: routed labels move their pill; unrouted ones and not-ready state are
   assert.equal(t.els[0].getAttribute("transform"), "x");
 });
 
-test("sync: label pill falls back to width 60 before measurement and hooks.view remaps the state", () => {
+test("sync: label pill falls back to width 60 before measurement and the view service remaps the state", () => {
   const t = skins();
   t.core.ctx.routes = { "1": { label: [10, 20] } };
   t.skins.sync(state());
   assert.equal(t.els[10].getAttribute("width"), "60");
   const s = state();
-  t.core.hooks.view = (x) => ({ ...x, nodes: { ...x.nodes, a: { ...x.nodes.a, x: 77 } } });
+  setService(t.core, "view", (x) => ({ ...x, nodes: { ...x.nodes, a: { ...x.nodes.a, x: 77 } } }));
   t.skins.sync(s);
   assert.equal(t.els[0].getAttribute("transform"), "translate(77 20)");
 });
@@ -227,7 +227,7 @@ test("setStyle: unknown styles fall back to clean; classes, link legends and pre
   const t = skins();
   t.doc.body.insertAdjacentHTML("beforeend", '<div class="lks s-dark"></div>');
   let fits = 0;
-  t.core.hooks.fit = () => { fits++; };
+  setService(t.core, "fit", () => { fits++; });
   t.skins.setStyle("nonsense");
   assert.equal(t.core.ctx.style, "clean");
   assert.equal(t.doc.documentElement.dataset.style, "clean");

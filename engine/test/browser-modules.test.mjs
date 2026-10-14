@@ -189,7 +189,7 @@ function fakeFrame() {
     contentDocument: { addEventListener: (type, f, capture) => docListeners.push({ type, f, capture }), getElementById: (id) => ({ click: () => { frame.clicked = id; } }) },
     contentWindow: null,
     set srcdoc(html) { frame.html = html; },
-    load(modules, extra = {}) { frame.contentWindow = { InfraDiagram: { modules, select: (k) => { frame.selected = k; }, ...extra } }; handlers.forEach((f) => f()); },
+    load(modules, extra = {}) { frame.contentWindow = { InfraDiagram: { modules, select: (k) => { frame.selected = k; }, attachHost: (h) => { frame.attached = [...(frame.attached || []), h]; }, ...extra } }; handlers.forEach((f) => f()); },
   };
   return { frame, docListeners };
 }
@@ -222,8 +222,7 @@ test("frame bridge: the ready callback fires on load, the host interface is inst
   frame.load(runtime());
   await loaded;
   assert.deepEqual(order, [["load", true], ["resolved"]]);
-  assert.equal(frame.contentWindow.InfraDiagram.noteParser, host.noteParser);
-  assert.equal(frame.contentWindow.InfraDiagram.serverEditor, host.serverEditor);
+  assert.deepEqual(frame.attached, [host]);
   assert.deepEqual(docListeners.map((l) => l.type), ["pointerup", "keyup", "input", "change", "click"]);
   assert.ok(docListeners.every((l) => l.capture === true));
 });
@@ -240,7 +239,7 @@ test("frame bridge: a frame without the runtime reports not ready and gets no ho
   assert.equal(bridge.editor(), null);
   assert.equal(bridge.isDirty(), false);
   assert.equal(bridge.noteTexts(), null);
-  assert.equal(frame.contentWindow.InfraDiagram.serverEditor, undefined);
+  assert.equal(frame.attached, undefined);
   assert.equal(docListeners.length, 0);
 });
 

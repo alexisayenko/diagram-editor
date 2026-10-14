@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { displayOs } from "../parse/os-display.mjs";
-import { osInfo } from "../parse/os-eol.mjs";
+import { displayOs } from "../model/os.mjs";
+import { osInfo } from "../model/os.mjs";
 
 test("displayOs: non-strings pass through, blank falls back to the original", () => {
   assert.equal(displayOs(undefined), undefined);

@@ -1,14 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fail, FormatError } from "../parse/errors.mjs";
+import { fail, FormatError } from "../lib/errors.mjs";
 import { parseLayout } from "../parse/layout.mjs";
-import { parseNotes } from "../parse/notes.mjs";
+import { parseNotes } from "../model/notes.mjs";
 import { parseDocuments } from "../parse/documents.mjs";
-import { parseConfig, checkConnections, processAnchors } from "../parse/config.mjs";
-import { parseMmd, isDashed, endKey, edgeKey } from "../parse/mmd.mjs";
+import { parseConfig, checkConnections, processAnchors } from "../model/config.mjs";
+import { parseMmd } from "../parse/mmd.mjs";
+import { isDashed, endKey, edgeKey } from "../model/edges.mjs";
 import { parseNetworks, networkMembers, ipNetworks } from "../parse/networks.mjs";
 import { mergeTypes, resolveTypes, RESERVED_TYPES } from "../parse/types.mjs";
-import { validateGeometry } from "../parse/validate.mjs";
+import { validateGeometry } from "../render/validate.mjs";
 
 function trap(fn) {
   try {

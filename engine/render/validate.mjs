@@ -1,6 +1,6 @@
-import { fail } from "./errors.mjs";
-import { edgeKey } from "./mmd.mjs";
-import { geometryKit, displayLabels, shortTitle } from "../render/geometry.mjs";
+import { fail } from "../lib/errors.mjs";
+import { edgeKey } from "../model/edges.mjs";
+import { geometryKit, displayLabels, shortTitle } from "./geometry.mjs";
 
 const BAND = 30, BAND_GAP = 10, BOX_HEAD = 20;
 const MIN_GAP = 20, CLUSTER_PAD = 16;

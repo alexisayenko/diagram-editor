@@ -4,7 +4,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
   var LISTS = serverFields.FIELDS.filter(function (f) { return f.type === "list" && f.form; }).map(function (f) { return [f.key, f.label, f.add, f.placeholder]; });
   var edit = null, current = null;
 
-  function bridge() { return window.InfraDiagram.serverEditor || null; }
+  function bridge() { return core.host.serverEditor || null; }
   function enabled() { return !!window.InfraDiagramFileBacked && !!bridge(); }
 
   function el(tag, cls, text) {
@@ -173,16 +173,16 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
     if (key) selection.select(key);
   }
 
-  core.hooks.beforeSelect = function () {
+  core.provide("beforeSelect", function () {
     if (!edit || !changed()) return true;
     edit.err.textContent = "Finish this edit first: Done or Esc.";
     edit.err.hidden = false;
     return false;
-  };
+  });
 
-  core.hooks.pending = function () { return !!edit && changed(); };
+  core.provide("pending", function () { return !!edit && changed(); });
 
-  core.hooks.panel = function (key, pn) {
+  core.on("panel", function (key, pn) {
     edit = null;
     current = null;
     if (key.charAt(0) !== "n" || !enabled()) return;
@@ -191,7 +191,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels", "
     h.classList.add("sed");
     h.title = "Click to edit";
     pn.insertBefore(button("Edit", "", function () {}), pn.firstChild).id = "pe";
-  };
+  });
 
   $("pn").addEventListener("click", function (e) {
     if (!current || !e.target.closest) return;

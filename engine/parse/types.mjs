@@ -1,4 +1,4 @@
-import { fail } from "./errors.mjs";
+import { fail } from "../lib/errors.mjs";
 
 const BUILT_IN = {
   web: { label: "Web Server", color: "#C2185B", dark: "#F28FB0" },

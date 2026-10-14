@@ -12,7 +12,7 @@ function load({ sel = null, net = null, pending } = {}) {
   let mod;
   const src = readFileSync(new URL("../runtime/ui/clear-click.js", import.meta.url), "utf8");
   runInNewContext(src, { document: doc, InfraDiagram: { define: (n, d, f) => {
-    mod = f({ ctx, hooks, svg }, { select: (k) => { calls.push(["select", k]); ctx.sel = k; } }, { setNet: (i) => { calls.push(["net", i]); ctx.net = i; } });
+    mod = f({ ctx, services: hooks, svg }, { select: (k) => { calls.push(["select", k]); ctx.sel = k; } }, { setNet: (i) => { calls.push(["net", i]); ctx.net = i; } });
   } }, Math });
   const el = (o = {}) => ({ nodeType: 1, tagName: "DIV", id: "", inSvg: false, classList: { contains: () => false }, closest: () => null, ...o });
   return { mod, calls, ctx, listeners, classes, el };

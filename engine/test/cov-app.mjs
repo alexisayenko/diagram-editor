@@ -110,7 +110,7 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
   h.loadFrame = (modules) => {
     const D = dataOf(srcdoc);
     h.D = D;
-    frame.contentWindow = { InfraDiagram: { modules: modules ?? mkModules(D), select: (k) => h.ctl.selected.push(k) } };
+    frame.contentWindow = { InfraDiagram: { modules: modules ?? mkModules(D), select: (k) => h.ctl.selected.push(k), attachHost(host) { this.host = host; } } };
     frame.fire("load");
   };
   h.frame = frame;
@@ -166,7 +166,7 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
   h.clickAct = (id) => h.act(() => els[id].fire("click"));
   h.start = async () => { run("browser/app.js", win); await flush(); };
   h.files = (folder) => Object.fromEntries(store.list().filter((f) => f.name.startsWith(folder + "/")).map((f) => [f.name, h.read(f.name)]));
-  h.serverEditor = () => frame.contentWindow.InfraDiagram.serverEditor;
+  h.serverEditor = () => frame.contentWindow.InfraDiagram.host.serverEditor;
   h.tick = async () => { h.frameListeners.filter((l) => l.type === "click").slice(-1).forEach((l) => l.f({})); await new Promise((r) => setTimeout(r, 5)); await flush(); };
   if (doBoot) await h.start();
   return h;

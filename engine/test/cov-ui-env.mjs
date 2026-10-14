@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { osIconKit } from "../render/os-icons.mjs";
-import { serverFieldsKit } from "../render/server-fields.mjs";
+import { serverFieldsKit } from "../model/server-fields.mjs";
 import { Script, createContext } from "node:vm";
 import { fileURLToPath } from "node:url";
 
@@ -42,6 +42,7 @@ function matchCompound(el, c) {
     const sib = el.parentNode ? el.parentNode.children : [];
     if (p === "first-child") return sib[0] === el;
     if (p === "last-child") return sib.at(-1) === el;
+    if (p === "focus-visible" || p === "focus") return el.ownerDocument?.activeElement === el && el.keyboardFocus !== false;
     return false;
   });
 }
@@ -206,7 +207,33 @@ export class Element {
     }
     return !ev.defaultPrevented;
   }
-  focus() { this.ownerDocument.activeElement = this; }
+  focus() {
+    const doc = this.ownerDocument, prev = doc.activeElement;
+    if (prev === this) return;
+    if (prev) prev.dispatchEvent(makeEvent("focusout", { target: prev }));
+    doc.activeElement = this;
+    this.dispatchEvent(makeEvent("focusin", { target: this }));
+  }
+  blur() {
+    const doc = this.ownerDocument;
+    if (doc.activeElement !== this) return;
+    doc.activeElement = null;
+    this.dispatchEvent(makeEvent("focusout", { target: this }));
+  }
+  showModal() {
+    if (this.tagName !== "DIALOG") throw new Error("showModal needs a dialog");
+    if (this.open) throw new Error("InvalidStateError: already open");
+    this.open = true;
+    this.modal = true;
+    this.previousFocus = this.ownerDocument.activeElement;
+  }
+  close(value) {
+    if (!this.open) return;
+    this.open = false;
+    this.modal = false;
+    this.returnValue = value ?? "";
+    this.dispatchEvent(makeEvent("close", { bubbles: false }));
+  }
   select() { this.selected = true; }
   scrollIntoView(o) { this.scrolled = o; }
   getBoundingClientRect() { return this.rect || { top: 0, left: 0, right: 100, bottom: 20, width: 100, height: 20 }; }
@@ -239,6 +266,7 @@ class Document extends Element {
     this.draws = [];
   }
   createElement(t) { return new Element(t, this); }
+  createElementNS(ns, t) { return new Element(t, this); }
   createTextNode(t) { return new TextNode(String(t)); }
   createDocumentFragment() { return new Fragment(this); }
   getElementById(id) { return this._all().find((e) => e.id === id) || null; }
@@ -324,10 +352,10 @@ export function loadUi(names, { D, html, storage, stubs = {}, globals = {}, conf
   function load(name) {
     if (name in stubs) return stubs[name];
     if (name in modules) return modules[name];
-    if (name === "ui/os-icons") return (modules[name] = osIconKit());
-    if (name === "ui/server-fields") return (modules[name] = serverFieldsKit());
+    if (name === "ui/os-icons") { modules[name] = osIconKit(); return modules[name]; }
+    if (name === "ui/server-fields") { modules[name] = serverFieldsKit(); return modules[name]; }
     const file = UI + name.replace(/^ui\//, "") + ".js";
-    new Script(readFileSync(file, "utf8"), { filename: file }).runInContext(vmCtx);
+    new Script(readFileSync(file, "utf8"), { filename: file }).runInContext(vmCtx); // NOSONAR: test harness evaluates this repository's own sources to measure coverage
     return modules[name];
   }
   const vmCtx = createContext(sandbox);
@@ -391,4 +419,9 @@ ${t("b", "nt", "Service B")}
   };
   const html = CHROME_HTML + svgHtml;
   return { D, html };
+}
+
+export function setService(core, name, fn) {
+  core.revoke(name);
+  if (fn) core.provide(name, fn);
 }

@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseToml, tomlModel, parseNoteText } from "../parse/toml.mjs";
+import { parseToml, tomlModel } from "../parse/toml.mjs";
+import { parseNoteText } from "../model/notes.mjs";
 import { setNotes, formatNotes } from "../parse/toml-write.mjs";
 import { prepareDiagram } from "../browser/render.mjs";
 import { mergeFolder } from "../parse/toml.mjs";

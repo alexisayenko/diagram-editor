@@ -1,4 +1,4 @@
-import { fail } from "./errors.mjs";
+import { fail } from "../lib/errors.mjs";
 import { ipv4Number, ipv4Text, parseCidr } from "../lib/net.mjs";
 
 const ITEM = /^(\s*)[-*]\s+(?:`([^`]+)`\s+)?(\S.*)$/;

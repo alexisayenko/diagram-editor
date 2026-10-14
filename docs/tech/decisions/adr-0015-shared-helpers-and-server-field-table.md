@@ -23,7 +23,7 @@ One module per rule, imported everywhere (page, server, CLI):
   TOML string escaper.
 - `lib/text.mjs`: Node-free `esc` and `unq`; `lib/util.mjs` re-exports
   them and the bundler maps it to `text.mjs` in the page.
-- `render/server-fields.mjs`: `SERVER_FIELDS`, the one table of
+- `model/server-fields.mjs`: `SERVER_FIELDS`, the one table of
   `servers/<id>.toml` keys (type, label, form, table and card flags,
   list entry checks). It feeds the parser's allowed keys, the writer's
   order and checks, the details table and, as the `ui/server-fields`
@@ -37,7 +37,7 @@ One module per rule, imported everywhere (page, server, CLI):
 - Each module has its own small test (`files`, `ids`, `net`,
   `toml-escape`).
 - Not done yet: file-name literals in `serve.mjs` and `store.mjs`,
-  `DIAGRAM_ID` copies in `new.mjs` and `parse/config.mjs`; the docs
+  `DIAGRAM_ID` copies in `new.mjs` and `model/config.mjs`; the docs
   table is checked, not generated.
 - `lib/names.mjs` stays the one file-name allow-list (case-insensitive
   duplicates, Windows device names).

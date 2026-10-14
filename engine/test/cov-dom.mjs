@@ -83,7 +83,7 @@ export const flush = async (n = 8) => {
 export function run(rel, globals, base = ENGINE) {
   const file = base + rel;
   const ctx = createContext(globals);
-  new Script(readFileSync(file, "utf8"), { filename: pathToFileURL(file).href }).runInContext(ctx);
+  new Script(readFileSync(file, "utf8"), { filename: pathToFileURL(file).href }).runInContext(ctx); // NOSONAR: test harness evaluates this repository's own sources to measure coverage
   return ctx;
 }
 

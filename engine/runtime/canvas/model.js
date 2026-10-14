@@ -130,9 +130,9 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     Object.keys(s.nodes).forEach(function (id) { v.nodes[id] = viewNode(id, s.nodes[id]); });
     return v;
   }
-  core.hooks.view = view;
-  core.hooks.viewNode = viewNode;
-  core.hooks.rerender = function () { var s = core.hooks.getState?.(); if (s) render(s); };
+  core.provide("view", view);
+  core.provide("viewNode", viewNode);
+  core.provide("rerender", function () { var s = core.services.getState?.(); if (s) render(s); });
 
   function render(s0) {
     var s = view(s0);
@@ -150,13 +150,14 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     markBad(s);
     syncHandles(s);
     skins.sync(s0);
+    core.emit("render");
   }
 
-  core.hooks.title = geometry.headerTitle;
-  core.hooks.route = function () {
-    var s = core.hooks.getState?.();
+  core.provide("title", geometry.headerTitle);
+  core.provide("route", function () {
+    var s = core.services.getState?.();
     if (s) { s = view(s); routeEdges(s); markBad(s); }
-  };
+  });
 
   function point(e) {
     var p = svg.createSVGPoint();

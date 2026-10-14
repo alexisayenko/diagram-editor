@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { parseToml, tomlModel, mergeFolder, withRoot } from "../parse/toml.mjs";
 import { prepareDiagram, renderDiagram } from "../browser/render.mjs";
-import { validateGeometry } from "../parse/validate.mjs";
+import { validateGeometry } from "../render/validate.mjs";
 import { css, script } from "../page/assets.mjs";
 import { runInNewContext } from "node:vm";
 import { createFrameBridge } from "../browser/frame-bridge.mjs";
@@ -79,7 +79,7 @@ test("browser bundle uses the real renderer and embeds text safely", () => {
 });
 test("browser app dirty check is safe before a diagram is ready", () => {
   const check = (loaded, mods) => {
-    const handlers = [], frame = { addEventListener: (t, f) => handlers.push(f), contentWindow: { InfraDiagram: { modules: mods } }, contentDocument: { addEventListener() {} } };
+    const handlers = [], frame = { addEventListener: (t, f) => handlers.push(f), contentWindow: { InfraDiagram: { modules: mods, attachHost() {} } }, contentDocument: { addEventListener() {} } };
     const bridge = createFrameBridge(frame, { host: {}, onLoad() {}, onChange() {} });
     bridge.show("<html>");
     if (loaded) handlers.forEach((f) => f());

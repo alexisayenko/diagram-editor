@@ -41,7 +41,7 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
 
   function parse(text) {
     if (!text.trim()) throw new Error("The title is empty. Type the title on the first line, then the note text.");
-    var parser = InfraDiagram.noteParser;
+    var parser = core.host.noteParser;
     if (!parser) throw new Error("The note editor is not ready. Reload the diagram.");
     return parser(text);
   }

@@ -29,7 +29,7 @@ with a regex.
   arrangement and a warning, and Save does not write the layout file
   (other files still save). Older or absent versions open as before.
 - One error type, `FormatError {file, line, path, message}`
-  (`parse/errors.mjs`). Libraries only throw it. CLI entry points wrap
+  (`lib/errors.mjs`). Libraries only throw it. CLI entry points wrap
   their body in `runCli` (`lib/cli.mjs`), which prints
   `<tool>: <message>` and sets a non-zero exit code. The message starts
   with the file name when known (`servers/web01.toml:3: ...`).

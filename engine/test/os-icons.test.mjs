@@ -1,14 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { osFamily } from "../parse/os-display.mjs";
-import { osInfo } from "../parse/os-eol.mjs";
+import { osFamily } from "../model/os.mjs";
+import { osInfo } from "../model/os.mjs";
 import { osIcons, osIconKit } from "../render/os-icons.mjs";
 import { geometryMeta, geometryKit } from "../render/geometry.mjs";
 import { tomlModel } from "../parse/toml.mjs";
 import { renderDiagram } from "../browser/render.mjs";
 import { css, script } from "../page/assets.mjs";
 import { mini } from "./helpers.mjs";
-import { loadUi, fixture } from "./cov-ui-env.mjs";
+import { loadUi, fixture, setService } from "./cov-ui-env.mjs";
 
 const assets = { cssSvg: css("svg"), cssPage: css("page"), js: script() };
 
@@ -84,7 +84,7 @@ test("runtime: EOL marker sits after the pill, long text is ellipsised before th
   g.insertAdjacentHTML("beforeend", '<text class="ose" y="9">EOL</text>');
   const core = t.modules["ui/core"];
   core.ctx.ready = true;
-  core.hooks.getState = () => ({ nodes: { a: { x: 10, y: 20, w: 120, h: 80, ip: [[20, 90]], body: [[20, 50]], title: [20, 36] }, b: { x: 200, y: 20, w: 120, h: 60, ip: [[210, 70]], body: [], title: [210, 36] } }, clusters: { r1: { x: 5, y: 6 } } });
+  setService(core, "getState", () => ({ nodes: { a: { x: 10, y: 20, w: 120, h: 80, ip: [[20, 90]], body: [[20, 50]], title: [20, 36] }, b: { x: 200, y: 20, w: 120, h: 60, ip: [[210, 70]], body: [], title: [210, 36] } }, clusters: { r1: { x: 5, y: 6 } } }));
   core.D.layout.nodes.a.w = 200;
   t.modules["ui/skins"].setStyle("clean");
   const rect = g.querySelector("rect"), eol = g.querySelector(".ose");

@@ -2,6 +2,7 @@
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { runCli } from "./lib/cli.mjs";
 import { checkOrigin, createStore, handleApi, MAX_BYTES } from "./lib/store.mjs";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
@@ -46,7 +47,9 @@ export function createApp({ dir = here("../local"), page = here("../diagram.html
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const port = Number(process.env.PORT || 8080), server = createApp();
-  server.on("error", (e) => { console.error(e.message); process.exitCode = 1; });
-  server.listen(port, "127.0.0.1", () => console.log(`Open http://127.0.0.1:${port} in any modern browser. Files are stored in local/. Ctrl+C stops the server.`));
+  runCli("serve", () => {
+    const port = Number(process.env.PORT || 8080), server = createApp();
+    server.on("error", (e) => { console.error(e.message); process.exitCode = 1; });
+    server.listen(port, "127.0.0.1", () => console.log(`Open http://127.0.0.1:${port} in any modern browser. Files are stored in local/. Ctrl+C stops the server.`));
+  });
 }

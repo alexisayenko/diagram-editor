@@ -19,13 +19,14 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels"], func
   }
 
   function select(key) {
-    if (core.hooks.beforeSelect?.(key) === false) return;
+    if (core.services.beforeSelect?.(key) === false) return;
     ctx.sel = key;
     var B = key ? related(key) : null;
     core.ents.forEach(function (el) {
       var k = el.dataset.ent;
       el.classList.toggle("dim", !!B && !B[k]);
       el.classList.toggle("sel", !!B && k === key);
+      if (el.getAttribute("tabindex") === "0") el.setAttribute("aria-pressed", String(!!B && k === key));
     });
     var pn = core.$("pn");
     if (key) { details.renderPanel(key); pn.hidden = false; }

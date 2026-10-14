@@ -13,7 +13,7 @@ function editor({ raw = source(), enabled = true, over, applyErr = null } = {}) 
   const t = loadUi(["ui/server-edit"], { ...f, globals: enabled ? { InfraDiagramFileBacked: true } : {} });
   t.applied = [];
   t.rawSource = raw;
-  t.ID.serverEditor = { source: (id) => (id === "a" ? t.rawSource : null), apply: (id, form) => { t.applied.push([id, form]); return t.applyErr ?? applyErr; } };
+  t.modules["ui/core"].host.serverEditor = { source: (id) => (id === "a" ? t.rawSource : null), apply: (id, form) => { t.applied.push([id, form]); return t.applyErr ?? applyErr; } };
   t.mod = t.modules["ui/server-edit"];
   t.core = t.modules["ui/core"];
   t.select = (k = "n:a") => t.modules["ui/selection"].select(k);
@@ -42,7 +42,7 @@ test("no Edit affordance when the diagram is not file-backed or the bridge is mi
   t.select();
   assert.ok(t.$("pe") === null);
   t = editor();
-  t.ID.serverEditor = null;
+  t.modules["ui/core"].host.serverEditor = null;
   t.select();
   assert.ok(t.$("pe") === null);
 });
@@ -238,10 +238,10 @@ test("selecting something else is blocked while the form has changes, and allowe
   assert.equal(t.core.ctx.sel, "n:a");
   assert.equal(t.err().textContent, "Finish this edit first: Done or Esc.");
   assert.ok(t.err().hidden === false);
-  assert.equal(t.core.hooks.pending(), true);
+  assert.equal(t.core.services.pending(), true);
   assert.equal(t.mod.isDirty(), true);
   t.field("Server name").value = "Service A";
-  assert.equal(t.core.hooks.pending(), false);
+  assert.equal(t.core.services.pending(), false);
 });
 
 test("isDirty and finish are inert without an open form", () => {
@@ -249,7 +249,7 @@ test("isDirty and finish are inert without an open form", () => {
   assert.equal(t.mod.isDirty(), false);
   assert.equal(t.mod.finish(), null);
   t.select();
-  assert.equal(t.core.hooks.pending(), false);
+  assert.equal(t.core.services.pending(), false);
 });
 
 test("finish with an unchanged open form closes it and reports no error", () => {

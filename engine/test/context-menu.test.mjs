@@ -29,13 +29,13 @@ function harness({ on = true, add = () => null, duplicate, regions, nets, rename
   doc.createElement = make; doc.body = make();
   win.innerWidth = 800; win.innerHeight = 600;
   win.addEventListener = (t, f) => { (win.listeners[t] ||= []).push(f); };
-  win.InfraDiagram = { serverEditor: { add: (...a) => { calls.push(a); return add(...a); }, ...(duplicate ? { duplicate: (id) => { calls.push(["dup", id]); return duplicate(id); } } : {}),
+  const host = { serverEditor: { add: (...a) => { calls.push(a); return add(...a); }, ...(duplicate ? { duplicate: (id) => { calls.push(["dup", id]); return duplicate(id); } } : {}),
     ...(rename ? { renameNetwork: rename } : {}),
     ...(regions ? { regionTypes: () => regions, addRegion: (...a) => { calls.push(["region", ...a]); return null; } } : {}) } };
   const state = { on, st: { clusters: { big: { x: 0, y: 0, w: 500, h: 500 }, small: { x: 100, y: 100, w: 100, h: 100 } } } };
   let mod;
   const src = readFileSync(new URL("../runtime/canvas/context-menu.js", import.meta.url), "utf8");
-  runInNewContext(src, { window: win, document: doc, InfraDiagram: { define: (n, d, f) => { mod = f({ svg, $: () => tm, D: { nets } }, { state, point: (e) => ({ x: e.clientX, y: e.clientY }), regionAt }, { editName: (i) => calls.push(["edit-name", i]) }); } } });
+  runInNewContext(src, { window: win, document: doc, InfraDiagram: { define: (n, d, f) => { mod = f({ svg, $: () => tm, D: { nets }, host }, { state, point: (e) => ({ x: e.clientX, y: e.clientY }), regionAt }, { editName: (i) => calls.push(["edit-name", i]) }); } } });
   const fire = (target, t, ev = {}) => (target.listeners[t] || []).forEach((f) => f({ target: svg, preventDefault() { prevented.push(t); }, stopPropagation() {}, ...ev }));
   return { svg, tm, doc, win, calls, prevented, state, mod, fire, menu: () => doc.body.children.find((c) => !c.removed) };
 }
