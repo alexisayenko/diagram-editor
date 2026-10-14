@@ -24,7 +24,10 @@ function parseGroups(g) {
     if (!ID.test(id)) fail(`diagram.json: group id "${id}" must match ${ID}`);
     obj(d, at);
     const bad = Object.keys(d).filter((k) => !GROUP_KEYS.includes(k));
-    if (bad.length) fail(`diagram.json: unknown key ${bad.map((k) => `"${k}"`).join(", ")} in ${at} (allowed: ${GROUP_KEYS.join(", ")})`);
+    if (bad.length) {
+      const names = bad.map((k) => `"${k}"`).join(", ");
+      fail(`diagram.json: unknown key ${names} in ${at} (allowed: ${GROUP_KEYS.join(", ")})`);
+    }
     if (!COLOR.test(d.color ?? "")) fail(`diagram.json: ${at}.color must be #rrggbb`);
     if (d.darkColor !== undefined && !COLOR.test(d.darkColor)) fail(`diagram.json: ${at}.darkColor must be #rrggbb`);
     if (!Array.isArray(d.edges) || !d.edges.length || d.edges.some((e) => typeof e !== "string")) fail(`diagram.json: ${at}.edges must be a non-empty list of "from>to" connection ids`);
@@ -88,7 +91,10 @@ export function parseConfig(src, dir) {
   }
   if (!c || typeof c !== "object" || Array.isArray(c)) fail("diagram.json: must be an object");
   const unknown = Object.keys(c).filter((k) => !KEYS.includes(k));
-  if (unknown.length) fail(`diagram.json: unknown key ${unknown.map((k) => `"${k}"`).join(", ")} (allowed: ${KEYS.join(", ")})`);
+  if (unknown.length) {
+    const names = unknown.map((k) => `"${k}"`).join(", ");
+    fail(`diagram.json: unknown key ${names} (allowed: ${KEYS.join(", ")})`);
+  }
   const id = c.id === undefined ? basename(dir) : str(c.id, "id");
   if (!ID.test(id)) fail(`diagram.json: id "${id}" must match ${ID} (it defaults to the folder name)`);
   if (c.legacyId !== undefined && !ID.test(str(c.legacyId, "legacyId"))) fail(`diagram.json: legacyId "${c.legacyId}" must match ${ID}`);

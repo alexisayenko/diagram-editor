@@ -23,12 +23,17 @@ const load = (f) => readText(join(ENGINE, f));
 
 export const css = (group) => CSS[group].map(load).join("").trim();
 
+const COMMENT = /\/\/[^\n\r]*/g;
 const paramName = (mod) => mod.split("/").pop().replace(/-(\w)/g, (_, c) => c.toUpperCase());
 
-const kitSource = (name, fn, names) =>
-  `InfraDiagram.define("${name}", [], function () {\n  var kit = (` +
-  fn.toString().split("\n").map((l, i) => (l && i ? "  " + l : l)).join("\n") +
-  `)();\n\n  return { ${names.map((n) => `${n}: kit.${n}`).join(", ")} };\n});`;
+const kitSource = (name, fn, names) => {
+  const exportList = names.map((n) => `${n}: kit.${n}`).join(", ");
+  return (
+    `InfraDiagram.define("${name}", [], function () {\n  var kit = (` +
+    fn.toString().split("\n").map((l, i) => (l && i ? "  " + l : l)).join("\n") +
+    `)();\n\n  return { ${exportList} };\n});`
+  );
+};
 const GENERATED = {
   "canvas/geometry": { fn: geometryKit, file: "engine/render/geometry.mjs (geometryKit)", names: ["headerTitle", "boxExtent", "fitBox", "fitRegion", "regionBounds", "resizeRegion", "route", "problems"] },
   "canvas/draw-kit": { fn: drawKit, file: "engine/render/draw-kit.mjs (drawKit)", names: ["decimate", "smoothPath", "distToStroke", "hits", "hitIndex", "history", "validate", "pathMarkup", "markup", "newId"] },
@@ -50,26 +55,37 @@ function parseModule(name, src, file) {
     if (params[i] !== paramName(d)) fail(at + `parameter for "${d}" must be named ${paramName(d)}, got ${params[i]}`);
   });
   const exports = tail[1].trim() ? tail[1].split(",").map((p) => p.split(":")[0].trim()) : [];
-  const body = src.slice(head[0].length, src.length - tail[0].length).replace(/\/\/.*$/gm, "");
+  const body = src.slice(head[0].length, src.length - tail[0].length).replaceAll(COMMENT, "");
   return { name, file, src, deps, exports, body };
+}
+
+function checkDeclared(m, byName) {
+  const at = `${m.file}: `;
+  for (const d of m.deps) {
+    if (!RUNTIME.includes(d)) fail(at + `depends on "${d}", which is not a runtime module (engine/page/assets.mjs RUNTIME)`);
+    if (!byName.has(d)) fail(at + `depends on "${d}", which loads after it; move "${d}" before "${m.name}" in RUNTIME`);
+    const p = paramName(d), used = new Set([...m.body.matchAll(new RegExp(String.raw`(?<![\w$.])${p}\.([A-Za-z_$][\w$]*)`, "g"))].map((x) => x[1]));
+    if (!used.size) fail(at + `declares "${d}" but never uses it`);
+    for (const u of used) {
+      if (!byName.get(d).exports.includes(u)) fail(at + `uses ${p}.${u}, which "${d}" does not export`);
+    }
+  }
+}
+
+function checkUndeclared(m) {
+  const at = `${m.file}: `;
+  for (const other of RUNTIME) {
+    const p = paramName(other);
+    if (other === m.name || m.deps.includes(other)) continue;
+    if (new RegExp(String.raw`(?<![\w$.])${p}\.[A-Za-z_$]`).test(m.body)) fail(at + `uses ${p}.* without declaring "${other}" as a dependency`);
+  }
 }
 
 function checkModules(mods) {
   const byName = new Map();
   for (const m of mods) {
-    const at = `${m.file}: `;
-    for (const d of m.deps) {
-      if (!RUNTIME.includes(d)) fail(at + `depends on "${d}", which is not a runtime module (engine/page/assets.mjs RUNTIME)`);
-      if (!byName.has(d)) fail(at + `depends on "${d}", which loads after it; move "${d}" before "${m.name}" in RUNTIME`);
-      const p = paramName(d), used = new Set([...m.body.matchAll(new RegExp(`(?<![\\w$.])${p}\\.([A-Za-z_$][\\w$]*)`, "g"))].map((x) => x[1]));
-      if (!used.size) fail(at + `declares "${d}" but never uses it`);
-      for (const u of used) if (!byName.get(d).exports.includes(u)) fail(at + `uses ${p}.${u}, which "${d}" does not export`);
-    }
-    for (const other of RUNTIME) {
-      const p = paramName(other);
-      if (other === m.name || m.deps.includes(other)) continue;
-      if (new RegExp(`(?<![\\w$.])${p}\\.[A-Za-z_$]`).test(m.body)) fail(at + `uses ${p}.* without declaring "${other}" as a dependency`);
-    }
+    checkDeclared(m, byName);
+    checkUndeclared(m);
     byName.set(m.name, m);
   }
 }

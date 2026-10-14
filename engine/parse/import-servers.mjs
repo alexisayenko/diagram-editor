@@ -6,9 +6,9 @@ import { setKeys } from "./toml-write.mjs";
 const VALID_ID = /^[A-Za-z][A-Za-z0-9_-]*$/;
 
 export function sanitizeId(raw) {
-  let id = String(raw).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  let id = String(raw).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   if (!id) return "server";
-  if (/^[0-9]/.test(id)) id = "s" + id;
+  if (/^\d/.test(id)) id = "s" + id;
   return id;
 }
 
@@ -28,9 +28,9 @@ export function planImport(files, entries, { server_type, region, skip = new Set
     const row = { file: entry.name, ok: false, included: !skip.has(entry.name), error: null };
     rows.push(row);
     let doc;
-    try { doc = parseToml(entry.text.replace(/^﻿/, "").replace(/\r\n/g, "\n")); }
+    try { doc = parseToml(entry.text.replace(/^﻿/, "").replaceAll("\r\n", "\n")); }
     catch (e) { row.error = clean(e.message); continue; }
-    const rawId = typeof doc.id === "string" && doc.id ? doc.id : entry.name.split(/[\/]/).pop().replace(/\.toml$/i, "");
+    const rawId = typeof doc.id === "string" && doc.id ? doc.id : entry.name.split("/").pop().replace(/\.toml$/i, "");
     const baseId = VALID_ID.test(rawId) ? rawId : sanitizeId(rawId);
     row.id = baseId; row.name = row.origName = typeof doc.name === "string" ? doc.name : baseId; row.ips = Array.isArray(doc.ips) ? doc.ips.length : 0;
     if (!row.included) { row.ok = true; continue; }
@@ -63,8 +63,10 @@ export function planImport(files, entries, { server_type, region, skip = new Set
 export function gridPlacements(count, occupied, { x = 40, y = 40, cols = 4, cw = 240, ch = 140, box = [220, 120] } = {}) {
   const out = [], taken = [...occupied];
   const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-  for (let i = 0; out.length < count; i++) {
-    const rect = { x: x + (i % cols) * cw, y: y + Math.floor(i / cols) * ch, w: box[0], h: box[1] };
+  let i = 0;
+  while (out.length < count) {
+    const idx = i++;
+    const rect = { x: x + (idx % cols) * cw, y: y + Math.floor(idx / cols) * ch, w: box[0], h: box[1] };
     if (taken.some((o) => hit(rect, { x: o.x, y: o.y, w: o.w || 1, h: o.h || 1 }))) continue;
     out.push([rect.x, rect.y]);
   }

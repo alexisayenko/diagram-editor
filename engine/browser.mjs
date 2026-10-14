@@ -13,12 +13,12 @@ function bundle(id) {
     modules.set(id, `exports.fail = m => { throw new Error(m); }; exports.esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); exports.unq = s => s.trim().replace(/^"(.*)"$/, "$1");`);
     return;
   }
-  if (id === "node:path") { modules.set(id, `exports.basename = s => s.split(/[\\\\/]/).pop();`); return; }
+  if (id === "node:path") { modules.set(id, String.raw`exports.basename = s => s.split(/[\\/]/).pop();`); return; }
   if (id.startsWith("node:")) throw new Error("Unsupported browser import: " + id);
   modules.set(id, "");
-  let src = readFileSync(resolve(engine, id), "utf8").replace(/\r\n/g, "\n");
+  let src = readFileSync(resolve(engine, id), "utf8").replaceAll("\r\n", "\n");
   src = src.replace(/^import \{([^}]+)\} from "([^"]+)";$/gm, (_, names, target) => {
-    const dependency = target.startsWith("node:") ? target : relative(engine, resolve(engine, dirname(id), target)).replace(/\\/g, "/");
+    const dependency = target.startsWith("node:") ? target : relative(engine, resolve(engine, dirname(id), target)).replaceAll("\\", "/");
     bundle(dependency);
     return `const {${names}} = require(${JSON.stringify(dependency)});`;
   });
@@ -30,10 +30,11 @@ function bundle(id) {
 for (const entry of ["browser/render.mjs", "parse/toml.mjs", "parse/toml-write.mjs", "parse/networks-append.mjs", "parse/networks-name.mjs","parse/new-diagram.mjs", "parse/import-servers.mjs", "lib/names.mjs", "lib/diagrams.mjs", "lib/zip.mjs"]) bundle(entry);
 const factories = [...modules].map(([id, src]) => `${JSON.stringify(id)}: function(require, exports) {\n${src}\n}`).join(",\n");
 const assets = { cssSvg: css("svg"), cssPage: css("page"), js: "window.InfraDiagramFileBacked = true;\n" + script() };
+const ESCAPED_LT = String.fromCharCode(92) + "u003c", ESCAPED_SCRIPT_END = String.raw`<\/script`;
 const hostScript = readFileSync(resolve(engine, "../tools/host-probe.sh"), "utf8");
 const app = readFileSync(resolve(engine, "browser/app.js"), "utf8");
 const js = `const factories = {${factories}};\nconst cache = Object.create(null);\nfunction require(id) { if (!cache[id]) { const exports = cache[id] = {}; factories[id](require, exports); } return cache[id]; }\nconst ASSETS = ${JSON.stringify(assets)};
-const HOST_SCRIPT = ${JSON.stringify(hostScript).replace(/</g, "\\u003c")};\n${app}`;
+const HOST_SCRIPT = ${JSON.stringify(hostScript).replaceAll("<", ESCAPED_LT)};\n${app}`;
 const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Infrastructure diagrams</title>
 <style>
@@ -62,7 +63,7 @@ done &lt; hosts.txt</pre><button type="button" class="cp" data-copy="#hscmd">Cop
 <div id="op" class="dlg" hidden><div role="dialog" aria-modal="true" aria-labelledby="opt"><h2 id="opt">Open saved diagram</h2><div class="body"><input id="opq" type="search" placeholder="Filter diagrams" aria-label="Filter diagrams" hidden><ul id="oplist"></ul><p id="opnote" class="note"></p></div><div class="row"><span></span><button id="opclose">Close</button></div></div></div>
 <div id="nw" class="dlg" hidden><div role="dialog" aria-modal="true" aria-labelledby="nwt"><h2 id="nwt">New diagram</h2><div class="body"><label>Diagram name (lowercase letters, digits and hyphens)<input id="nwname" type="text" spellcheck="false" autocomplete="off"></label><p id="nwmsg" class="msg" role="alert"></p><div id="nwtaken"><p class="note">Existing diagrams:</p><ul id="nwlist" class="taken"></ul></div></div><div class="row"><span></span><button id="nwcancel">Cancel</button><button id="nwok">Create</button></div></div></div>
 <iframe id="view" title="Infrastructure diagram" hidden></iframe>
-<script>${js.replace(/<\/script/gi, "<\\/script")}</script></body></html>\n`;
+<script>${js.replaceAll(/<\/script/gi, ESCAPED_SCRIPT_END)}</script></body></html>\n`;
 const out = resolve(engine, "../diagram.html");
 if (process.argv.includes("--check")) {
   if (readFileSync(out, "utf8") !== html) { console.error("diagram.html out of date; run node engine/browser.mjs"); process.exitCode = 1; }

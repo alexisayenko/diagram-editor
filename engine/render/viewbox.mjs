@@ -13,7 +13,9 @@ export function computeViewBox({ clusters, nodes, edges }, layout, routes) {
   };
   const txt = (x, y, s, anchor, fs = 11) => {
     const tw = (s.length * CW * fs) / 11;
-    const x0 = anchor === "middle" ? x - tw / 2 : anchor === "end" ? x - tw : x;
+    let x0 = x;
+    if (anchor === "middle") x0 = x - tw / 2;
+    else if (anchor === "end") x0 = x - tw;
     grow(x0, y - 12, x0 + tw, y + 4);
   };
   for (const c of clusters.values()) {

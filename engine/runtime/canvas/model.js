@@ -4,7 +4,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
   // Shared canvas state: st is the draft layout, on is edit mode.
   var state = { st: clone(base), on: false };
 
-  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function clone(o) { return structuredClone(o); }
   function setXY(el, p) { el.setAttribute("x", p[0]); el.setAttribute("y", p[1]); }
   function setRect(el, g) { el.setAttribute("x", g.x); el.setAttribute("y", g.y); el.setAttribute("width", g.w); el.setAttribute("height", g.h); }
   function shift(p, dx, dy) { p[0] += dx; p[1] += dy; }
@@ -98,7 +98,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
       if (e.l >= 0 && r.label) setXY(els[e.l], r.label);
       if (e.fw !== undefined && r.fw) {
         var fg = els[e.fw], ft = fg.querySelector("text"), tr = "translate(" + r.fw.at.join(" ") + ") rotate(" + r.fw.a + ")";
-        [].forEach.call(fg.querySelectorAll("path"), function (p) { p.setAttribute("transform", tr); });
+        fg.querySelectorAll("path").forEach(function (p) { p.setAttribute("transform", tr); });
         setXY(ft, r.fw.label);
         ft.setAttribute("text-anchor", r.fw.anchor);
       }
@@ -118,20 +118,21 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
 
   // Display geometry: with the system information off, a card loses its OS and hardware rows (IP pills move up, the box shrinks). The saved state keeps the full size.
   function viewNode(id, g) {
-    var m = D.meta.nodes[id], r = ctx.sys || !m ? 0 : (m.hw ? 1 : 0) + (m.os ? 1 : 0);
+    var m = D.meta.nodes[id], r = 0;
+    if (!ctx.sys && m) r = Number(!!m.hw) + Number(!!m.os);
     if (!r) return g;
     var need = 20 + 16 * m.nb + 18 * m.ni;
-    return Object.assign({}, g, { h: Math.max(g.h - 16 * r, need), ip: g.ip.map(function (p) { return [p[0], p[1] - 16 * r]; }) });
+    return { ...g, h: Math.max(g.h - 16 * r, need), ip: g.ip.map(function (p) { return [p[0], p[1] - 16 * r]; }) };
   }
   function view(s) {
     if (ctx.sys) return s;
-    var v = Object.assign({}, s, { nodes: {} });
+    var v = { ...s, nodes: {} };
     Object.keys(s.nodes).forEach(function (id) { v.nodes[id] = viewNode(id, s.nodes[id]); });
     return v;
   }
   core.hooks.view = view;
   core.hooks.viewNode = viewNode;
-  core.hooks.rerender = function () { var s = core.hooks.getState && core.hooks.getState(); if (s) render(s); };
+  core.hooks.rerender = function () { var s = core.hooks.getState?.(); if (s) render(s); };
 
   function render(s0) {
     var s = view(s0);
@@ -153,7 +154,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
 
   core.hooks.title = geometry.headerTitle;
   core.hooks.route = function () {
-    var s = core.hooks.getState && core.hooks.getState();
+    var s = core.hooks.getState?.();
     if (s) { s = view(s); routeEdges(s); markBad(s); }
   };
 

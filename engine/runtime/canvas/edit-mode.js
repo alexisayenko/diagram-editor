@@ -14,8 +14,8 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     if (window.InfraDiagramFileBacked) return null;
     try {
       var d = JSON.parse(core.lsGet(KEY));
-      if (d && d.nodes && d.clusters && d.edges) return d;
-    } catch (e) {}
+      if (d?.nodes && d.clusters && d.edges) return d;
+    } catch (e) { /* no usable draft */ }
     return null;
   }
   function saveDraft() { if (!window.InfraDiagramFileBacked) core.lsSet(KEY, JSON.stringify(state.st)); }
@@ -80,6 +80,8 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     fit();
   }
 
+  function snapDelta(start, d) { return Math.round((start + d) / GRID) * GRID - start; }
+
   function origin(s, key) {
     var t = key.charAt(0), id = key.slice(2);
     return (t === "c" ? s.clusters : s.nodes)[id];
@@ -87,12 +89,12 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
 
   svg.addEventListener("pointerdown", function (e) {
     if (!state.on || e.button > 0) return;
-    var t = e.target.closest && e.target.closest("[data-e]"), h = !t && e.target.closest && e.target.closest("[data-rc]");
+    var t = e.target.closest?.("[data-e]"), h = !t && e.target.closest?.("[data-rc]");
     if (!t && !h) return;
     e.preventDefault();
     var p = model.point(e);
-    drag = { key: h ? "c:" + h.getAttribute("data-rc") : t.getAttribute("data-e"), side: h && h.getAttribute("data-rs"), x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
-    try { svg.setPointerCapture(e.pointerId); } catch (x) {}
+    drag = { key: h ? "c:" + h.getAttribute("data-rc") : t.getAttribute("data-e"), side: h ? h.getAttribute("data-rs") : null, x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
+    try { svg.setPointerCapture(e.pointerId); } catch (error_) { /* capture is optional */ }
   });
 
   svg.addEventListener("pointermove", function (e) {
@@ -102,17 +104,17 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     if (drag.side) {
       var r = drag.from.clusters[drag.key.slice(2)], sn = $("ts").checked && !e.shiftKey, sd = drag.side;
       if (sn) {
-        if (sd.indexOf("w") >= 0) dx = Math.round((r.x + dx) / GRID) * GRID - r.x;
-        if (sd.indexOf("e") >= 0) dx = Math.round((r.x + r.w + dx) / GRID) * GRID - r.x - r.w;
-        if (sd.indexOf("n") >= 0) dy = Math.round((r.y + dy) / GRID) * GRID - r.y;
-        if (sd.indexOf("s") >= 0) dy = Math.round((r.y + r.h + dy) / GRID) * GRID - r.y - r.h;
+        if (sd.includes("w")) dx = snapDelta(r.x, dx);
+        if (sd.includes("e")) dx = snapDelta(r.x + r.w, dx);
+        if (sd.includes("n")) dy = snapDelta(r.y, dy);
+        if (sd.includes("s")) dy = snapDelta(r.y + r.h, dy);
       }
       state.st = model.resize(drag.from, drag.key.slice(2), sd, dx, dy);
     } else {
       if ($("ts").checked && !e.shiftKey) {
         var o = origin(drag.from, drag.key);
-        dx = Math.round((o.x + dx) / GRID) * GRID - o.x;
-        dy = Math.round((o.y + dy) / GRID) * GRID - o.y;
+        dx = snapDelta(o.x, dx);
+        dy = snapDelta(o.y, dy);
       }
       state.st = model.apply(drag.from, drag.key, dx, dy);
     }
@@ -122,7 +124,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
 
   function drop(d, e) {
     var api = window.InfraDiagram.serverEditor, id = d.key.slice(2), meta = core.D.meta.nodes[id];
-    if (d.key.charAt(0) !== "n" || !api || !api.move || !meta) return false;
+    if (d.key.charAt(0) !== "n" || !api?.move || !meta) return false;
     var from = meta.cl || null, to = model.regionAt(d.from, model.point(e));
     if (to === from) return false;
     if (from) state.st.clusters[from] = model.clone(d.from.clusters[from]);

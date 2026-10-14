@@ -48,7 +48,7 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
 
   function card(i) {
     var n = cards[i], a = el("article", "note"), p;
-    a.setAttribute("data-i", i);
+    a.dataset.i = i;
     a.appendChild(el("h3", "", n.title));
     n.paras.forEach(function (t) { a.appendChild(el("p", "", t)); });
     p = el("time", "", show(n.date, new Date()));
@@ -66,7 +66,7 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
 
   function editor(i, text) {
     var a = el("article", "note editing"), ta = el("textarea", "ned"), err = el("div", "nerr"), row = el("div", "nrow");
-    a.setAttribute("data-i", i);
+    a.dataset.i = i;
     ta.value = text;
     ta.rows = Math.max(6, text.split("\n").length + 1);
     ta.spellcheck = false;
@@ -102,8 +102,8 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
     list.forEach(function (t, i) {
       nodes.push(edit && !edit.isNew && edit.i === i ? editor(i, t) : card(i));
     });
-    if (edit && edit.isNew) nodes.push(editor(list.length, ""));
-    host.replaceChildren.apply(host, nodes);
+    if (edit?.isNew) nodes.push(editor(list.length, ""));
+    host.replaceChildren(...nodes);
     $("nh").textContent = "Notes (" + list.length + ")";
     syncData();
     panels.placeChrome();
@@ -175,18 +175,18 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
     var add = button("Add note", "nadd", addNote);
     add.id = "na";
     host.insertBefore(add, host.firstChild);
-    [].forEach.call(host.querySelectorAll(".note"), function (n, i) {
-      n.setAttribute("data-i", i);
+    host.querySelectorAll(".note").forEach(function (n, i) {
+      n.dataset.i = i;
       var t = n.querySelector("time");
       if (t) t.textContent = show(cards[i].date, new Date());
     });
     syncData();
     host.addEventListener("click", function (e) {
-      var n = e.target.closest && e.target.closest(".note");
+      var n = e.target.closest?.(".note");
       if (!n || n.classList.contains("editing")) return;
       var s = window.getSelection();
       if (s && !s.isCollapsed && n.contains(s.anchorNode)) return;
-      startEdit(+n.getAttribute("data-i"));
+      startEdit(+n.dataset.i);
     });
   }
 

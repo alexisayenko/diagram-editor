@@ -9,8 +9,9 @@ export function parseNotes(src) {
   };
   src.split("\n").forEach((raw, i) => {
     const line = raw.trim(), at = `notes.md:${i + 1}: `;
-    let m;
-    if ((m = raw.match(/^## (.*)$/))) {
+    const heading = /^## (.*)$/.exec(raw);
+    if (heading) {
+      const m = heading;
       if (cur) flush();
       if (!m[1].trim()) fail(at + "empty note title");
       cur = { title: m[1].trim(), date: null, paras: [], line: i + 1 };
@@ -19,10 +20,11 @@ export function parseNotes(src) {
       if (line && !/^# \S/.test(line)) fail(at + `text before the first "## <title>": ${line}`);
     } else if (cur.date === null) {
       if (!line) return;
-      if (!(m = line.match(/^Date:\s*(\S.*)$/))) fail(at + `note "${cur.title}": first line must be "Date: <stamp>", got: ${line}`);
+      const m = /^Date:\s*(\S.*)$/.exec(line);
+      if (!m) fail(at + `note "${cur.title}": first line must be "Date: <stamp>", got: ${line}`);
       cur.date = m[1].trim();
     } else if (!line) flush();
-    else if (/^#/.test(line)) fail(at + `unexpected heading "${line}" (notes use "## <title>")`);
+    else if (line.startsWith("#")) fail(at + `unexpected heading "${line}" (notes use "## <title>")`);
     else para.push(line);
   });
   if (cur) flush();

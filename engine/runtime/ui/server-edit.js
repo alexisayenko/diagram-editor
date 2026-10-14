@@ -42,7 +42,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
   }
 
   function norm(f) {
-    var o = { name: f.name.trim(), server_type: f.server_type, details: (f.details || "").replace(/\s+$/, "") };
+    var o = { name: f.name.trim(), server_type: f.server_type, details: (f.details || "").trimEnd() };
     TEXTS.forEach(function (t) { o[t[0]] = (f[t[0]] || "").trim(); });
     LISTS.forEach(function (l) { o[l[0]] = trimmed(f[l[0]] || []); });
     return o;
@@ -52,7 +52,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
     var f = { name: edit.name.value, server_type: edit.type, details: edit.notes ? edit.notes.value : edit.raw.details || "" };
     TEXTS.forEach(function (t) { f[t[0]] = edit.texts[t[0]].value; });
     LISTS.forEach(function (l) {
-      f[l[0]] = [].map.call(edit.lists[l[0]].querySelectorAll("input"), function (i) { return i.value; });
+      f[l[0]] = Array.from(edit.lists[l[0]].querySelectorAll("input"), function (i) { return i.value; });
     });
     return f;
   }
@@ -69,7 +69,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
     var raw = bridge().source(key.slice(2)), pn = $("pn");
     if (!raw) return;
     var close = pn.querySelector("#pc"), tg = pn.querySelector(".tg");
-    edit = { key: key, raw: raw, form: el("div", "sf"), texts: {}, lists: {}, notes: null, type: raw.server_type, tg: tg, suffix: / · PROPOSED$/.test(tg.textContent) ? " · PROPOSED" : "" };
+    edit = { key: key, raw: raw, form: el("div", "sf"), texts: {}, lists: {}, notes: null, type: raw.server_type, tg: tg, suffix: tg.textContent.endsWith(" · PROPOSED") ? " · PROPOSED" : "" };
     tg.classList.add("sedb");
     tg.setAttribute("role", "button");
     tg.setAttribute("tabindex", "0");
@@ -151,7 +151,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
   }
 
   function cancel() {
-    var key = edit && edit.key;
+    var key = edit?.key;
     edit = null;
     if (key) selection.select(key);
   }
@@ -179,7 +179,10 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
   $("pn").addEventListener("click", function (e) {
     if (!current || !e.target.closest) return;
     var badge = e.target.closest(".tg") && !e.target.closest(".sfp");
-    if (edit) { if (badge) edit.pick.hidden = !edit.pick.hidden; return; }
+    if (edit) {
+      if (badge) edit.pick.hidden = !edit.pick.hidden;
+      return;
+    }
     if (e.target.closest("#pe") || (e.target.closest("h1.sed") && !e.target.closest("a"))) openForm(current);
     else if (badge) { openForm(current); if (edit) edit.pick.hidden = false; }
   });

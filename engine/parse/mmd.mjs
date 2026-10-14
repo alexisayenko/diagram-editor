@@ -1,7 +1,7 @@
 import { fail, unq } from "../lib/util.mjs";
 
 const IP = /^(\d{1,3}(?:\.\d{1,3}){3}\/\d+)/;
-const FW = /\s*·\s*firewall$/;
+const FW = /·\s*firewall$/;
 const ENT = { quot: '"', amp: "&", lt: "<", gt: ">" };
 // Mermaid entity codes (#quot;, #35;) become plain characters in the view and details.
 const decode = (s) => s.replace(/#(\w+);/g, (m, c) => (/^\d+$/.test(c) ? String.fromCharCode(+c) : ENT[c] ?? m));
@@ -19,38 +19,52 @@ export function parseMmd(src) {
   src.split("\n").forEach((raw, i) => {
     const line = raw.trim();
     if (!line || line.startsWith("%%") || line.startsWith("flowchart") || line.startsWith("direction")) return;
-    let m;
-    if ((m = line.match(/^subgraph\s+(\w+)\["(.*)"\]$/))) {
+    let m = /^subgraph\s+(\w+)\["(.*)"\]$/.exec(line);
+    if (m) {
       clusters.set(m[1], { id: m[1], title: decode(m[2]) });
       current = m[1];
-    } else if (line === "end") {
-      current = null;
-    } else if ((m = line.match(/^linkStyle\s+([\d,]+)\s+(.*)$/))) {
-      for (const n of m[1].split(",")) linkStyles.set(+n, m[2]);
-    } else if ((m = line.match(/^classDef\s+(\w+)\s+(.*)$/))) {
-      classDefs.set(m[1], m[2]);
-    } else if ((m = line.match(/^class\s+([\w,]+)\s+(\w+)$/))) {
-      for (const id of m[1].split(",")) (classes.get(id) || classes.set(id, []).get(id)).push(m[2]);
-    } else if (line.startsWith("style ")) {
       return;
-    } else if ((m = line.match(/^(\w+)\s+(-->|-\.->)(?:\|(.*?)\|)?\s*(\w+)$/))) {
-      const label = m[3] ? decode(unq(m[3])) : "";
-      edges.push({ from: m[1], to: m[4], label: label.replace(FW, ""), fw: FW.test(label), dashed: m[2] === "-.->" });
-    } else if ((m = line.match(/^(\w+)(\[\(|\[)"(.*)"(\)\]|\])$/))) {
-      const parts = m[3].split(/<br\s*\/?>/).map(decode);
-      const title = parts.shift();
-      const body = [];
-      const ip = [];
-      for (const p of parts) {
-        const mm = p.match(IP);
-        if (mm) ip.push(mm[1]);
-        else if (ip.length) fail(`diagram.mmd:${i + 1}: text line "${p}" after IP lines in node ${m[1]}`);
-        else body.push(p);
-      }
-      nodes.set(m[1], { id: m[1], db: m[2] === "[(", title, body, ip, cluster: current });
-    } else {
-      fail(`diagram.mmd:${i + 1}: unsupported syntax: ${line}`);
     }
+    if (line === "end") {
+      current = null;
+      return;
+    }
+    m = /^linkStyle\s+([\d,]+)\s+(\S.*)$/.exec(line);
+    if (m) {
+      for (const n of m[1].split(",")) linkStyles.set(+n, m[2]);
+      return;
+    }
+    m = /^classDef\s+(\w+)\s+(\S.*)$/.exec(line);
+    if (m) {
+      classDefs.set(m[1], m[2]);
+      return;
+    }
+    m = /^class\s+([\w,]+)\s+(\w+)$/.exec(line);
+    if (m) {
+      for (const id of m[1].split(",")) (classes.get(id) || classes.set(id, []).get(id)).push(m[2]);
+      return;
+    }
+    if (line.startsWith("style ")) return;
+    m = /^(\w+)\s+(-->|-\.->)(?:\|(.*?)\|)?\s*(\w+)$/.exec(line);
+    if (m) {
+      const label = m[3] ? decode(unq(m[3])) : "";
+      const fw = FW.exec(label);
+      edges.push({ from: m[1], to: m[4], label: fw ? label.slice(0, fw.index).trimEnd() : label, fw: !!fw, dashed: m[2] === "-.->" });
+      return;
+    }
+    m = /^(\w+)(\[\(|\[)"(.*)"(\)\]|\])$/.exec(line);
+    if (!m) fail(`diagram.mmd:${i + 1}: unsupported syntax: ${line}`);
+    const parts = m[3].split(/<br\s*\/?>/).map(decode);
+    const title = parts.shift();
+    const body = [];
+    const ip = [];
+    for (const p of parts) {
+      const mm = IP.exec(p);
+      if (mm) ip.push(mm[1]);
+      else if (ip.length) fail(`diagram.mmd:${i + 1}: text line "${p}" after IP lines in node ${m[1]}`);
+      else body.push(p);
+    }
+    nodes.set(m[1], { id: m[1], db: m[2] === "[(", title, body, ip, cluster: current });
   });
   return { clusters, nodes, edges, linkStyles, classDefs, classes };
 }

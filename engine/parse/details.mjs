@@ -8,6 +8,6 @@ export function parseDetails(src) {
 }
 
 export function osOf(section) {
-  const m = (section || "").match(/^\s*\|\s*OS\s*\|\s*(.*?)\s*\|\s*$/im);
-  return m && m[1] && !/^TBD$/i.test(m[1]) ? m[1] : null;
+  const m = /^\s*\|\s*OS\s*\|\s*(.*?)\s*\|\s*$/im.exec(section || "");
+  return m?.[1] && !/^TBD$/i.test(m[1]) ? m[1] : null;
 }

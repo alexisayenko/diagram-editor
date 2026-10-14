@@ -56,7 +56,7 @@ export function geometryKit() {
 
   function boxExtent(g, tl, w) {
     var bottom = g.y + g.h;
-    for (var i = 0; i < g.ip.length; i++) bottom = Math.max(bottom, g.ip[i][1] + 7);
+    for (const p of g.ip) bottom = Math.max(bottom, p[1] + 7);
     return { x0: g.x, y0: g.y - HEAD, x1: g.x + (w || Math.max(g.w, TEXT_X + tl * TITLE_CW + 28)), y1: bottom };
   }
 
@@ -74,7 +74,7 @@ export function geometryKit() {
     Object.keys(meta.nodes).forEach(function (id) {
       var g = s.nodes[id];
       if (meta.nodes[id].cl !== cid || !g || g.hidden) return;
-      var e = boxExtent(g, meta.nodes[id].tl, w && w[id]);
+      var e = boxExtent(g, meta.nodes[id].tl, w?.[id]);
       r = r || { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
       r.x0 = Math.min(r.x0, e.x0 - PAD); r.x1 = Math.max(r.x1, e.x1 + PAD); r.y1 = Math.max(r.y1, e.y1 + PAD);
       r.y0 = Math.min(r.y0, e.y0 - BAND - BAND_GAP);
@@ -96,10 +96,10 @@ export function geometryKit() {
   function resizeRegion(s, meta, cid, side, dx, dy, w) {
     var c = s.clusters[cid], b = regionBounds(s, meta, cid, w), t = c.title, centred = Math.abs(t[0] - (c.x + c.w / 2)) <= 2;
     var x0 = c.x, y0 = c.y, x1 = c.x + c.w, y1 = c.y + c.h;
-    if (side.indexOf("w") >= 0) x0 = Math.min(x0 + dx, b ? b.x0 : Infinity, x1 - MIN_W);
-    if (side.indexOf("e") >= 0) x1 = Math.max(x1 + dx, b ? b.x1 : -Infinity, x0 + MIN_W);
-    if (side.indexOf("n") >= 0) y0 = Math.min(y0 + dy, b ? b.y0 : Infinity, y1 - MIN_H);
-    if (side.indexOf("s") >= 0) y1 = Math.max(y1 + dy, b ? b.y1 : -Infinity, y0 + MIN_H);
+    if (side.includes("w")) x0 = Math.min(x0 + dx, b ? b.x0 : Infinity, x1 - MIN_W);
+    if (side.includes("e")) x1 = Math.max(x1 + dx, b ? b.x1 : -Infinity, x0 + MIN_W);
+    if (side.includes("n")) y0 = Math.min(y0 + dy, b ? b.y0 : Infinity, y1 - MIN_H);
+    if (side.includes("s")) y1 = Math.max(y1 + dy, b ? b.y1 : -Infinity, y0 + MIN_H);
     c.title = [centred ? r1((x0 + x1) / 2) : t[0] + (x0 - c.x), t[1] + (y0 - c.y)];
     c.x = x0; c.y = y0; c.w = x1 - x0; c.h = y1 - y0;
   }
@@ -115,15 +115,17 @@ export function geometryKit() {
     Object.keys(meta.nodes).forEach(function (id) {
       var g = s.nodes[id];
       if (!g || g.hidden) return;
-      var r = boxExtent(g, meta.nodes[id].tl, w && w[id]);
+      var r = boxExtent(g, meta.nodes[id].tl, w?.[id]);
       r.k = "n:" + id;
       r.cl = meta.nodes[id].cl ? ent["c:" + meta.nodes[id].cl].i : -1;
       ent[r.k] = r; nodes.push(r);
     });
     var bands = [];
     clusters.forEach(function (c) {
-      bands.push({ x0: c.x0, y0: c.y0 - 3, x1: c.x1, y1: c.y0 + 3 }, { x0: c.x0, y0: c.y1 - 3, x1: c.x1, y1: c.y1 + 3 });
-      bands.push({ x0: c.x0 - 3, y0: c.y0, x1: c.x0 + 3, y1: c.y1 }, { x0: c.x1 - 3, y0: c.y0, x1: c.x1 + 3, y1: c.y1 });
+      bands.push(
+        { x0: c.x0, y0: c.y0 - 3, x1: c.x1, y1: c.y0 + 3 }, { x0: c.x0, y0: c.y1 - 3, x1: c.x1, y1: c.y1 + 3 },
+        { x0: c.x0 - 3, y0: c.y0, x1: c.x0 + 3, y1: c.y1 }, { x0: c.x1 - 3, y0: c.y0, x1: c.x1 + 3, y1: c.y1 }
+      );
     });
     return { ent: ent, nodes: nodes, titles: titles, clusters: clusters, bands: bands };
   }
@@ -131,7 +133,7 @@ export function geometryKit() {
   function uniq(a) {
     a.sort(num);
     var out = [];
-    a.forEach(function (v) { if (!out.length || v - out[out.length - 1] > 0.5) out.push(v); });
+    a.forEach(function (v) { if (!out.length || v - out.at(-1) > 0.5) out.push(v); });
     var mid = [];
     out.forEach(function (v, i) {
       mid.push(v);
@@ -157,13 +159,21 @@ export function geometryKit() {
     var nx = xs.length, ny = ys.length, P = nx * ny;
     var blk = new Uint8Array(P), hb = new Uint8Array(P), vb = new Uint8Array(P), hc = new Int16Array(P), vc = new Int16Array(P), hh = new Uint8Array(P), vh = new Uint8Array(P);
     var obst = S.nodes.map(function (r) { return [r, M]; }).concat(S.titles.map(function (r) { return [r, 4]; }));
-    function hit(x, y) { for (var k = 0; k < obst.length; k++) if (inside(x, y, obst[k][0], obst[k][1])) return 1; return 0; }
+    function hit(x, y) {
+      for (const o of obst) if (inside(x, y, o[0], o[1])) return 1;
+      return 0;
+    }
     // Bit 2: a segment within 5px of the narrowest allowed clearance (narrow channel).
-    function tight(x, y) { for (var k = 0; k < S.nodes.length; k++) if (inside(x, y, S.nodes[k], M + 5)) return 2; return 0; }
-    function region(x, y) { for (var k = 0; k < S.clusters.length; k++) if (inside(x, y, S.clusters[k], 0)) return k; return -1; }
+    function tight(x, y) {
+      for (const r of S.nodes) if (inside(x, y, r, M + 5)) return 2;
+      return 0;
+    }
+    function region(x, y) {
+      for (const [k, r] of S.clusters.entries()) if (inside(x, y, r, 0)) return k;
+      return -1;
+    }
     function hug(x, y, horiz) {
-      for (var k = 0; k < S.clusters.length; k++) {
-        var c = S.clusters[k];
+      for (const c of S.clusters) {
         if (horiz ? x > c.x0 && x < c.x1 && (Math.abs(y - c.y0) < 9 || Math.abs(y - c.y1) < 9) : y > c.y0 && y < c.y1 && (Math.abs(x - c.x0) < 9 || Math.abs(x - c.x1) < 9)) return 1;
       }
       return 0;
@@ -181,73 +191,123 @@ export function geometryKit() {
     return i < 0 || j < 0 ? -1 : i * G.ny + j;
   }
 
+  function heapPush(heap, f, st) {
+    heap.push([f, st]);
+    var i = heap.length - 1;
+    while (i > 0) {
+      var q = (i - 1) >> 1;
+      if (heap[q][0] <= heap[i][0]) break;
+      var t = heap[q];
+      heap[q] = heap[i];
+      heap[i] = t;
+      i = q;
+    }
+  }
+  function heapPop(heap) {
+    var top = heap[0], last = heap.pop();
+    if (!heap.length) return top;
+    heap[0] = last;
+    var i = 0;
+    for (;;) {
+      var l = 2 * i + 1, r = l + 1, m = i;
+      if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+      if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+      if (m === i) break;
+      var t = heap[m];
+      heap[m] = heap[i];
+      heap[i] = t;
+      i = m;
+    }
+    return top;
+  }
+  function manhattan(G, hx, p) {
+    var x = G.xs[Math.floor(p / G.ny)], y = G.ys[p % G.ny], m = Infinity;
+    for (const q of hx) m = Math.min(m, Math.abs(x - q[0]) + Math.abs(y - q[1]));
+    return m;
+  }
+  // Extra cost of reaching a goal with heading gd (-1: any) when arriving with heading d.
+  function turnCost(gd, d) {
+    if (gd < 0 || gd === d) return 0;
+    return gd === (d + 2) % 4 ? Infinity : BEND;
+  }
+  // Cost of moving from grid point p (column i, row j) in heading d2 after heading d, and the point reached; null when blocked.
+  function step(G, p, i, j, d, d2, home) {
+    var i2 = i + DX[d2], j2 = j + DY[d2];
+    if (i2 < 0 || j2 < 0 || i2 >= G.nx || j2 >= G.ny) return null;
+    var p2 = i2 * G.ny + j2;
+    if (G.blk[p2]) return null;
+    var horiz = d2 % 2 === 0, lowFirst = horiz ? d2 === 0 : d2 === 1, si = lowFirst ? p : p2;
+    if ((horiz ? G.hb : G.vb)[si]) return null;
+    var cl = (horiz ? G.hc : G.vc)[si], flags = (horiz ? G.hh : G.vh)[si];
+    var len = horiz ? Math.abs(G.xs[i2] - G.xs[i]) : Math.abs(G.ys[j2] - G.ys[j]);
+    var mul = 1;
+    if (cl >= 0 && !home.includes(cl)) mul += REGION;
+    if (flags & 1) mul += HUG;
+    if (flags & 2) mul += TIGHT;
+    return { p2: p2, cost: len * mul + (d2 === d ? 0 : BEND) };
+  }
+  function firstState(prev, st) {
+    while (prev[st] >= 0) st = prev[st];
+    return st;
+  }
+
   // A* over (grid point, heading); cost = length (x region / hug penalties) + bends. starts / goals: {p, d, c}.
   function search(G, starts, goals, home) {
     var n = G.nx * G.ny * 4;
-    if (cache.n < n) { cache.n = n; cache.dist = new Float64Array(n); cache.prev = new Int32Array(n); }
+    if (cache.n < n) {
+      cache.n = n;
+      cache.dist = new Float64Array(n);
+      cache.prev = new Int32Array(n);
+    }
     var dist = cache.dist, prev = cache.prev;
-    dist.fill(Infinity, 0, n); prev.fill(-1, 0, n);
+    dist.fill(Infinity, 0, n);
+    prev.fill(-1, 0, n);
     var goalAt = {}, hx = [], heap = [];
-    goals.forEach(function (g) { (goalAt[g.p] = goalAt[g.p] || []).push(g); hx.push([G.xs[Math.floor(g.p / G.ny)], G.ys[g.p % G.ny]]); });
-    function h(p) {
-      var x = G.xs[Math.floor(p / G.ny)], y = G.ys[p % G.ny], m = Infinity;
-      for (var k = 0; k < hx.length; k++) m = Math.min(m, Math.abs(x - hx[k][0]) + Math.abs(y - hx[k][1]));
-      return m;
-    }
-    function push(f, st) {
-      heap.push([f, st]);
-      for (var i = heap.length - 1; i > 0;) { var q = (i - 1) >> 1; if (heap[q][0] <= heap[i][0]) break; var t = heap[q]; heap[q] = heap[i]; heap[i] = t; i = q; }
-    }
-    function pop() {
-      var top = heap[0], last = heap.pop();
-      if (heap.length) {
-        heap[0] = last;
-        for (var i = 0; ;) {
-          var l = 2 * i + 1, r = l + 1, m = i;
-          if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
-          if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
-          if (m === i) break;
-          var t = heap[m]; heap[m] = heap[i]; heap[i] = t; i = m;
-        }
-      }
-      return top;
-    }
+    goals.forEach(function (g) {
+      goalAt[g.p] = goalAt[g.p] || [];
+      goalAt[g.p].push(g);
+      hx.push([G.xs[Math.floor(g.p / G.ny)], G.ys[g.p % G.ny]]);
+    });
+    function h(p) { return manhattan(G, hx, p); }
     starts.forEach(function (s) {
       var st = s.p * 4 + s.d;
-      if (s.c < dist[st]) { dist[st] = s.c; prev[st] = -1; push(s.c + h(s.p), st); }
+      if (s.c < dist[st]) {
+        dist[st] = s.c;
+        prev[st] = -1;
+        heapPush(heap, s.c + h(s.p), st);
+      }
     });
-    var best = Infinity, bestSt = -1, bestGoal = null;
+    var best = { cost: Infinity, st: -1, goal: null };
     while (heap.length) {
-      var e = pop(), st = e[1], d0 = dist[st];
-      if (e[0] >= best) break;
-      if (e[0] > d0 + h(Math.floor(st / 4)) + 1e-6) continue;
-      var p = Math.floor(st / 4), d = st % 4;
-      (goalAt[p] || []).forEach(function (g) {
-        var extra = g.d < 0 || g.d === d ? 0 : g.d === (d + 2) % 4 ? Infinity : BEND;
-        if (d0 + extra + g.c < best) { best = d0 + extra + g.c; bestSt = st; bestGoal = g; }
-      });
+      var e = heapPop(heap), st = e[1], d0 = dist[st], p = Math.floor(st / 4), d = st % 4;
+      if (e[0] >= best.cost) break;
+      if (e[0] > d0 + h(p) + 1e-6) continue;
+      for (const g of goalAt[p] || []) {
+        var total = d0 + turnCost(g.d, d) + g.c;
+        if (total < best.cost) best = { cost: total, st: st, goal: g };
+      }
       var i = Math.floor(p / G.ny), j = p % G.ny;
       for (var d2 = 0; d2 < 4; d2++) {
         if (d2 === (d + 2) % 4) continue;
-        var i2 = i + DX[d2], j2 = j + DY[d2];
-        if (i2 < 0 || j2 < 0 || i2 >= G.nx || j2 >= G.ny) continue;
-        var p2 = i2 * G.ny + j2;
-        if (G.blk[p2]) continue;
-        var horiz = d2 % 2 === 0, si = horiz ? (d2 === 0 ? p : p2) : (d2 === 1 ? p : p2);
-        if ((horiz ? G.hb : G.vb)[si]) continue;
-        var cl = (horiz ? G.hc : G.vc)[si];
-        var len = horiz ? Math.abs(G.xs[i2] - G.xs[i]) : Math.abs(G.ys[j2] - G.ys[j]);
-        var cost = len * (1 + (cl >= 0 && home.indexOf(cl) < 0 ? REGION : 0) + ((horiz ? G.hh : G.vh)[si] & 1 ? HUG : 0) + ((horiz ? G.hh : G.vh)[si] & 2 ? TIGHT : 0)) + (d2 === d ? 0 : BEND);
-        var st2 = p2 * 4 + d2, nd = d0 + cost;
-        if (nd < dist[st2]) { dist[st2] = nd; prev[st2] = st; push(nd + h(p2), st2); }
+        var mv = step(G, p, i, j, d, d2, home);
+        if (!mv) continue;
+        var st2 = mv.p2 * 4 + d2, nd = d0 + mv.cost;
+        if (nd < dist[st2]) {
+          dist[st2] = nd;
+          prev[st2] = st;
+          heapPush(heap, nd + h(mv.p2), st2);
+        }
       }
     }
-    if (bestSt < 0) return null;
+    if (best.st < 0) return null;
     var pts = [];
-    for (var s2 = bestSt; s2 >= 0; s2 = prev[s2]) { var pp = Math.floor(s2 / 4); pts.unshift([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]); }
-    var first = starts.find(function (s) { return s.p * 4 + (s.d) === firstState(bestSt); });
-    return { pts: pts, start: first, goal: bestGoal, cost: best };
-    function firstState(s3) { while (prev[s3] >= 0) s3 = prev[s3]; return s3; }
+    for (var s2 = best.st; s2 >= 0; s2 = prev[s2]) {
+      var pp = Math.floor(s2 / 4);
+      pts.unshift([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]);
+    }
+    var origin = firstState(prev, best.st);
+    var first = starts.find(function (s) { return s.p * 4 + s.d === origin; });
+    return { pts: pts, start: first, goal: best.goal, cost: best.cost };
   }
 
   // Port on side sd (0 right, 1 bottom, 2 left, 3 top; = outward heading) at position v along the side.
@@ -281,7 +341,8 @@ export function geometryKit() {
   // Rounded orthogonal path: corner radius up to RAD, keeping 6px straight at the start and 12px before the arrowhead.
   function shape(pts) {
     var n = pts.length, seg = [], rad = [0];
-    for (var k = 0; k + 1 < n; k++) seg.push(Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1]));
+    var k;
+    for (k = 0; k + 1 < n; k++) seg.push(Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1]));
     for (k = 1; k + 1 < n; k++) {
       var a = k - 1 === 0 ? seg[k - 1] - 6 : seg[k - 1] / 2, b = k + 1 === n - 1 ? seg[k] - 12 : seg[k] / 2;
       rad.push(Math.max(0, Math.min(RAD, a, b)));
@@ -330,7 +391,7 @@ export function geometryKit() {
     if (!st.length) st = stations(sh, 2, 6);
     if (!st.length) st = stations(sh, 0, 0);
     st.forEach(function (s) {
-      if (best && best.clear) return;
+      if (best?.clear) return;
       var mk = s.h ? { x0: s.x - 6, y0: s.y - 12, x1: s.x + 6, y1: s.y + 12 } : { x0: s.x - 12, y0: s.y - 6, x1: s.x + 12, y1: s.y + 6 };
       var opts = s.h
         ? [{ label: [s.x, s.y + 21], anchor: "middle", box: { x0: s.x - 26, y0: s.y + 12, x1: s.x + 26, y1: s.y + 24 } }, { label: [s.x, s.y - 15], anchor: "middle", box: { x0: s.x - 26, y0: s.y - 25, x1: s.x + 26, y1: s.y - 13 } }]
@@ -346,7 +407,7 @@ export function geometryKit() {
   function placeLabel(sh, lw, hard, soft) {
     var best = null;
     stations(sh, 4, 22).forEach(function (s) {
-      if (best && best.clear) return;
+      if (best?.clear) return;
       var b = { x0: s.x - lw / 2, y0: s.y - 8.5, x1: s.x + lw / 2, y1: s.y + 8.5 };
       var hit = cost([b], hard) * 100 + cost([b], soft) * 5 + (s.h ? 0 : 400), sc = hit + s.off * 0.01;
       if (!best || sc < best.score) best = { score: sc, clear: hit === 0, label: [r1(b.x0 + 7), r1(s.y + 3.5)], box: b };
@@ -398,13 +459,13 @@ export function geometryKit() {
         [0, 1, 2, 3].forEach(function (sd) { var p = port(r, sd, centre(r, sd)); extra.push(p.pt, p.stub); });
         if (lineY(e, end) !== null) [0, 2].forEach(function (sd) { var p = port(r, sd, lineY(e, end)); extra.push(p.pt, p.stub); });
       });
-      ((ov[e.k] || {}).via || []).forEach(function (v) { extra.push(v); });
+      (ov[e.k]?.via || []).forEach(function (v) { extra.push(v); });
     });
     var G = grid(S, extra), first = {};
     E.forEach(function (e) {
       var A = S.ent[e.from], B = S.ent[e.to];
       if (!A || !B) return;
-      var via = (ov[e.k] || {}).via || [], h = home(e);
+      var via = ov[e.k]?.via || [], h = home(e);
       if (!via.length) {
         var r = run(G, A, B, endCands(e, 0, A, B), endCands(e, 1, B, A), h);
         if (r) first[e.k] = { sa: r.start.cand.sd, sb: (r.goal.d + 2) % 4, pts: [r.start.cand.p.pt].concat(r.pts, [r.goal.cand.p.pt]) };
@@ -439,8 +500,10 @@ export function geometryKit() {
       }
       [[e.from, f.sa, B, 0, A], [e.to, f.sb, A, 1, B]].forEach(function (x) {
         if (ly[x[3]] !== null) { ports[e.k + "|" + x[3]] = { v: ly[x[3]], r: x[4], sd: x[1] }; return; }
-        var o2 = x[2], want = mid !== null ? mid : x[1] % 2 === 0 ? (o2.y0 + o2.y1) / 2 : (o2.x0 + o2.x1) / 2;
-        (bySide[x[0] + "|" + x[1]] = bySide[x[0] + "|" + x[1]] || []).push({ k: e.k, end: x[3], r: S.ent[x[0]], sd: x[1], want: want });
+        var o2 = x[2], sk = x[0] + "|" + x[1], want = mid;
+        if (want === null) want = x[1] % 2 === 0 ? (o2.y0 + o2.y1) / 2 : (o2.x0 + o2.x1) / 2;
+        bySide[sk] = bySide[sk] || [];
+        bySide[sk].push({ k: e.k, end: x[3], r: S.ent[x[0]], sd: x[1], want: want });
       });
     });
     Object.keys(bySide).forEach(function (key) {
@@ -484,10 +547,10 @@ export function geometryKit() {
       if (!rt) return;
       rt.label = null;
       if (e.ll) {
-        var fix = (ov[e.k] || {}).label;
+        var fix = ov[e.k]?.label;
         if (fix) rt.label = fix.slice();
         else {
-          var lw = (o.lw && o.lw[e.k]) || e.ll * 6 + 14, l = placeLabel(rt.sh, lw, hard.concat(placed), S.bands);
+          var lw = o.lw?.[e.k] || e.ll * 6 + 14, l = placeLabel(rt.sh, lw, hard.concat(placed), S.bands);
           if (l) { placed.push(l.box); rt.label = l.label; }
         }
       }
@@ -501,14 +564,24 @@ export function geometryKit() {
     var S = shapes(s, meta, w), bad = {};
     function gap(a, b) { return Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b.y1); }
     var nodes = S.nodes;
-    for (var i = 0; i < nodes.length; i++) for (var j = i + 1; j < nodes.length; j++) if (gap(nodes[i], nodes[j]) < MIN_GAP) bad[nodes[i].k] = bad[nodes[j].k] = 1;
+    function flagPairs(list) {
+      for (var i = 0; i < list.length; i++) {
+        for (var j = i + 1; j < list.length; j++) {
+          if (gap(list[i], list[j]) < MIN_GAP) {
+            bad[list[i].k] = 1;
+            bad[list[j].k] = 1;
+          }
+        }
+      }
+    }
+    flagPairs(nodes);
     nodes.forEach(function (b) {
       if (b.cl < 0) return;
       var c = S.clusters[b.cl];
       if (b.x0 - c.x0 < PAD || c.x1 - b.x1 < PAD || c.y1 - b.y1 < PAD || b.y0 < c.y0 + BAND + BAND_GAP) bad[b.k] = 1;
     });
     var cl = S.clusters;
-    for (i = 0; i < cl.length; i++) for (j = i + 1; j < cl.length; j++) if (gap(cl[i], cl[j]) < MIN_GAP) bad[cl[i].k] = bad[cl[j].k] = 1;
+    flagPairs(cl);
     cl.forEach(function (c) { nodes.forEach(function (b) { if (b.cl !== c.i && gap(c, b) < MIN_GAP) bad[c.k] = bad[b.k] = 1; }); });
     return bad;
   }

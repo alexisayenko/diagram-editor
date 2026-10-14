@@ -61,7 +61,7 @@ svg:not(.s-sketch) .lpm{fill:var(--bg);stroke:var(--mv)}
 svg:not(.s-sketch) .d.prop{fill:none;stroke:var(--tc);stroke-width:1.5;stroke-dasharray:5 4}
 svg:not(.s-sketch) .ch .sel,svg:not(.s-sketch) .ch.sel .cd{stroke:var(--tc);stroke-width:2}
 svg:not(.s-sketch) .ic{fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-svg:not(.s-sketch) .nt{font-size:11px}
+svg:not(.s-sketch) .nt{font-size:12px;dominant-baseline:central}
 svg:not(.s-sketch) .cch .cd{display:none}
 .hw{fill:var(--mut);font-family:var(--mono);font-size:9px}
 .dv{stroke:var(--mut);stroke-opacity:.35;stroke-width:.75;fill:none}
@@ -88,7 +88,7 @@ svg.s-dark .tt{fill:#0A1020;font-size:7.5px;font-weight:700;letter-spacing:.5px}
 svg.s-dark .ic{stroke:var(--tc)}
 svg.s-dark .ip{fill:var(--ipf);stroke:var(--ipln);stroke-width:1}
 svg.s-dark .ni{fill:var(--ipt);font-size:10px}
-svg.s-dark .nt{fill:var(--fg);font-weight:500;font-size:10.5px}
+svg.s-dark .nt{fill:var(--fg);font-weight:500;font-size:11.5px}
 svg.s-dark .nb{fill:#A9BCD9;font-size:10.5px}
 svg.s-dark .ct{fill:#9DB3D6;text-transform:uppercase;letter-spacing:1px;font-size:10px;font-weight:500}
 svg.s-dark .cch .tp{fill:none;stroke:var(--tc)}
@@ -114,7 +114,7 @@ svg.s-swiss .k{stroke-width:1.5}
 svg.s-swiss .tcp,svg.s-swiss .mvl,svg.s-swiss .fwt{text-transform:uppercase;letter-spacing:1px;font-size:8.5px}
 svg.s-swiss .fwz{stroke-width:1.5;stroke-linecap:square;stroke-linejoin:miter}
 svg.s-swiss .lp{rx:0}
-svg:not(.showos) .osg{display:none}
+svg:not(.showsys) .osg,svg:not(.showsys) .hw{display:none}
 .osg{cursor:pointer}
 .osp{fill:var(--bg);stroke:var(--mut);stroke-width:.75}
 .ost{fill:var(--mut);font-family:var(--mono);font-size:8.5px}
@@ -151,8 +151,7 @@ svg [data-g].nb{fill:var(--gc);font-weight:600}
 :root[data-style="dark"] [data-g="job-104"]{--gc:#FF6B6B}
 </style>
 <style id="css-page">
-html,body{margin:0;background:var(--bg);color:var(--fg)}
-html,body{width:100%;height:100%;overflow:hidden}
+html,body{margin:0;background:var(--bg);color:var(--fg);width:100%;height:100%;overflow:hidden}
 body>svg{display:block;width:100vw;height:100vh;height:100dvh;background:var(--bg)}
 body>svg.s-dark{background-image:linear-gradient(#14213A 1px,transparent 1px),linear-gradient(90deg,#14213A 1px,transparent 1px);background-size:24px 24px}
 [hidden]{display:none!important}
@@ -273,6 +272,7 @@ svg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}
 #pn .eolb{display:inline-block;font:700 10px ui-monospace,Consolas,monospace;letter-spacing:.06em;color:var(--eolt,#92400E);background:var(--eolf,#FFF7E6);border:1px solid var(--eol,#D97706);border-radius:9px;padding:0 6px;vertical-align:1px}
 #pn hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 #pn .pm{color:var(--mut);font-size:12px}
+#pn .hws{margin:8px 0;font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--mut)}
 #pc{position:absolute;top:8px;right:10px;font:inherit;border:1px solid var(--line);background:none;color:var(--fg);border-radius:6px;padding:2px 10px;cursor:pointer}
 :root[data-style="swiss"] #pn{border-radius:0}
 @media (max-width:759px){#pn{top:auto;left:0;right:0;bottom:0;width:auto;height:45vh;max-height:none;border-width:1px 0 0;border-radius:12px 12px 0 0}}
@@ -308,6 +308,7 @@ svg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}
 .nw[aria-pressed=true]{background:var(--line);font-weight:600}
 .nw:focus-visible{outline:2px solid var(--fg);outline-offset:-2px}
 .nw code{font:11px ui-monospace,Consolas,monospace}
+.nw input.nwe{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--fg);border-radius:3px;padding:0 3px;width:calc(100% - 1ch);min-width:6ch;box-sizing:border-box}
 .nk{font:11px ui-monospace,Consolas,monospace;color:var(--mut)}
 .nw.z{color:var(--mut)}
 #wr{margin-top:6px}
@@ -379,7 +380,7 @@ svg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}
 <g class="ch cch" data-ent="c:nas" data-ty="nas" data-tk="nas"></g>
 
 <g class="ch" data-ent="n:web01" data-ty="web" data-tk="web"></g>
-<text class="nt" data-ent="n:web01" data-ty="web" data-tk="web" x="46" y="74">web-01.example.test</text>
+<text class="nt" data-ent="n:web01" data-ty="web" data-tk="web" x="46" y="70">web-01<title>web-01.example.test</title></text>
 <rect class="b" data-ent="n:web01" data-ty="web" data-tk="web" x="36" y="80" width="164" height="88" rx="14"/>
 <text class="nb" data-ent="n:web01" data-ty="web" data-tk="web" x="46" y="98">nginx reverse proxy</text>
 <text class="nb" data-ent="n:web01" data-ty="web" data-tk="web" x="46" y="114">Customer portal</text>
@@ -387,10 +388,10 @@ svg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}
 <text class="ni" data-ent="n:web01" data-ty="web" data-tk="web" x="46" y="152">192.0.2.10/24</text>
 <g class="nwb" data-ent="n:web01" data-ty="web" data-tk="web" data-n="5" data-i="0" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 203.0.113.0/24 Public" transform="translate(143 124)"><title>Show network 203.0.113.0/24 Public</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
 <g class="nwb" data-ent="n:web01" data-ty="web" data-tk="web" data-n="1" data-i="1" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 192.0.2.0/24 Internal application network" transform="translate(131 142)"><title>Show network 192.0.2.0/24 Internal application network</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
-<g class="osg" data-ent="n:web01" data-ty="web" data-tk="web"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Ubuntu 24.04</text></g>
+<g class="osg" data-ent="n:web01" data-ty="web" data-tk="web"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Ubuntu 24.04</text><title>Ubuntu 24.04</title></g>
 
 <g class="ch" data-ent="n:web02" data-ty="web" data-tk="web"></g>
-<text class="nt" data-ent="n:web02" data-ty="web" data-tk="web" x="46" y="202">web-02.example.test</text>
+<text class="nt" data-ent="n:web02" data-ty="web" data-tk="web" x="46" y="198">web-02<title>web-02.example.test</title></text>
 <rect class="b" data-ent="n:web02" data-ty="web" data-tk="web" x="36" y="208" width="164" height="88" rx="14"/>
 <text class="nb" data-ent="n:web02" data-ty="web" data-tk="web" x="46" y="226">nginx reverse proxy</text>
 <text class="nb" data-ent="n:web02" data-ty="web" data-tk="web" x="46" y="242">Customer portal</text>
@@ -398,10 +399,10 @@ svg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}
 <text class="ni" data-ent="n:web02" data-ty="web" data-tk="web" x="46" y="280">192.0.2.11/24</text>
 <g class="nwb" data-ent="n:web02" data-ty="web" data-tk="web" data-n="5" data-i="0" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 203.0.113.0/24 Public" transform="translate(143 252)"><title>Show network 203.0.113.0/24 Public</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
 <g class="nwb" data-ent="n:web02" data-ty="web" data-tk="web" data-n="1" data-i="1" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 192.0.2.0/24 Internal application network" transform="translate(131 270)"><title>Show network 192.0.2.0/24 Internal application network</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
-<g class="osg eol" data-ent="n:web02" data-ty="web" data-tk="web"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Ubuntu 18.04 <tspan class="ose">EOL</tspan></text></g>
+<g class="osg eol" data-ent="n:web02" data-ty="web" data-tk="web"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Ubuntu 18.04 <tspan class="ose">EOL</tspan></text><title>Ubuntu 18.04</title></g>
 
 <g class="ch" data-ent="n:ifc01" data-ty="interface" data-tk="interface"></g>
-<text class="nt" data-ent="n:ifc01" data-ty="interface" data-tk="interface" x="302" y="74">ifc-01.example.test</text>
+<text class="nt" data-ent="n:ifc01" data-ty="interface" data-tk="interface" x="302" y="70">ifc-01<title>ifc-01.example.test</title></text>
 <rect class="b" data-ent="n:ifc01" data-ty="interface" data-tk="interface" x="292" y="80" width="166" height="88" rx="14"/>
 <text class="nb" data-ent="n:ifc01" data-ty="interface" data-tk="interface" x="302" y="98">SFTP gateway</text>
 <text class="nb pl" data-ent="n:ifc01" data-ty="interface" data-tk="interface" data-g="job-104" x="302" y="114">Job 104 "Batch import"</text>
@@ -409,85 +410,85 @@ svg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}
 <text class="ni" data-ent="n:ifc01" data-ty="interface" data-tk="interface" x="302" y="152">192.0.2.20/24</text>
 <g class="nwb" data-ent="n:ifc01" data-ty="interface" data-tk="interface" data-n="3" data-i="0" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 198.51.100.0/25 DMZ" transform="translate(405 124)"><title>Show network 198.51.100.0/25 DMZ</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
 <g class="nwb" data-ent="n:ifc01" data-ty="interface" data-tk="interface" data-n="1" data-i="1" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 192.0.2.0/24 Internal application network" transform="translate(387 142)"><title>Show network 192.0.2.0/24 Internal application network</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
-<g class="osg eol" data-ent="n:ifc01" data-ty="interface" data-tk="interface"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Windows Server 2012 R2 <tspan class="ose">EOL</tspan></text></g>
+<g class="osg eol" data-ent="n:ifc01" data-ty="interface" data-tk="interface"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Windows Server 2012 R2 <tspan class="ose">EOL</tspan></text><title>Windows Server 2012 R2</title></g>
 
 <g class="ch" data-ent="n:app01" data-ty="application" data-tk="application"></g>
-<text class="nt" data-ent="n:app01" data-ty="application" data-tk="application" x="46" y="446">app-01.example.test</text>
+<text class="nt" data-ent="n:app01" data-ty="application" data-tk="application" x="46" y="442">app-01<title>app-01.example.test</title></text>
 <rect class="b" data-ent="n:app01" data-ty="application" data-tk="application" x="36" y="452" width="164" height="70" rx="14"/>
 <text class="nb" data-ent="n:app01" data-ty="application" data-tk="application" x="46" y="470">Tomcat: core-api</text>
 <text class="nb" data-ent="n:app01" data-ty="application" data-tk="application" x="46" y="486">RMI: order-service</text>
 <text class="ni" data-ent="n:app01" data-ty="application" data-tk="application" x="46" y="506">192.0.2.31/24</text>
 <g class="nwb" data-ent="n:app01" data-ty="application" data-tk="application" data-n="1" data-i="0" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 192.0.2.0/24 Internal application network" transform="translate(131 496)"><title>Show network 192.0.2.0/24 Internal application network</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
-<g class="osg" data-ent="n:app01" data-ty="application" data-tk="application"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Oracle Linux 8</text></g>
+<g class="osg" data-ent="n:app01" data-ty="application" data-tk="application"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Oracle Linux 8</text><title>Oracle Linux 8</title></g>
 
 <g class="ch" data-ent="n:app02" data-ty="application" data-tk="application"></g>
-<text class="nt" data-ent="n:app02" data-ty="application" data-tk="application" x="232" y="446">app-02.example.test</text>
+<text class="nt" data-ent="n:app02" data-ty="application" data-tk="application" x="232" y="442">app-02<title>app-02.example.test</title></text>
 <rect class="b" data-ent="n:app02" data-ty="application" data-tk="application" x="222" y="452" width="164" height="70" rx="14"/>
 <text class="nb" data-ent="n:app02" data-ty="application" data-tk="application" x="232" y="470">Tomcat: core-api</text>
 <text class="nb" data-ent="n:app02" data-ty="application" data-tk="application" x="232" y="486">RMI: pricing-service</text>
 <text class="ni" data-ent="n:app02" data-ty="application" data-tk="application" x="232" y="506">192.0.2.32/24</text>
 <g class="nwb" data-ent="n:app02" data-ty="application" data-tk="application" data-n="1" data-i="0" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 192.0.2.0/24 Internal application network" transform="translate(317 496)"><title>Show network 192.0.2.0/24 Internal application network</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
-<g class="osg" data-ent="n:app02" data-ty="application" data-tk="application"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Oracle Linux 8</text></g>
+<g class="osg" data-ent="n:app02" data-ty="application" data-tk="application"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Oracle Linux 8</text><title>Oracle Linux 8</title></g>
 
 <g class="ch" data-ent="n:app03" data-ty="application" data-tk="application"></g>
-<text class="nt" data-ent="n:app03" data-ty="application" data-tk="application" x="418" y="446">app-03.example.test</text>
+<text class="nt" data-ent="n:app03" data-ty="application" data-tk="application" x="418" y="442">app-03<title>app-03.example.test</title></text>
 <rect class="b" data-ent="n:app03" data-ty="application" data-tk="application" x="408" y="452" width="166" height="70" rx="14"/>
 <text class="nb pl" data-ent="n:app03" data-ty="application" data-tk="application" data-g="job-104" x="418" y="470">Job 104 batch import</text>
 <text class="nb pl" data-ent="n:app03" data-ty="application" data-tk="application" x="418" y="486">Job 210 nightly export</text>
 <text class="ni" data-ent="n:app03" data-ty="application" data-tk="application" x="418" y="506">192.0.2.33/24</text>
 <g class="nwb" data-ent="n:app03" data-ty="application" data-tk="application" data-n="1" data-i="0" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 192.0.2.0/24 Internal application network" transform="translate(503 496)"><title>Show network 192.0.2.0/24 Internal application network</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
-<g class="osg eol" data-ent="n:app03" data-ty="application" data-tk="application"><rect class="osp" height="12"/><text class="ost" x="4" y="9">CentOS 7 <tspan class="ose">EOL</tspan></text></g>
+<g class="osg eol" data-ent="n:app03" data-ty="application" data-tk="application"><rect class="osp" height="12"/><text class="ost" x="4" y="9">CentOS 7 <tspan class="ose">EOL</tspan></text><title>CentOS 7</title></g>
 
 <g class="ch" data-ent="n:db01" data-ty="oracle" data-tk="oracle"></g>
-<text class="nt" data-ent="n:db01" data-ty="oracle" data-tk="oracle" x="46" y="672">db-01.example.test</text>
+<text class="nt" data-ent="n:db01" data-ty="oracle" data-tk="oracle" x="46" y="668">db-01<title>db-01.example.test</title></text>
 <rect class="b" data-ent="n:db01" data-ty="oracle" data-tk="oracle" x="36" y="678" width="157" height="70" rx="14"/>
 <text class="nb" data-ent="n:db01" data-ty="oracle" data-tk="oracle" x="46" y="696">Oracle RAC node 1</text>
 <text class="nb" data-ent="n:db01" data-ty="oracle" data-tk="oracle" x="46" y="712">SID demo1</text>
 <text class="ni" data-ent="n:db01" data-ty="oracle" data-tk="oracle" x="46" y="732">192.0.2.41/24</text>
 <g class="nwb" data-ent="n:db01" data-ty="oracle" data-tk="oracle" data-n="1" data-i="0" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 192.0.2.0/24 Internal application network" transform="translate(131 722)"><title>Show network 192.0.2.0/24 Internal application network</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
-<g class="osg eol" data-ent="n:db01" data-ty="oracle" data-tk="oracle"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Oracle Linux 7 <tspan class="ose">EOL</tspan></text></g>
+<g class="osg eol" data-ent="n:db01" data-ty="oracle" data-tk="oracle"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Oracle Linux 7 <tspan class="ose">EOL</tspan></text><title>Oracle Linux 7</title></g>
 
 <g class="ch" data-ent="n:db02" data-ty="oracle" data-tk="oracle"></g>
-<text class="nt" data-ent="n:db02" data-ty="oracle" data-tk="oracle" x="223" y="672">db-02.example.test</text>
+<text class="nt" data-ent="n:db02" data-ty="oracle" data-tk="oracle" x="223" y="668">db-02<title>db-02.example.test</title></text>
 <rect class="b" data-ent="n:db02" data-ty="oracle" data-tk="oracle" x="213" y="678" width="157" height="70" rx="14"/>
 <text class="nb" data-ent="n:db02" data-ty="oracle" data-tk="oracle" x="223" y="696">Oracle RAC node 2</text>
 <text class="nb" data-ent="n:db02" data-ty="oracle" data-tk="oracle" x="223" y="712">SID demo2</text>
 <text class="ni" data-ent="n:db02" data-ty="oracle" data-tk="oracle" x="223" y="732">192.0.2.42/24</text>
 <g class="nwb" data-ent="n:db02" data-ty="oracle" data-tk="oracle" data-n="1" data-i="0" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 192.0.2.0/24 Internal application network" transform="translate(308 722)"><title>Show network 192.0.2.0/24 Internal application network</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
-<g class="osg eol" data-ent="n:db02" data-ty="oracle" data-tk="oracle"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Oracle Linux 7 <tspan class="ose">EOL</tspan></text></g>
+<g class="osg eol" data-ent="n:db02" data-ty="oracle" data-tk="oracle"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Oracle Linux 7 <tspan class="ose">EOL</tspan></text><title>Oracle Linux 7</title></g>
 
 <g class="ch" data-ent="n:db03" data-ty="oracle" data-tk="oracle"></g>
-<text class="nt" data-ent="n:db03" data-ty="oracle" data-tk="oracle" x="400" y="672">db-03.example.test</text>
+<text class="nt" data-ent="n:db03" data-ty="oracle" data-tk="oracle" x="400" y="668">db-03<title>db-03.example.test</title></text>
 <rect class="b" data-ent="n:db03" data-ty="oracle" data-tk="oracle" x="390" y="678" width="157" height="70" rx="14"/>
 <text class="nb" data-ent="n:db03" data-ty="oracle" data-tk="oracle" x="400" y="696">Oracle RAC node 3</text>
 <text class="nb" data-ent="n:db03" data-ty="oracle" data-tk="oracle" x="400" y="712">SID demo3</text>
 <text class="ni" data-ent="n:db03" data-ty="oracle" data-tk="oracle" x="400" y="732">192.0.2.43/24</text>
 <g class="nwb" data-ent="n:db03" data-ty="oracle" data-tk="oracle" data-n="1" data-i="0" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 192.0.2.0/24 Internal application network" transform="translate(485 722)"><title>Show network 192.0.2.0/24 Internal application network</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
-<g class="osg" data-ent="n:db03" data-ty="oracle" data-tk="oracle"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Oracle Linux 9</text></g>
+<g class="osg" data-ent="n:db03" data-ty="oracle" data-tk="oracle"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Oracle Linux 9</text><title>Oracle Linux 9</title></g>
 
 <g class="ch" data-ent="n:mongo01" data-ty="mongo" data-tk="mongo"></g>
-<text class="nt" data-ent="n:mongo01" data-ty="mongo" data-tk="mongo" x="676" y="446">mongo-01.example.test</text>
+<text class="nt" data-ent="n:mongo01" data-ty="mongo" data-tk="mongo" x="676" y="442">mongo-01<title>mongo-01.example.test</title></text>
 <rect class="b" data-ent="n:mongo01" data-ty="mongo" data-tk="mongo" x="666" y="452" width="177" height="54" rx="14"/>
 <text class="nb" data-ent="n:mongo01" data-ty="mongo" data-tk="mongo" x="676" y="470">MongoDB 6 replica set</text>
 <text class="ni" data-ent="n:mongo01" data-ty="mongo" data-tk="mongo" x="676" y="490">192.0.2.51/24</text>
 <g class="nwb" data-ent="n:mongo01" data-ty="mongo" data-tk="mongo" data-n="1" data-i="0" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 192.0.2.0/24 Internal application network" transform="translate(761 480)"><title>Show network 192.0.2.0/24 Internal application network</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
-<g class="osg eol" data-ent="n:mongo01" data-ty="mongo" data-tk="mongo"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Debian 12 <tspan class="ose">EOL</tspan></text></g>
+<g class="osg eol" data-ent="n:mongo01" data-ty="mongo" data-tk="mongo"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Debian 12 <tspan class="ose">EOL</tspan></text><title>Debian 12</title></g>
 
 <g class="ch" data-ent="n:nas01" data-ty="nas" data-tk="nas"></g>
-<text class="nt" data-ent="n:nas01" data-ty="nas" data-tk="nas" x="649" y="672">nas-01.example.test</text>
+<text class="nt" data-ent="n:nas01" data-ty="nas" data-tk="nas" x="649" y="668">nas-01<title>nas-01.example.test</title></text>
 <rect class="b" data-ent="n:nas01" data-ty="nas" data-tk="nas" x="639" y="678" width="185" height="54" rx="14"/>
 <text class="nb" data-ent="n:nas01" data-ty="nas" data-tk="nas" x="649" y="696">NFS share /export/archive</text>
 <text class="ni" data-ent="n:nas01" data-ty="nas" data-tk="nas" x="649" y="716">198.51.100.200/25</text>
 <g class="nwb" data-ent="n:nas01" data-ty="nas" data-tk="nas" data-n="4" data-i="0" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 198.51.100.128/25 Storage and monitoring" transform="translate(758 706)"><title>Show network 198.51.100.128/25 Storage and monitoring</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
-<g class="osg unk" data-ent="n:nas01" data-ty="nas" data-tk="nas"><rect class="osp" height="12"/><text class="ost" x="4" y="9">OS ?</text></g>
+<g class="osg unk" data-ent="n:nas01" data-ty="nas" data-tk="nas"><rect class="osp" height="12"/><text class="ost" x="4" y="9">OS ?</text><title>OS unknown</title></g>
 
 <g class="ch" data-ent="n:stats01" data-ty="statistics" data-tk="statistics"></g>
-<text class="nt" data-ent="n:stats01" data-ty="statistics" data-tk="statistics" x="30" y="858">stats-01.example.test</text>
+<text class="nt" data-ent="n:stats01" data-ty="statistics" data-tk="statistics" x="30" y="854">stats-01<title>stats-01.example.test</title></text>
 <rect class="b" data-ent="n:stats01" data-ty="statistics" data-tk="statistics" x="20" y="864" width="177" height="54" rx="14"/>
 <text class="nb" data-ent="n:stats01" data-ty="statistics" data-tk="statistics" x="30" y="882">Grafana dashboards</text>
 <text class="ni" data-ent="n:stats01" data-ty="statistics" data-tk="statistics" x="30" y="902">198.51.100.150/25</text>
 <g class="nwb" data-ent="n:stats01" data-ty="statistics" data-tk="statistics" data-n="4" data-i="0" role="button" tabindex="0" aria-pressed="false" aria-label="Show network 198.51.100.128/25 Storage and monitoring" transform="translate(139 892)"><title>Show network 198.51.100.128/25 Storage and monitoring</title><rect class="nwr" width="14" height="13"/><path class="nwi" d="M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75"/></g>
-<g class="osg" data-ent="n:stats01" data-ty="statistics" data-tk="statistics"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Debian 13</text></g>
+<g class="osg" data-ent="n:stats01" data-ty="statistics" data-tk="statistics"><rect class="osp" height="12"/><text class="ost" x="4" y="9">Debian 13</text><title>Debian 13</title></g>
 
 <path class="r" data-ent="e:web01>app01" data-tk="web application lv:server" d="M36 160L30 160C19 160 10 169 10 180L10 426C10 433.7 16.3 440 24 440L36 440" marker-end="url(#ar)"/>
 <rect class="lp lpr" data-ent="e:web01>app01" data-tk="web application lv:server" x="-30" y="335.5" width="80" height="17"/>
@@ -548,15 +549,15 @@ svg.edit .d.bad{stroke:var(--red);stroke-width:2;stroke-dasharray:none}
 <li><a href="https://wiki.example.test/display/DEMO/Networks" target="_blank" rel="noopener">Network concept</a></li>
 </ul></aside>
 </div>
-<script type="application/json" id="layout-data">{"id":"demo","legacyId":null,"layout":{"clusters":{"web":{"x":20,"y":20,"w":196,"h":312,"title":[118,40]},"ifc":{"x":276,"y":20,"w":198,"h":184,"title":[375,40]},"cache":{"x":534,"y":20,"w":220,"h":120,"title":[644,40]},"app":{"x":20,"y":392,"w":570,"h":166,"title":[305,412]},"mongo":{"x":650,"y":392,"w":209,"h":150,"title":[754.5,412]},"ora":{"x":20,"y":618,"w":543,"h":166,"title":[291.5,638]},"nas":{"x":623,"y":618,"w":217,"h":150,"title":[731.5,638]}},"nodes":{"web01":{"x":36,"y":80,"w":164,"h":88,"title":[46,74],"body":[[46,98],[46,114]],"ip":[[46,134],[46,152]]},"web02":{"x":36,"y":208,"w":164,"h":88,"title":[46,202],"body":[[46,226],[46,242]],"ip":[[46,262],[46,280]]},"ifc01":{"x":292,"y":80,"w":166,"h":88,"title":[302,74],"body":[[302,98],[302,114]],"ip":[[302,134],[302,152]]},"app01":{"x":36,"y":452,"w":164,"h":70,"title":[46,446],"body":[[46,470],[46,486]],"ip":[[46,506]]},"app02":{"x":222,"y":452,"w":164,"h":70,"title":[232,446],"body":[[232,470],[232,486]],"ip":[[232,506]]},"app03":{"x":408,"y":452,"w":166,"h":70,"title":[418,446],"body":[[418,470],[418,486]],"ip":[[418,506]]},"mongo01":{"x":666,"y":452,"w":177,"h":54,"title":[676,446],"body":[[676,470]],"ip":[[676,490]]},"db01":{"x":36,"y":678,"w":157,"h":70,"title":[46,672],"body":[[46,696],[46,712]],"ip":[[46,732]]},"db02":{"x":213,"y":678,"w":157,"h":70,"title":[223,672],"body":[[223,696],[223,712]],"ip":[[223,732]]},"db03":{"x":390,"y":678,"w":157,"h":70,"title":[400,672],"body":[[400,696],[400,712]],"ip":[[400,732]]},"nas01":{"x":639,"y":678,"w":185,"h":54,"title":[649,672],"body":[[649,696]],"ip":[[649,716]]},"stats01":{"x":20,"y":864,"w":177,"h":54,"title":[30,858],"body":[[30,882]],"ip":[[30,902]]}},"edges":{"web01>app01":{},"web02>app02":{},"app01>ora":{},"app02>ora":{},"app01>mongo01":{},"ifc01>app03":{"firewall":true},"app03>db01":{},"app03>nas01":{"firewall":true},"stats01>app":{},"app02>cache":{}}},"meta":{"clusters":{"web":{"tl":11},"ifc":{"tl":17},"app":{"tl":19},"cache":{"tl":13},"ora":{"tl":17},"mongo":{"tl":16},"nas":{"tl":3}},"nodes":{"web01":{"tl":19,"os":0,"ol":0,"hw":"","bl":19,"il":15,"nb":2,"ni":2,"cl":"web"},"web02":{"tl":19,"os":0,"ol":0,"hw":"","bl":19,"il":15,"nb":2,"ni":2,"cl":"web"},"ifc01":{"tl":19,"os":0,"ol":0,"hw":"","bl":22,"il":16,"nb":2,"ni":2,"cl":"ifc"},"app01":{"tl":19,"os":0,"ol":0,"hw":"","bl":18,"il":13,"nb":2,"ni":1,"cl":"app"},"app02":{"tl":19,"os":0,"ol":0,"hw":"","bl":20,"il":13,"nb":2,"ni":1,"cl":"app"},"app03":{"tl":19,"os":0,"ol":0,"hw":"","bl":22,"il":13,"nb":2,"ni":1,"cl":"app"},"db01":{"tl":18,"os":0,"ol":0,"hw":"","bl":17,"il":13,"nb":2,"ni":1,"cl":"ora"},"db02":{"tl":18,"os":0,"ol":0,"hw":"","bl":17,"il":13,"nb":2,"ni":1,"cl":"ora"},"db03":{"tl":18,"os":0,"ol":0,"hw":"","bl":17,"il":13,"nb":2,"ni":1,"cl":"ora"},"mongo01":{"tl":21,"os":0,"ol":0,"hw":"","bl":21,"il":13,"nb":1,"ni":1,"cl":"mongo"},"nas01":{"tl":19,"os":0,"ol":0,"hw":"","bl":25,"il":17,"nb":1,"ni":1,"cl":"nas"},"stats01":{"tl":21,"os":0,"ol":0,"hw":"","bl":18,"il":17,"nb":1,"ni":1,"cl":null}},"edges":[{"k":"web01>app01","from":"n:web01","to":"n:app01","ll":11,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"web02>app02","from":"n:web02","to":"n:app02","ll":11,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app01>ora","from":"n:app01","to":"c:ora","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app02>ora","from":"n:app02","to":"c:ora","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app01>mongo01","from":"n:app01","to":"n:mongo01","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"ifc01>app03","from":"n:ifc01","to":"n:app03","ll":19,"fw":true,"g":"job-104","fl":1,"tl":0,"lv":"process"},{"k":"app03>db01","from":"n:app03","to":"n:db01","ll":23,"fw":false,"g":"job-104","fl":0,"tl":null,"lv":"process"},{"k":"app03>nas01","from":"n:app03","to":"n:nas01","ll":21,"fw":true,"g":null,"fl":1,"tl":null,"lv":"process"},{"k":"stats01>app","from":"n:stats01","to":"c:app","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app02>cache","from":"n:app02","to":"c:cache","ll":20,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"}]},"idx":{"clusters":{"web":[0,1,2],"ifc":[3,4,5],"app":[6,7,8],"cache":[9,10,11],"ora":[12,13,14],"mongo":[15,16,17],"nas":[18,19,20]},"nodes":{"web01":{"c":21,"t":22,"r":23,"b":[24,25],"i":[26,27],"w":[28,29],"o":30},"web02":{"c":31,"t":32,"r":33,"b":[34,35],"i":[36,37],"w":[38,39],"o":40},"ifc01":{"c":41,"t":42,"r":43,"b":[44,45],"i":[46,47],"w":[48,49],"o":50},"app01":{"c":51,"t":52,"r":53,"b":[54,55],"i":[56],"w":[57],"o":58},"app02":{"c":59,"t":60,"r":61,"b":[62,63],"i":[64],"w":[65],"o":66},"app03":{"c":67,"t":68,"r":69,"b":[70,71],"i":[72],"w":[73],"o":74},"db01":{"c":75,"t":76,"r":77,"b":[78,79],"i":[80],"w":[81],"o":82},"db02":{"c":83,"t":84,"r":85,"b":[86,87],"i":[88],"w":[89],"o":90},"db03":{"c":91,"t":92,"r":93,"b":[94,95],"i":[96],"w":[97],"o":98},"mongo01":{"c":99,"t":100,"r":101,"b":[102],"i":[103],"w":[104],"o":105},"nas01":{"c":106,"t":107,"r":108,"b":[109],"i":[110],"w":[111],"o":112},"stats01":{"c":113,"t":114,"r":115,"b":[116],"i":[117],"w":[118],"o":119}},"edges":{"web01>app01":{"p":120,"l":122,"lp":121},"web02>app02":{"p":123,"l":125,"lp":124},"app01>ora":{"p":126,"l":128,"lp":127},"app02>ora":{"p":129,"l":131,"lp":130},"app01>mongo01":{"p":132,"l":134,"lp":133},"ifc01>app03":{"p":135,"l":137,"lp":136,"fw":138},"app03>db01":{"p":139,"l":141,"lp":140},"app03>nas01":{"p":142,"l":144,"lp":143,"fw":145},"stats01>app":{"p":146,"l":148,"lp":147},"app02>cache":{"p":149,"l":151,"lp":150}}},"kids":{"web":["web01","web02"],"ifc":["ifc01"],"app":["app01","app02","app03"],"ora":["db01","db02","db03"],"mongo":["mongo01"],"nas":["nas01"]},"edges":[{"k":"web01>app01","from":"n:web01","to":"n:app01"},{"k":"web02>app02","from":"n:web02","to":"n:app02"},{"k":"app01>ora","from":"n:app01","to":"c:ora"},{"k":"app02>ora","from":"n:app02","to":"c:ora"},{"k":"app01>mongo01","from":"n:app01","to":"n:mongo01"},{"k":"ifc01>app03","from":"n:ifc01","to":"n:app03"},{"k":"app03>db01","from":"n:app03","to":"n:db01"},{"k":"app03>nas01","from":"n:app03","to":"n:nas01"},{"k":"stats01>app","from":"n:stats01","to":"c:app"},{"k":"app02>cache","from":"n:app02","to":"c:cache"}],"edgeSwitches":[{"k":"lv:server","label":"Server connections"},{"k":"lv:process","label":"Process connections"},{"k":"g:job-104","g":"job-104","label":"Job 104 connections"}],"ent":{"c:web":{"title":"Web Servers","cl":null,"db":false,"ty":"web","prop":false,"tk":"web","tag":"WEB SERVER"},"c:ifc":{"title":"Interface Servers","cl":null,"db":false,"ty":"interface","prop":false,"tk":"interface","tag":"INTERNAL INTERFACE SERVER"},"c:app":{"title":"Application Servers","cl":null,"db":false,"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER"},"c:cache":{"title":"Cache Servers","cl":null,"db":false,"ty":"cache","prop":true,"tk":"proposed","tag":"CACHE SERVER · PROPOSED"},"c:ora":{"title":"Oracle DB Cluster","cl":null,"db":false,"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER"},"c:mongo":{"title":"Mongo DB Servers","cl":null,"db":false,"ty":"mongo","prop":false,"tk":"mongo","tag":"MONGO DATABASE SERVER"},"c:nas":{"title":"NAS","cl":null,"db":false,"ty":"nas","prop":false,"tk":"nas","tag":"NAS"},"n:web01":{"title":"web-01.example.test","cl":"web","db":false,"body":["nginx reverse proxy","Customer portal"],"ip":["203.0.113.10/24","192.0.2.10/24"],"ty":"web","prop":false,"tk":"web","tag":"WEB SERVER","os":{"v":"Ubuntu 24.04","eol":null}},"n:web02":{"title":"web-02.example.test","cl":"web","db":false,"body":["nginx reverse proxy","Customer portal"],"ip":["203.0.113.11/24","192.0.2.11/24"],"ty":"web","prop":false,"tk":"web","tag":"WEB SERVER","os":{"v":"Ubuntu 18.04","eol":"2023-05"}},"n:ifc01":{"title":"ifc-01.example.test","cl":"ifc","db":false,"body":["SFTP gateway","Job 104 \"Batch import\""],"ip":["198.51.100.20/25","192.0.2.20/24"],"ty":"interface","prop":false,"tk":"interface","tag":"INTERNAL INTERFACE SERVER","os":{"v":"Windows Server 2012 R2","eol":"2023-10"}},"n:app01":{"title":"app-01.example.test","cl":"app","db":false,"body":["Tomcat: core-api","RMI: order-service"],"ip":["192.0.2.31/24"],"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER","os":{"v":"Oracle Linux 8","eol":null}},"n:app02":{"title":"app-02.example.test","cl":"app","db":false,"body":["Tomcat: core-api","RMI: pricing-service"],"ip":["192.0.2.32/24"],"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER","os":{"v":"Oracle Linux 8","eol":null}},"n:app03":{"title":"app-03.example.test","cl":"app","db":false,"body":["Job 104 batch import","Job 210 nightly export"],"ip":["192.0.2.33/24"],"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER","os":{"v":"CentOS 7","eol":"2024-06"}},"n:db01":{"title":"db-01.example.test","cl":"ora","db":true,"body":["Oracle RAC node 1","SID demo1"],"ip":["192.0.2.41/24"],"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER","os":{"v":"Oracle Linux 7","eol":"2024-12"}},"n:db02":{"title":"db-02.example.test","cl":"ora","db":true,"body":["Oracle RAC node 2","SID demo2"],"ip":["192.0.2.42/24"],"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER","os":{"v":"Oracle Linux 7","eol":"2024-12"}},"n:db03":{"title":"db-03.example.test","cl":"ora","db":true,"body":["Oracle RAC node 3","SID demo3"],"ip":["192.0.2.43/24"],"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER","os":{"v":"Oracle Linux 9","eol":null}},"n:mongo01":{"title":"mongo-01.example.test","cl":"mongo","db":true,"body":["MongoDB 6 replica set"],"ip":["192.0.2.51/24"],"ty":"mongo","prop":false,"tk":"mongo","tag":"MONGO DATABASE SERVER","os":{"v":"Debian 12","eol":"2026-06"}},"n:nas01":{"title":"nas-01.example.test","cl":"nas","db":false,"body":["NFS share /export/archive"],"ip":["198.51.100.200/25"],"ty":"nas","prop":false,"tk":"nas","tag":"NAS","os":null},"n:stats01":{"title":"stats-01.example.test","cl":null,"db":false,"body":["Grafana dashboards"],"ip":["198.51.100.150/25"],"ty":"statistics","prop":false,"tk":"statistics","tag":"STATISTICS SERVER","os":{"v":"Debian 13","eol":null}}},"types":[{"k":"web","label":"Web Server","ty":"web"},{"k":"application","label":"Application Server","ty":"application"},{"k":"interface","label":"Internal Interface Server","ty":"interface"},{"k":"oracle","label":"Oracle Database Server","ty":"oracle"},{"k":"mongo","label":"Mongo Database Server","ty":"mongo"},{"k":"proposed","label":"Proposed","ty":"cache","dash":true},{"k":"nas","label":"NAS","ty":"nas","infra":true},{"k":"statistics","label":"Statistics Server","ty":"statistics","infra":true}],"sections":{"Web Servers":"Public entry point; both nodes sit behind a load balancer on 203.0.113.0/24.","web-01.example.test":"| Key | Value |\n|---|---|\n| OS | Ubuntu 24.04 |\n| Confluence | [web-01](https://wiki.example.test/display/DEMO/web-01) |\n| CPU / RAM | 4 vCPU / 8 GB |\n\n- nginx reverse proxy for the customer portal","web-02.example.test":"| Key | Value |\n|---|---|\n| OS | Ubuntu 18.04 |\n| Confluence | [web-02](https://wiki.example.test/display/DEMO/web-02) |","Interface Servers":"DMZ hosts for partner file exchange.","ifc-01.example.test":"| Key | Value |\n|---|---|\n| OS | Windows Server 2012 R2 |\n| Confluence | [ifc-01](https://wiki.example.test/display/DEMO/ifc-01) |\n\n- SFTP gateway on 198.51.100.20\n- Job 104 pulls batch files and hands them to app-03","Application Servers":"","app-01.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 8 |\n| Confluence | [app-01](https://wiki.example.test/display/DEMO/app-01) |","app-02.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 8 |","app-03.example.test":"| Key | Value |\n|---|---|\n| OS | CentOS 7 |\n| Confluence | [app-03](https://wiki.example.test/display/DEMO/app-03) |\n\n- Job 104 batch import\n- Job 210 nightly export to nas-01","Cache Servers":"Proposed tier, no hosts yet.","Oracle DB Cluster":"Three-node RAC; clients connect to the cluster service name.","db-01.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 7 |","db-02.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 7 |","db-03.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 9 |","Mongo DB Servers":"","mongo-01.example.test":"| Key | Value |\n|---|---|\n| OS | Debian 12 |","NAS":"","nas-01.example.test":"| Key | Value |\n|---|---|\n| OS | TBD |","stats-01.example.test":"| Key | Value |\n|---|---|\n| OS | Debian 13 |\n| Confluence | \u003chttps://wiki.example.test/display/DEMO/stats-01> |"},"notes":[{"title":"Demo data only","date":"2026-10-07","paras":["Every host, IP and link in this diagram is invented: IPs from the RFC 5737 documentation ranges, host names under example.test."]},{"title":"Cache tier proposed","date":"2026-09-15","paras":["The cache region is empty on purpose; app-02 would move lookups there (dashed connection)."]},{"title":"Firewall review","date":"2026-08-01","paras":["Job 104 imports cross the DMZ firewall; the NFS archive path crosses the storage firewall."]}],"edgeKey":[["\u003cline x1=\"2\" y1=\"12\" x2=\"40\" y2=\"12\" class=\"r\" marker-end=\"url(#ar)\"/>","connection"],["\u003cline x1=\"2\" y1=\"12\" x2=\"40\" y2=\"12\" class=\"k\" marker-end=\"url(#ak)\"/>","proposed move"],["\u003cline x1=\"2\" y1=\"12\" x2=\"42\" y2=\"12\" class=\"r\"/>\u003cpath class=\"fwb\" d=\"M-3.5 -11L3.5 -6.6L-3.5 -2.2L3.5 2.2L-3.5 6.6L3.5 11\" transform=\"translate(22 12) rotate(0)\"/>\u003cpath class=\"fwz\" d=\"M-3.5 -11L3.5 -6.6L-3.5 -2.2L3.5 2.2L-3.5 6.6L3.5 11\" transform=\"translate(22 12) rotate(0)\"/>","firewall on the path"],["\u003cline x1=\"2\" y1=\"12\" x2=\"40\" y2=\"12\" class=\"r\" data-g=\"job-104\" marker-end=\"url(#ag-job-104)\"/>","Job 104 connections"]],"drawings":[],"nets":[{"cidr":"","name":"Demo site","m":["n:web01","n:web02","n:ifc01","n:app01","n:app02","n:app03","n:db01","n:db02","n:db03","n:mongo01","n:nas01","n:stats01","c:web","c:ifc","c:app","c:ora","c:mongo","c:nas"]},{"cidr":"192.0.2.0/24","name":"Internal application network","m":["n:web01","n:web02","n:ifc01","n:app01","n:app02","n:app03","n:db01","n:db02","n:db03","n:mongo01","c:web","c:ifc","c:app","c:ora","c:mongo"]},{"cidr":"198.51.100.0/24","name":"Services","m":["n:ifc01","n:nas01","n:stats01","c:ifc","c:nas"]},{"cidr":"198.51.100.0/25","name":"DMZ","m":["n:ifc01","c:ifc"]},{"cidr":"198.51.100.128/25","name":"Storage and monitoring","m":["n:nas01","n:stats01","c:nas"]},{"cidr":"203.0.113.0/24","name":"Public","m":["n:web01","n:web02","c:web"]}],"ipNet":{"203.0.113.10":5,"192.0.2.10":1,"203.0.113.11":5,"192.0.2.11":1,"198.51.100.20":3,"192.0.2.20":1,"192.0.2.31":1,"192.0.2.32":1,"192.0.2.33":1,"192.0.2.41":1,"192.0.2.42":1,"192.0.2.43":1,"192.0.2.51":1,"198.51.100.200":4,"198.51.100.150":4}}</script>
+<script type="application/json" id="layout-data">{"id":"demo","legacyId":null,"layout":{"clusters":{"web":{"x":20,"y":20,"w":196,"h":312,"title":[118,40]},"ifc":{"x":276,"y":20,"w":198,"h":184,"title":[375,40]},"cache":{"x":534,"y":20,"w":220,"h":120,"title":[644,40]},"app":{"x":20,"y":392,"w":570,"h":166,"title":[305,412]},"mongo":{"x":650,"y":392,"w":209,"h":150,"title":[754.5,412]},"ora":{"x":20,"y":618,"w":543,"h":166,"title":[291.5,638]},"nas":{"x":623,"y":618,"w":217,"h":150,"title":[731.5,638]}},"nodes":{"web01":{"x":36,"y":80,"w":164,"h":88,"title":[46,74],"body":[[46,98],[46,114]],"ip":[[46,134],[46,152]]},"web02":{"x":36,"y":208,"w":164,"h":88,"title":[46,202],"body":[[46,226],[46,242]],"ip":[[46,262],[46,280]]},"ifc01":{"x":292,"y":80,"w":166,"h":88,"title":[302,74],"body":[[302,98],[302,114]],"ip":[[302,134],[302,152]]},"app01":{"x":36,"y":452,"w":164,"h":70,"title":[46,446],"body":[[46,470],[46,486]],"ip":[[46,506]]},"app02":{"x":222,"y":452,"w":164,"h":70,"title":[232,446],"body":[[232,470],[232,486]],"ip":[[232,506]]},"app03":{"x":408,"y":452,"w":166,"h":70,"title":[418,446],"body":[[418,470],[418,486]],"ip":[[418,506]]},"mongo01":{"x":666,"y":452,"w":177,"h":54,"title":[676,446],"body":[[676,470]],"ip":[[676,490]]},"db01":{"x":36,"y":678,"w":157,"h":70,"title":[46,672],"body":[[46,696],[46,712]],"ip":[[46,732]]},"db02":{"x":213,"y":678,"w":157,"h":70,"title":[223,672],"body":[[223,696],[223,712]],"ip":[[223,732]]},"db03":{"x":390,"y":678,"w":157,"h":70,"title":[400,672],"body":[[400,696],[400,712]],"ip":[[400,732]]},"nas01":{"x":639,"y":678,"w":185,"h":54,"title":[649,672],"body":[[649,696]],"ip":[[649,716]]},"stats01":{"x":20,"y":864,"w":177,"h":54,"title":[30,858],"body":[[30,882]],"ip":[[30,902]]}},"edges":{"web01>app01":{},"web02>app02":{},"app01>ora":{},"app02>ora":{},"app01>mongo01":{},"ifc01>app03":{"firewall":true},"app03>db01":{},"app03>nas01":{"firewall":true},"stats01>app":{},"app02>cache":{}}},"meta":{"clusters":{"web":{"tl":11},"ifc":{"tl":17},"app":{"tl":19},"cache":{"tl":13},"ora":{"tl":17},"mongo":{"tl":16},"nas":{"tl":3}},"nodes":{"web01":{"tl":6,"os":0,"ol":0,"hw":"","bl":19,"il":15,"nb":2,"nj":0,"ni":2,"cl":"web"},"web02":{"tl":6,"os":0,"ol":0,"hw":"","bl":19,"il":15,"nb":2,"nj":0,"ni":2,"cl":"web"},"ifc01":{"tl":6,"os":0,"ol":0,"hw":"","bl":22,"il":16,"nb":2,"nj":0,"ni":2,"cl":"ifc"},"app01":{"tl":6,"os":0,"ol":0,"hw":"","bl":18,"il":13,"nb":2,"nj":0,"ni":1,"cl":"app"},"app02":{"tl":6,"os":0,"ol":0,"hw":"","bl":20,"il":13,"nb":2,"nj":0,"ni":1,"cl":"app"},"app03":{"tl":6,"os":0,"ol":0,"hw":"","bl":22,"il":13,"nb":2,"nj":0,"ni":1,"cl":"app"},"db01":{"tl":5,"os":0,"ol":0,"hw":"","bl":17,"il":13,"nb":2,"nj":0,"ni":1,"cl":"ora"},"db02":{"tl":5,"os":0,"ol":0,"hw":"","bl":17,"il":13,"nb":2,"nj":0,"ni":1,"cl":"ora"},"db03":{"tl":5,"os":0,"ol":0,"hw":"","bl":17,"il":13,"nb":2,"nj":0,"ni":1,"cl":"ora"},"mongo01":{"tl":8,"os":0,"ol":0,"hw":"","bl":21,"il":13,"nb":1,"nj":0,"ni":1,"cl":"mongo"},"nas01":{"tl":6,"os":0,"ol":0,"hw":"","bl":25,"il":17,"nb":1,"nj":0,"ni":1,"cl":"nas"},"stats01":{"tl":8,"os":0,"ol":0,"hw":"","bl":18,"il":17,"nb":1,"nj":0,"ni":1,"cl":null}},"edges":[{"k":"web01>app01","from":"n:web01","to":"n:app01","ll":11,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"web02>app02","from":"n:web02","to":"n:app02","ll":11,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app01>ora","from":"n:app01","to":"c:ora","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app02>ora","from":"n:app02","to":"c:ora","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app01>mongo01","from":"n:app01","to":"n:mongo01","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"ifc01>app03","from":"n:ifc01","to":"n:app03","ll":19,"fw":true,"g":"job-104","fl":1,"tl":0,"lv":"process"},{"k":"app03>db01","from":"n:app03","to":"n:db01","ll":23,"fw":false,"g":"job-104","fl":0,"tl":null,"lv":"process"},{"k":"app03>nas01","from":"n:app03","to":"n:nas01","ll":21,"fw":true,"g":null,"fl":1,"tl":null,"lv":"process"},{"k":"stats01>app","from":"n:stats01","to":"c:app","ll":13,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"},{"k":"app02>cache","from":"n:app02","to":"c:cache","ll":20,"fw":false,"g":null,"fl":null,"tl":null,"lv":"server"}]},"idx":{"clusters":{"web":[0,1,2],"ifc":[3,4,5],"app":[6,7,8],"cache":[9,10,11],"ora":[12,13,14],"mongo":[15,16,17],"nas":[18,19,20]},"nodes":{"web01":{"c":21,"t":22,"r":23,"b":[24,25],"i":[26,27],"w":[28,29],"o":30},"web02":{"c":31,"t":32,"r":33,"b":[34,35],"i":[36,37],"w":[38,39],"o":40},"ifc01":{"c":41,"t":42,"r":43,"b":[44,45],"i":[46,47],"w":[48,49],"o":50},"app01":{"c":51,"t":52,"r":53,"b":[54,55],"i":[56],"w":[57],"o":58},"app02":{"c":59,"t":60,"r":61,"b":[62,63],"i":[64],"w":[65],"o":66},"app03":{"c":67,"t":68,"r":69,"b":[70,71],"i":[72],"w":[73],"o":74},"db01":{"c":75,"t":76,"r":77,"b":[78,79],"i":[80],"w":[81],"o":82},"db02":{"c":83,"t":84,"r":85,"b":[86,87],"i":[88],"w":[89],"o":90},"db03":{"c":91,"t":92,"r":93,"b":[94,95],"i":[96],"w":[97],"o":98},"mongo01":{"c":99,"t":100,"r":101,"b":[102],"i":[103],"w":[104],"o":105},"nas01":{"c":106,"t":107,"r":108,"b":[109],"i":[110],"w":[111],"o":112},"stats01":{"c":113,"t":114,"r":115,"b":[116],"i":[117],"w":[118],"o":119}},"edges":{"web01>app01":{"p":120,"l":122,"lp":121},"web02>app02":{"p":123,"l":125,"lp":124},"app01>ora":{"p":126,"l":128,"lp":127},"app02>ora":{"p":129,"l":131,"lp":130},"app01>mongo01":{"p":132,"l":134,"lp":133},"ifc01>app03":{"p":135,"l":137,"lp":136,"fw":138},"app03>db01":{"p":139,"l":141,"lp":140},"app03>nas01":{"p":142,"l":144,"lp":143,"fw":145},"stats01>app":{"p":146,"l":148,"lp":147},"app02>cache":{"p":149,"l":151,"lp":150}}},"kids":{"web":["web01","web02"],"ifc":["ifc01"],"app":["app01","app02","app03"],"ora":["db01","db02","db03"],"mongo":["mongo01"],"nas":["nas01"]},"edges":[{"k":"web01>app01","from":"n:web01","to":"n:app01"},{"k":"web02>app02","from":"n:web02","to":"n:app02"},{"k":"app01>ora","from":"n:app01","to":"c:ora"},{"k":"app02>ora","from":"n:app02","to":"c:ora"},{"k":"app01>mongo01","from":"n:app01","to":"n:mongo01"},{"k":"ifc01>app03","from":"n:ifc01","to":"n:app03"},{"k":"app03>db01","from":"n:app03","to":"n:db01"},{"k":"app03>nas01","from":"n:app03","to":"n:nas01"},{"k":"stats01>app","from":"n:stats01","to":"c:app"},{"k":"app02>cache","from":"n:app02","to":"c:cache"}],"edgeSwitches":[{"k":"lv:server","label":"Server connections"},{"k":"lv:process","label":"Process connections"},{"k":"g:job-104","g":"job-104","label":"Job 104 connections"}],"ent":{"c:web":{"title":"Web Servers","cl":null,"db":false,"ty":"web","prop":false,"tk":"web","tag":"WEB SERVER"},"c:ifc":{"title":"Interface Servers","cl":null,"db":false,"ty":"interface","prop":false,"tk":"interface","tag":"INTERNAL INTERFACE SERVER"},"c:app":{"title":"Application Servers","cl":null,"db":false,"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER"},"c:cache":{"title":"Cache Servers","cl":null,"db":false,"ty":"cache","prop":true,"tk":"proposed","tag":"CACHE SERVER · PROPOSED"},"c:ora":{"title":"Oracle DB Cluster","cl":null,"db":false,"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER"},"c:mongo":{"title":"Mongo DB Servers","cl":null,"db":false,"ty":"mongo","prop":false,"tk":"mongo","tag":"MONGO DATABASE SERVER"},"c:nas":{"title":"NAS","cl":null,"db":false,"ty":"nas","prop":false,"tk":"nas","tag":"NAS"},"n:web01":{"title":"web-01.example.test","cl":"web","db":false,"body":["nginx reverse proxy","Customer portal"],"ip":["203.0.113.10/24","192.0.2.10/24"],"ty":"web","prop":false,"tk":"web","tag":"WEB SERVER","os":{"v":"Ubuntu 24.04","d":"Ubuntu 24.04","eol":null}},"n:web02":{"title":"web-02.example.test","cl":"web","db":false,"body":["nginx reverse proxy","Customer portal"],"ip":["203.0.113.11/24","192.0.2.11/24"],"ty":"web","prop":false,"tk":"web","tag":"WEB SERVER","os":{"v":"Ubuntu 18.04","d":"Ubuntu 18.04","eol":"2023-05"}},"n:ifc01":{"title":"ifc-01.example.test","cl":"ifc","db":false,"body":["SFTP gateway","Job 104 \"Batch import\""],"ip":["198.51.100.20/25","192.0.2.20/24"],"ty":"interface","prop":false,"tk":"interface","tag":"INTERNAL INTERFACE SERVER","os":{"v":"Windows Server 2012 R2","d":"Windows Server 2012 R2","eol":"2023-10"}},"n:app01":{"title":"app-01.example.test","cl":"app","db":false,"body":["Tomcat: core-api","RMI: order-service"],"ip":["192.0.2.31/24"],"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER","os":{"v":"Oracle Linux 8","d":"Oracle Linux 8","eol":null}},"n:app02":{"title":"app-02.example.test","cl":"app","db":false,"body":["Tomcat: core-api","RMI: pricing-service"],"ip":["192.0.2.32/24"],"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER","os":{"v":"Oracle Linux 8","d":"Oracle Linux 8","eol":null}},"n:app03":{"title":"app-03.example.test","cl":"app","db":false,"body":["Job 104 batch import","Job 210 nightly export"],"ip":["192.0.2.33/24"],"ty":"application","prop":false,"tk":"application","tag":"APPLICATION SERVER","os":{"v":"CentOS 7","d":"CentOS 7","eol":"2024-06"}},"n:db01":{"title":"db-01.example.test","cl":"ora","db":true,"body":["Oracle RAC node 1","SID demo1"],"ip":["192.0.2.41/24"],"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER","os":{"v":"Oracle Linux 7","d":"Oracle Linux 7","eol":"2024-12"}},"n:db02":{"title":"db-02.example.test","cl":"ora","db":true,"body":["Oracle RAC node 2","SID demo2"],"ip":["192.0.2.42/24"],"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER","os":{"v":"Oracle Linux 7","d":"Oracle Linux 7","eol":"2024-12"}},"n:db03":{"title":"db-03.example.test","cl":"ora","db":true,"body":["Oracle RAC node 3","SID demo3"],"ip":["192.0.2.43/24"],"ty":"oracle","prop":false,"tk":"oracle","tag":"ORACLE DATABASE SERVER","os":{"v":"Oracle Linux 9","d":"Oracle Linux 9","eol":null}},"n:mongo01":{"title":"mongo-01.example.test","cl":"mongo","db":true,"body":["MongoDB 6 replica set"],"ip":["192.0.2.51/24"],"ty":"mongo","prop":false,"tk":"mongo","tag":"MONGO DATABASE SERVER","os":{"v":"Debian 12","d":"Debian 12","eol":"2026-06"}},"n:nas01":{"title":"nas-01.example.test","cl":"nas","db":false,"body":["NFS share /export/archive"],"ip":["198.51.100.200/25"],"ty":"nas","prop":false,"tk":"nas","tag":"NAS","os":null},"n:stats01":{"title":"stats-01.example.test","cl":null,"db":false,"body":["Grafana dashboards"],"ip":["198.51.100.150/25"],"ty":"statistics","prop":false,"tk":"statistics","tag":"STATISTICS SERVER","os":{"v":"Debian 13","d":"Debian 13","eol":null}}},"types":[{"k":"web","label":"Web Server","ty":"web"},{"k":"application","label":"Application Server","ty":"application"},{"k":"interface","label":"Internal Interface Server","ty":"interface"},{"k":"oracle","label":"Oracle Database Server","ty":"oracle"},{"k":"mongo","label":"Mongo Database Server","ty":"mongo"},{"k":"proposed","label":"Proposed","ty":"cache","dash":true},{"k":"nas","label":"NAS","ty":"nas","infra":true},{"k":"statistics","label":"Statistics Server","ty":"statistics","infra":true}],"sections":{"Web Servers":"Public entry point; both nodes sit behind a load balancer on 203.0.113.0/24.","web-01.example.test":"| Key | Value |\n|---|---|\n| OS | Ubuntu 24.04 |\n| Confluence | [web-01](https://wiki.example.test/display/DEMO/web-01) |\n| CPU / RAM | 4 vCPU / 8 GB |\n\n- nginx reverse proxy for the customer portal","web-02.example.test":"| Key | Value |\n|---|---|\n| OS | Ubuntu 18.04 |\n| Confluence | [web-02](https://wiki.example.test/display/DEMO/web-02) |","Interface Servers":"DMZ hosts for partner file exchange.","ifc-01.example.test":"| Key | Value |\n|---|---|\n| OS | Windows Server 2012 R2 |\n| Confluence | [ifc-01](https://wiki.example.test/display/DEMO/ifc-01) |\n\n- SFTP gateway on 198.51.100.20\n- Job 104 pulls batch files and hands them to app-03","Application Servers":"","app-01.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 8 |\n| Confluence | [app-01](https://wiki.example.test/display/DEMO/app-01) |","app-02.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 8 |","app-03.example.test":"| Key | Value |\n|---|---|\n| OS | CentOS 7 |\n| Confluence | [app-03](https://wiki.example.test/display/DEMO/app-03) |\n\n- Job 104 batch import\n- Job 210 nightly export to nas-01","Cache Servers":"Proposed tier, no hosts yet.","Oracle DB Cluster":"Three-node RAC; clients connect to the cluster service name.","db-01.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 7 |","db-02.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 7 |","db-03.example.test":"| Key | Value |\n|---|---|\n| OS | Oracle Linux 9 |","Mongo DB Servers":"","mongo-01.example.test":"| Key | Value |\n|---|---|\n| OS | Debian 12 |","NAS":"","nas-01.example.test":"| Key | Value |\n|---|---|\n| OS | TBD |","stats-01.example.test":"| Key | Value |\n|---|---|\n| OS | Debian 13 |\n| Confluence | \u003chttps://wiki.example.test/display/DEMO/stats-01> |"},"notes":[{"title":"Demo data only","date":"2026-10-07","paras":["Every host, IP and link in this diagram is invented: IPs from the RFC 5737 documentation ranges, host names under example.test."]},{"title":"Cache tier proposed","date":"2026-09-15","paras":["The cache region is empty on purpose; app-02 would move lookups there (dashed connection)."]},{"title":"Firewall review","date":"2026-08-01","paras":["Job 104 imports cross the DMZ firewall; the NFS archive path crosses the storage firewall."]}],"edgeKey":[["\u003cline x1=\"2\" y1=\"12\" x2=\"40\" y2=\"12\" class=\"r\" marker-end=\"url(#ar)\"/>","connection"],["\u003cline x1=\"2\" y1=\"12\" x2=\"40\" y2=\"12\" class=\"k\" marker-end=\"url(#ak)\"/>","proposed move"],["\u003cline x1=\"2\" y1=\"12\" x2=\"42\" y2=\"12\" class=\"r\"/>\u003cpath class=\"fwb\" d=\"M-3.5 -11L3.5 -6.6L-3.5 -2.2L3.5 2.2L-3.5 6.6L3.5 11\" transform=\"translate(22 12) rotate(0)\"/>\u003cpath class=\"fwz\" d=\"M-3.5 -11L3.5 -6.6L-3.5 -2.2L3.5 2.2L-3.5 6.6L3.5 11\" transform=\"translate(22 12) rotate(0)\"/>","firewall on the path"],["\u003cline x1=\"2\" y1=\"12\" x2=\"40\" y2=\"12\" class=\"r\" data-g=\"job-104\" marker-end=\"url(#ag-job-104)\"/>","Job 104 connections"]],"drawings":[],"nets":[{"cidr":"","name":"Demo site","m":["n:web01","n:web02","n:ifc01","n:app01","n:app02","n:app03","n:db01","n:db02","n:db03","n:mongo01","n:nas01","n:stats01","c:web","c:ifc","c:app","c:ora","c:mongo","c:nas"]},{"cidr":"192.0.2.0/24","name":"Internal application network","m":["n:web01","n:web02","n:ifc01","n:app01","n:app02","n:app03","n:db01","n:db02","n:db03","n:mongo01","c:web","c:ifc","c:app","c:ora","c:mongo"]},{"cidr":"198.51.100.0/24","name":"Services","m":["n:ifc01","n:nas01","n:stats01","c:ifc","c:nas"]},{"cidr":"198.51.100.0/25","name":"DMZ","m":["n:ifc01","c:ifc"]},{"cidr":"198.51.100.128/25","name":"Storage and monitoring","m":["n:nas01","n:stats01","c:nas"]},{"cidr":"203.0.113.0/24","name":"Public","m":["n:web01","n:web02","c:web"]}],"ipNet":{"203.0.113.10":5,"192.0.2.10":1,"203.0.113.11":5,"192.0.2.11":1,"198.51.100.20":3,"192.0.2.20":1,"192.0.2.31":1,"192.0.2.32":1,"192.0.2.33":1,"192.0.2.41":1,"192.0.2.42":1,"192.0.2.43":1,"192.0.2.51":1,"198.51.100.200":4,"198.51.100.150":4}}</script>
 <script>
 window.InfraDiagram = { modules: {} };
 InfraDiagram.define = function (name, deps, factory) {
-  var args = deps.map(function (d) {
+  const args = deps.map(function (d) {
     if (!InfraDiagram.modules[d]) throw new Error("InfraDiagram: " + name + " needs " + d + ", which is not loaded yet");
     return InfraDiagram.modules[d];
   });
-  InfraDiagram.modules[name] = factory.apply(null, args);
+  InfraDiagram.modules[name] = factory(...args);
 };
 
 InfraDiagram.define("ui/core", [], function () {
@@ -565,10 +566,10 @@ InfraDiagram.define("ui/core", [], function () {
   var BG = { clean: "#F3F5F9", dark: "#0A1020", swiss: "#FFFFFF" };
   var D = JSON.parse(document.getElementById("layout-data").textContent);
   var svg = document.querySelector("svg");
-  var els = [].slice.call(svg.children, 1);
-  var ents = [].slice.call(svg.querySelectorAll("[data-ent]"));
-  var ctx = { style: "clean", hidden: {}, sel: null, net: null, ready: false };
-  var hooks = { getState: null, isEdit: null, fit: null, route: null, panel: null, beforeSelect: null };
+  var els = Array.from(svg.children).slice(1);
+  var ents = Array.from(svg.querySelectorAll("[data-ent]"));
+  var ctx = { style: "clean", hidden: {}, sel: null, net: null, sys: true, ready: false };
+  var hooks = { getState: null, isEdit: null, fit: null, route: null, title: null, panel: null, beforeSelect: null, pending: null, view: null, viewNode: null, rerender: null };
 
   // Keys are "<diagram id>-<name>"; a value still under "<legacyId>-<name>" is copied over on first read.
   function lsGet(name) {
@@ -581,9 +582,9 @@ InfraDiagram.define("ui/core", [], function () {
       return v;
     } catch (e) { return null; }
   }
-  function lsSet(name, v) { try { localStorage.setItem(D.id + "-" + name, v); } catch (e) {} }
-  function lsDel(name) { try { localStorage.removeItem(D.id + "-" + name); } catch (e) {} }
-  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function lsSet(name, v) { try { localStorage.setItem(D.id + "-" + name, v); } catch (e) { return; } }
+  function lsDel(name) { try { localStorage.removeItem(D.id + "-" + name); } catch (e) { return; } }
+  function esc(s) { return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); }
   function $(id) { return document.getElementById(id); }
 
   function clipboard(text, done) {
@@ -595,11 +596,11 @@ InfraDiagram.define("ui/core", [], function () {
       document.body.appendChild(ta);
       ta.select();
       var ok = false;
-      try { ok = document.execCommand("copy"); } catch (e) {}
-      document.body.removeChild(ta);
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      ta.remove();
       done(ok);
     }
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
     else fallback();
   }
   function save(blob, name) {
@@ -608,7 +609,7 @@ InfraDiagram.define("ui/core", [], function () {
     a.download = name;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
   }
 
@@ -627,7 +628,8 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
     while (i < L.length) {
       var l = L[i], m;
       if (!l.trim()) { i++; continue; }
-      if ((m = l.match(/^(#{1,6})\s+(.*)$/))) { o.push("<h" + m[1].length + ">" + inline(m[2]) + "</h" + m[1].length + ">"); i++; continue; }
+      m = l.match(/^(#{1,6})\s+(.*)$/);
+      if (m) { o.push("<h" + m[1].length + ">" + inline(m[2]) + "</h" + m[1].length + ">"); i++; continue; }
       if (/^\s*\|/.test(l)) {
         var rows = [];
         while (i < L.length && /^\s*\|/.test(L[i])) { rows.push(L[i]); i++; }
@@ -664,14 +666,15 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
 
   function osRow(pn, os) {
     var cell = null;
-    [].forEach.call(pn.querySelectorAll("td:first-child"), function (td) {
+    pn.querySelectorAll("td:first-child").forEach(function (td) {
       if (!cell && td.textContent.trim() === "OS" && td.nextElementSibling) cell = td.nextElementSibling;
     });
     if (!cell) {
-      pn.querySelector(".tg").insertAdjacentHTML("afterend", '<table class="po"><tbody><tr><td>OS</td><td>' + esc(os ? os.v : "TBD") + "</td></tr></tbody></table>");
+      pn.querySelector(".tg").insertAdjacentHTML("afterend", '<table class="po"><tbody><tr><td>OS</td><td>' + esc(os ? (os.d || os.v) : "TBD") + "</td></tr></tbody></table>");
       cell = pn.querySelector(".po td:last-child");
     }
-    if (os && os.eol) cell.insertAdjacentHTML("beforeend", ' <span class="eolb" title="End of standard support: ' + esc(os.eol) + '">EOL</span>');
+    if (os?.d && os.d !== os.v) { cell.textContent = os.d; cell.title = os.v; }
+    if (os?.eol) cell.insertAdjacentHTML("beforeend", ' <span class="eolb" title="End of standard support: ' + esc(os.eol) + '">EOL</span>');
   }
 
   // Network button after every IP with a network in D.ipNet (outside links); clicks are wired by ui/init.
@@ -687,11 +690,11 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
         var j = D.ipNet[m[1]];
         if (j === undefined) continue;
         frag = frag || document.createDocumentFragment();
-        var end = m.index + m[0].length, b = document.createElement("button"), net = D.nets[j], lbl = "Show network " + net.cidr + " " + net.name;
+        var end = m.index + m[0].length, b = document.createElement("button"), net = D.nets[j], lbl = ("Show network " + net.cidr + " " + net.name).trim();
         frag.appendChild(document.createTextNode(s.slice(last, end)));
         b.type = "button";
         b.className = "nwd" + (core.ctx.net === j ? " on" : "");
-        b.setAttribute("data-n", j);
+        b.dataset.n = j;
         b.setAttribute("aria-pressed", core.ctx.net === j ? "true" : "false");
         b.setAttribute("aria-label", lbl);
         b.title = lbl;
@@ -703,6 +706,17 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
       frag.appendChild(document.createTextNode(s.slice(last)));
       tn.parentNode.replaceChild(frag, tn);
     });
+  }
+
+  // Hardware strip (value then label, e.g. "4 cpu · 8G ram", as on the card): after the first table of the section, else after the type tag.
+  function hwStrip(pn, cells) {
+    if (!cells?.length) return;
+    var d = document.createElement("div");
+    d.className = "hws";
+    d.textContent = cells.map(function (c) { return c[1] + " " + c[0]; }).join(" 00b7 ");
+    var t = pn.querySelector("table");
+    if (t) t.parentNode.insertBefore(d, t.nextSibling);
+    else pn.insertBefore(d, pn.querySelector(".tg").nextSibling);
   }
 
   // The "Close" button (#pc) is wired once by ui/init.
@@ -724,9 +738,10 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
       else html += '<p class="pm">Part of ' + esc(ce.title) + "</p>";
     }
     pn.innerHTML = html;
+    if (key.charAt(0) === "n") hwStrip(pn, e.hwc);
     if (key.charAt(0) === "n") osRow(pn, e.os);
     netButtons(pn);
-    pn.setAttribute("data-ty", e.ty);
+    pn.dataset.ty = e.ty;
     if (core.hooks.panel) core.hooks.panel(key, pn);
   }
 
@@ -735,7 +750,7 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
 
 InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, details) {
   var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx, CW = core.CW, STYLES = core.STYLES, hooks = core.hooks;
-  var pillW = {}, boxW = {}, btn = {};
+  var pillW = {}, boxW = {}, btn = {}, TEXT_X = 10;
 
   function measure(el, n, cw) {
     var w = 0;
@@ -747,37 +762,43 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     return '<rect x="1" y="1" width="14" height="6" rx="1.5"/><rect x="1" y="9" width="14" height="6" rx="1.5"/><path d="M4 4h.01M4 12h.01"/>';
   }
 
+  // Card meta with the system information (OS pill, hardware strip) removed while it is switched off.
+  function sysMeta(m) { return ctx.sys ? m : { ...m, hw: "", os: 0 }; }
+  function frameHtml(S, W, bottom, HH) {
+    if (S === "clean") {
+      return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="10"/><path class="hd" d="M0 0V-10Q0 -20 10 -20H' + (W - 10) + "Q" + W + " -20 " + W + ' -10V0Z"/>';
+    }
+    if (S === "dark") {
+      return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="5"/><rect class="hd" x="0" y="-' + HH + '" width="' + W + '" height="' + HH + '"/><rect class="ab" x="0" y="-' + HH + '" width="3" height="' + HH + '"/>';
+    }
+    return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
+  }
   function nodeChrome(id) {
-    var S = ctx.style, g = D.layout.nodes[id], e = D.ent["n:" + id], ix = D.idx.nodes[id];
-    var tl = g.title[0] - g.x;
-    var tw = measure(els[ix.t], e.title.length, CW[S]);
+    var S = ctx.style, g = hooks.viewNode ? hooks.viewNode(id, D.layout.nodes[id]) : D.layout.nodes[id], e = D.ent["n:" + id], ix = D.idx.nodes[id];
+    var tl = TEXT_X;
+    var tw = measure(els[ix.t], els[ix.t].firstChild.textContent.length, CW[S]);
     var bottom = g.h;
     var ipw = g.ip.map(function (p, k) {
       bottom = Math.max(bottom, p[1] - g.y + 7);
       return measure(els[ix.i[k]], 14, CW[S]);
     });
-    var W = Math.max(g.w, tl + tw + 28), HH = 20, m = D.meta.nodes[id] || {}, nb = g.body.length, hwY = 18 + 16 * nb;
+    var W = Math.max(g.w, tl + tw + 28), HH = 20, m = sysMeta(D.meta.nodes[id] || {}), nb = g.body.length, hwY = 18 + 16 * nb;
     boxW[id] = W;
-    var h = "";
-    var hw = m.hw ? '<text class="hw" x="' + (g.body.length ? g.body[0][0] - g.x : 10) + '" y="' + hwY + '">' + core.esc(m.hw) + "</text>" : "";
+    var hwX = g.body.length ? g.body[0][0] - g.x : 10;
+    var hw = m.hw ? '<text class="hw" x="' + hwX + '" y="' + hwY + '">' + core.esc(m.hw) + "</text>" : "";
     if (S === "sketch") { delete boxW[id]; return hw; }
-    if (S === "clean") {
-      h = '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="10"/><path class="hd" d="M0 0V-10Q0 -20 10 -20H' + (W - 10) + "Q" + W + " -20 " + W + ' -10V0Z"/>';
-    } else if (S === "dark") {
-      h = '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="5"/><rect class="hd" x="0" y="-' + HH + '" width="' + W + '" height="' + HH + '"/><rect class="ab" x="0" y="-' + HH + '" width="3" height="' + HH + '"/>';
-    } else {
-      h = '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
-    }
-    h += '<g class="ic" transform="translate(' + (W - 17) + ' -16) scale(.75)">' + icon(e.db ? "db" : "server") + "</g>";
+    var h = frameHtml(S, W, bottom, HH);
+    h += '<g class="ic" transform="translate(' + (W - 22.8) + ' -16.8) scale(.85)">' + icon(e.db ? "db" : "server") + "</g>";
     h += hw;
     var dv = function (y) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; };
     var below = !!(m.hw || m.os || g.ip.length);
+    if (m.nj && nb > m.nj) h += dv(8 + 16 * m.nj);
     if (nb && below) h += dv(8 + 16 * nb);
     if (m.hw && (m.os || g.ip.length)) h += dv(hwY + 6);
     if (m.os && g.ip.length) h += dv(g.ip[0][1] - g.y - 12.5);
     g.ip.forEach(function (p, k) {
       var w = Math.round(ipw[k] + 10);
-      h += '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x - 5) + '" y="' + (p[1] - g.y - 11) + '" width="' + w + '" height="15" rx="' + (S === "clean" ? 8 : S === "dark" ? 3 : 0) + '"/>';
+      h += '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x - 5) + '" y="' + (p[1] - g.y - 11) + '" width="' + w + '" height="15" rx="' + ({ clean: 8, dark: 3 }[S] ?? 0) + '"/>';
     });
     return h;
   }
@@ -799,7 +820,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
       if (o === undefined) return;
       var t = els[o].querySelector("text"), r = els[o].querySelector("rect");
       r.setAttribute("width", Math.round(measure(t, t.textContent.length, ctx.style === "sketch" ? 5.6 : 5.2) + 8));
-      r.setAttribute("rx", ctx.style === "clean" ? 6 : ctx.style === "dark" ? 3 : ctx.style === "sketch" ? 2 : 0);
+      r.setAttribute("rx", { clean: 6, dark: 3, sketch: 2 }[ctx.style] ?? 0);
     });
     pillW = {};
     Object.keys(D.idx.edges).forEach(function (k) {
@@ -819,7 +840,9 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     var ys = function (a) { return a.map(function (p) { return p[1]; }); };
     var top = g.ip.length ? Math.min.apply(null, ys(g.ip)) - g.y - 11 : g.h - 3;
     var floor = g.body.length ? Math.max.apply(null, ys(g.body)) - g.y + 4 : 2;
-    var lx = g.ip.length ? g.ip[0][0] : g.body.length ? g.body[0][0] : g.title[0];
+    var lx = g.title[0];
+    if (g.ip.length) lx = g.ip[0][0];
+    else if (g.body.length) lx = g.body[0][0];
     var y = top - 3 - 12, fits = y >= floor + 1;
     els[o].setAttribute("transform", "translate(" + (lx - 5) + " " + (g.y + y) + ")");
     els[o].setAttribute("visibility", fits ? "visible" : "hidden");
@@ -842,9 +865,11 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
 
   function sync(s) {
     if (!ctx.ready || !s) return;
+    if (hooks.view) s = hooks.view(s);
     Object.keys(D.idx.nodes).forEach(function (id) {
       var g = s.nodes[id];
       els[D.idx.nodes[id].c].setAttribute("transform", "translate(" + g.x + " " + g.y + ")");
+      if (hooks.title) { var ht = hooks.title(g, ctx.style), tx = els[D.idx.nodes[id].t]; tx.setAttribute("x", ht[0]); tx.setAttribute("y", ht[1]); }
       placeOs(id, g);
       placeNetButtons(id, g);
     });
@@ -855,7 +880,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     Object.keys(D.idx.edges).forEach(function (k) {
       var e = D.idx.edges[k];
       if (e.l < 0) return;
-      var p = els[e.lp], r = ctx.routes && ctx.routes[k], l = r && r.label;
+      var p = els[e.lp], r = ctx.routes?.[k], l = r?.label;
       if (!l) return;
       p.setAttribute("x", l[0] - 7);
       p.setAttribute("y", l[1] - 12);
@@ -865,17 +890,17 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
   }
 
   function setStyle(s, persist) {
-    if (STYLES.indexOf(s) < 0) s = "clean";
+    if (!STYLES.includes(s)) s = "clean";
     ctx.style = s;
-    document.documentElement.setAttribute("data-style", s);
+    document.documentElement.dataset.style = s;
     STYLES.forEach(function (x) { svg.classList.remove("s-" + x); });
     svg.classList.add("s-" + s);
-    [].forEach.call(document.querySelectorAll(".lks"), function (k) {
+    document.querySelectorAll(".lks").forEach(function (k) {
       STYLES.forEach(function (x) { k.classList.remove("s-" + x); });
       k.classList.add("s-" + s);
     });
-    [].forEach.call(document.querySelectorAll("#ss button"), function (b) {
-      b.setAttribute("aria-pressed", b.getAttribute("data-s") === s ? "true" : "false");
+    document.querySelectorAll("#ss button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.dataset.s === s ? "true" : "false");
     });
     rebuildChrome();
     if (hooks.fit && s !== "sketch") hooks.fit();
@@ -935,7 +960,7 @@ InfraDiagram.define("ui/panels", ["ui/core"], function (core) {
       var ro = new ResizeObserver(placeChrome);
       ro.observe($("ta"));
       ro.observe($("lc"));
-    } catch (e) {}
+    } catch (e) { return; }
   }
 
   return { placeChrome: placeChrome, initPanels: initPanels, setPanel: setPanel };
@@ -948,8 +973,8 @@ InfraDiagram.define("ui/networks", ["ui/core", "ui/panels"], function (core, pan
     var wl = $("wl");
     if (!wl || !D.nets) return;
     wl.addEventListener("click", function (e) {
-      var b = e.target.closest && e.target.closest(".nw");
-      if (b) setNet(ctx.net === +b.getAttribute("data-n") ? null : +b.getAttribute("data-n"));
+      var b = e.target.closest?.(".nw");
+      if (b) setNet(ctx.net === +b.dataset.n ? null : +b.dataset.n);
     });
     $("wr").addEventListener("click", function () { setNet(null); });
   }
@@ -962,16 +987,16 @@ InfraDiagram.define("ui/networks", ["ui/core", "ui/panels"], function (core, pan
       D.nets[ctx.net].m.forEach(function (k) { M[k] = 1; });
       D.edges.forEach(function (e) { if (M[e.from] && M[e.to]) M["e:" + e.k] = 1; });
     }
-    core.ents.forEach(function (el) { el.classList.toggle("nf", !!M && !M[el.getAttribute("data-ent")]); });
-    [].forEach.call(document.querySelectorAll("#wl .nw, .nwb, .nwd"), function (b) {
-      var on = +b.getAttribute("data-n") === ctx.net;
+    core.ents.forEach(function (el) { el.classList.toggle("nf", !!M && !M[el.dataset.ent]); });
+    document.querySelectorAll("#wl .nw, .nwb, .nwd").forEach(function (b) {
+      var on = +b.dataset.n === ctx.net;
       b.setAttribute("aria-pressed", on ? "true" : "false");
       b.classList.toggle("on", on);
     });
   }
   // Network button: activates network i and reveals it in the Networks panel; clears when i is already active.
   function toggleNet(i) {
-    if (!D.nets || !D.nets[i]) return;
+    if (!D.nets?.[i]) return;
     if (ctx.net === i) { setNet(null); return; }
     setNet(i);
     if ($("wh").getAttribute("aria-expanded") !== "true") panels.setPanel("wp", true, false);
@@ -979,7 +1004,34 @@ InfraDiagram.define("ui/networks", ["ui/core", "ui/panels"], function (core, pan
     if (b) b.scrollIntoView({ block: "nearest" });
   }
 
-  return { initNetworks: initNetworks, setNet: setNet, toggleNet: toggleNet };
+  // Inline name editor on a network entry (edit mode, via the context menu): Enter or blur commits, Esc cancels; empty removes the name.
+  function editName(i) {
+    var net = D.nets?.[i], b = document.querySelector('#wl .nw[data-n="' + i + '"]'), api = window.InfraDiagram.serverEditor;
+    if (!net?.cidr || !b || !api?.renameNetwork || b.querySelector(".nwe")) return;
+    var label = b.firstElementChild, saved = label.innerHTML, input = document.createElement("input"), done = false;
+    while (label.lastChild?.nodeType === 3) label.lastChild.remove();
+    input.type = "text"; input.className = "nwe"; input.maxLength = 80; input.value = net.name || "";
+    input.setAttribute("aria-label", "Network name for " + net.cidr);
+    function finish(commit) {
+      if (done) return;
+      done = true;
+      var value = input.value.trim(), err = commit && value !== (net.name || "") ? api.renameNetwork(net.cidr, value) : null;
+      label.innerHTML = saved;
+      if (err) $("tm").textContent = err;
+    }
+    input.addEventListener("keydown", function (e) {
+      e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); finish(true); }
+      else if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    });
+    input.addEventListener("click", function (e) { e.stopPropagation(); });
+    input.addEventListener("blur", function () { finish(true); });
+    label.appendChild(input);
+    input.focus();
+    input.select();
+  }
+
+  return { initNetworks: initNetworks, setNet: setNet, toggleNet: toggleNet, editName: editName };
 });
 
 InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], function (core, skins, networks) {
@@ -987,13 +1039,13 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
 
   function applyToggles() {
     core.ents.forEach(function (el) {
-      var tk = el.getAttribute("data-tk");
-      if (tk === null) return;
+      var tk = el.dataset.tk;
+      if (tk === undefined) return;
       var off = tk.split(" ").some(function (k) { return ctx.hidden[k]; });
       el.classList.toggle("off", off);
     });
-    [].forEach.call(document.querySelectorAll("#lb .sw[data-k]"), function (b) {
-      b.setAttribute("aria-checked", ctx.hidden[b.getAttribute("data-k")] ? "false" : "true");
+    document.querySelectorAll("#lb .sw[data-k]").forEach(function (b) {
+      b.setAttribute("aria-checked", ctx.hidden[b.dataset.k] ? "false" : "true");
     });
   }
   function loadToggles() {
@@ -1015,9 +1067,9 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
     var ap = D.types.filter(function (t) { return !t.infra; }), inf = D.types.filter(function (t) { return t.infra; });
     lg.innerHTML = "<b>Server types</b>" + ap.map(sw).join("") + (inf.length ? "<b>Other infrastructure</b>" + inf.map(sw).join("") : "") + '<button type="button" class="reset">Show all</button>';
     lg.addEventListener("click", function (e) {
-      var b = e.target.closest && e.target.closest(".sw");
-      if (b) { toggle(b.getAttribute("data-k")); return; }
-      if (e.target.closest && e.target.closest(".reset")) showAll();
+      var b = e.target.closest?.(".sw");
+      if (b) { toggle(b.dataset.k); return; }
+      if (e.target.closest?.(".reset")) showAll();
     });
     var lk = document.querySelector("#lp .lk");
     // Connection switches (levels "lv:server" / "lv:process", groups "g:<id>"): a connection shows only while all its switches are on.
@@ -1025,19 +1077,20 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
       return '<button type="button" class="sw es" role="switch" aria-checked="true" data-k="' + g.k + '"' + (g.g ? ' data-g="' + g.g + '"' : "") + '><span class="trk"></span><i class="ln"></i><span class="t">' + esc(g.label) + "</span></button>";
     }).join(""));
     lk.addEventListener("click", function (e) {
-      var b = e.target.closest && e.target.closest(".sw.es");
-      if (b) toggle(b.getAttribute("data-k"));
+      var b = e.target.closest?.(".sw.es");
+      if (b) toggle(b.dataset.k);
     });
     lk.insertAdjacentHTML("beforeend", '<button type="button" id="lbl" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Connection labels</span></button>');
     $("lbl").addEventListener("click", function () { setLabels(!ctx.labels, true); });
-    lk.insertAdjacentHTML("afterend", '<div class="lo"><b>Servers</b><button type="button" id="osv" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Display OS version</span></button></div>');
-    $("osv").addEventListener("click", function () { setOs(!ctx.os, true); });
+    lk.insertAdjacentHTML("afterend", '<div class="lo"><b>Servers</b><button type="button" id="osv" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Display System Information</span></button></div>');
+    $("osv").addEventListener("click", function () { setSys(!ctx.sys, true); });
   }
-  function setOs(on, persist) {
-    ctx.os = on;
-    svg.classList.toggle("showos", on);
+  function setSys(on, persist) {
+    ctx.sys = on;
+    svg.classList.toggle("showsys", on);
     $("osv").setAttribute("aria-checked", on ? "true" : "false");
-    if (persist) { core.lsSet("os", on ? "1" : "0"); skins.rebuildChrome(); }
+    if (persist) core.lsSet("os", on ? "1" : "0");
+    if (ctx.ready) { skins.rebuildChrome(); if (core.hooks.rerender) core.hooks.rerender(); }
   }
   function setLabels(on, persist) {
     ctx.labels = on;
@@ -1051,7 +1104,7 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
     loadToggles();
     buildLegend();
     setLabels(core.lsGet("labels") === "1", false);
-    setOs(core.lsGet("os") !== "0", false);
+    setSys(core.lsGet("os") !== "0", false);
     applyToggles();
   }
 
@@ -1070,10 +1123,10 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels"], func
       else if (e.to === key) { B[e.from] = 1; near.push(e.from); B["e:" + e.k] = 1; }
     });
     near.forEach(function (k) {
-      if (k.charAt(0) === "c") (D.kids[k.slice(2)] || []).forEach(function (n) { B["n:" + n] = 1; });
+      if (k.startsWith("c")) (D.kids[k.slice(2)] || []).forEach(function (n) { B["n:" + n] = 1; });
     });
     Object.keys(B).forEach(function (k) {
-      if (k.charAt(0) === "n" && D.ent[k] && D.ent[k].cl) B["c:" + D.ent[k].cl] = 1;
+      if (k.charAt(0) === "n" && D.ent[k]?.cl) B["c:" + D.ent[k].cl] = 1;
     });
     return B;
   }
@@ -1083,7 +1136,7 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels"], func
     ctx.sel = key;
     var B = key ? related(key) : null;
     core.ents.forEach(function (el) {
-      var k = el.getAttribute("data-ent");
+      var k = el.dataset.ent;
       el.classList.toggle("dim", !!B && !B[k]);
       el.classList.toggle("sel", !!B && k === key);
     });
@@ -1094,6 +1147,53 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels"], func
   }
 
   return { related: related, select: select };
+});
+
+InfraDiagram.define("ui/clear-click", ["ui/core", "ui/selection", "ui/networks"], function (core, selection, networks) {
+  var ctx = core.ctx, hooks = core.hooks, svg = core.svg;
+  var BLOCK = "a,button,input,textarea,select,label,summary,[role=dialog],[role=menu],[role=menuitem],[contenteditable],.dlg,[data-ent],[data-e],[data-rc],.nwb,.nwd,.nw,#ta";
+  var CONTAINERS = { rc: 1, wb: 1, wl: 1, pn: 1, nl: 1, dl: 1 };
+  var MOVE = 4;
+
+  // Is a pointer target an empty place: page background, empty canvas, or the bare container of a panel.
+  function isEmptyTarget(t) {
+    if (t?.nodeType !== 1) return false;
+    var tag = t.tagName;
+    if (tag === "HTML" || tag === "BODY") return true;
+    if (t.closest?.(BLOCK)) return false;
+    if (t === svg || (svg.contains?.(t))) return true;
+    return !!CONTAINERS[t.id] || (t.classList?.contains("cp"));
+  }
+
+  // A click clears when it began and ended on empty places without moving 4px or more, with the primary button.
+  function isEmptyClick(down, up, drawing) {
+    if (drawing || !down || !up || !down.empty || !up.empty) return false;
+    if (down.button > 0 || up.button > 0) return false;
+    return Math.hypot(up.x - down.x, up.y - down.y) < MOVE;
+  }
+
+  // Clears the selection and network filter like Esc; an open server form with pending edits is left alone.
+  function clearSelection(pending) {
+    if (pending?.()) return false;
+    if (ctx.sel) selection.select(null);
+    if (ctx.net !== null) networks.setNet(null);
+    return true;
+  }
+
+  function drawing() { return svg.classList.contains("draw-pencil") || svg.classList.contains("draw-eraser"); }
+
+  var down = null;
+  document.addEventListener("pointerdown", function (e) {
+    down = { x: e.clientX, y: e.clientY, button: e.button, empty: isEmptyTarget(e.target) };
+  }, true);
+  document.addEventListener("click", function (e) {
+    var d = down;
+    down = null;
+    if (!ctx.sel && ctx.net === null) return;
+    if (isEmptyClick(d, { x: e.clientX, y: e.clientY, button: e.button, empty: isEmptyTarget(e.target) }, drawing())) clearSelection(hooks.pending);
+  });
+
+  return { isEmptyTarget: isEmptyTarget, isEmptyClick: isEmptyClick, clearSelection: clearSelection };
 });
 
 InfraDiagram.define("ui/export-columns", ["ui/core"], function (core) {
@@ -1110,9 +1210,10 @@ InfraDiagram.define("ui/export-columns", ["ui/core"], function (core) {
         h += '<text class="h" x="' + (x0 + P) + '" y="' + y + '">OTHER INFRASTRUCTURE</text>';
         y += 8;
       }
+      var sr = S === "swiss" ? 0 : 3;
       var sw = t.dash
         ? '<rect class="sd" data-ty="' + t.ty + '" x="' + (x0 + P + 1) + '" y="' + (y + 3) + '" width="10" height="10" rx="2"/>'
-        : '<rect class="sf" data-ty="' + t.ty + '" x="' + (x0 + P) + '" y="' + (y + 2) + '" width="12" height="12" rx="' + (S === "swiss" ? 0 : 3) + '"/>';
+        : '<rect class="sf" data-ty="' + t.ty + '" x="' + (x0 + P) + '" y="' + (y + 2) + '" width="12" height="12" rx="' + sr + '"/>';
       h += sw + '<text x="' + (x0 + P + 20) + '" y="' + (y + 12) + '">' + esc(t.label) + "</text>";
       y += 18;
     });
@@ -1148,7 +1249,7 @@ InfraDiagram.define("ui/export-columns", ["ui/core"], function (core) {
   function notesSvg(x0, y0) {
     var S = ctx.style, CWN = { sketch: 6.6, clean: 5.6, dark: 6.4, swiss: 5.7 }[S];
     var W = 250, P = 10, LH = 14, h = "", y = y0;
-    var rx = S === "swiss" ? 0 : S === "dark" ? 4 : 2;
+    var rx = { swiss: 0, dark: 4 }[S] ?? 2;
     D.notes.forEach(function (n) {
       var max = Math.floor((W - 2 * P) / CWN), ty = y + P + 11, t = "";
       wrap(n.title, Math.floor(max * 0.9)).forEach(function (l) { t += '<text class="h" x="' + (x0 + P) + '" y="' + ty + '">' + esc(l) + "</text>"; ty += LH + 1; });
@@ -1169,10 +1270,10 @@ InfraDiagram.define("ui/export-columns", ["ui/core"], function (core) {
 });
 
 InfraDiagram.define("ui/copy", ["ui/core"], function (core) {
-  var hintT;
+  let hintT;
 
   function hint(msg, x, y) {
-    var h = core.$("ch");
+    const h = core.$("ch");
     h.textContent = msg;
     h.style.left = Math.min(x + 12, innerWidth - 80) + "px";
     h.style.top = Math.max(y - 28, 4) + "px";
@@ -1202,17 +1303,17 @@ InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], functio
   function exportSvg() {
     var c = svg.cloneNode(true);
     var r = resolveCss();
-    [].forEach.call(c.querySelectorAll("[data-e]"), function (n) { n.removeAttribute("data-e"); });
-    [].forEach.call(c.querySelectorAll(".nwb,#rh"), function (n) { n.remove(); });
+    c.querySelectorAll("[data-e]").forEach(function (n) { delete n.dataset.e; });
+    c.querySelectorAll(".nwb,#rh").forEach(function (n) { n.remove(); });
     c.classList.remove("edit", "zoomed", "panning", "draw-pencil", "draw-eraser");
-    [].forEach.call(c.querySelectorAll(".dwp.hot"), function (n) { n.classList.remove("hot"); });
+    c.querySelectorAll(".dwp.hot").forEach(function (n) { n.classList.remove("hot"); });
     c.removeAttribute("style");
-    if (c.getAttribute("data-fit")) c.setAttribute("viewBox", c.getAttribute("data-fit"));
-    c.removeAttribute("data-fit");
+    if (c.dataset.fit) c.setAttribute("viewBox", c.dataset.fit);
+    delete c.dataset.fit;
     c.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    c.setAttribute("data-style", ctx.style);
+    c.dataset.style = ctx.style;
     var vb = c.getAttribute("viewBox").split(/\s+/).map(Number);
-    if (D.notes && D.notes.length) {
+    if (D.notes?.length) {
       var ns = exportColumns.notesSvg(vb[0] + vb[2] + 10, vb[1] + 20);
       c.insertAdjacentHTML("beforeend", ns.h);
       vb[2] += ns.w + 30;
@@ -1226,8 +1327,9 @@ InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], functio
     c.setAttribute("viewBox", vb.join(" "));
     c.setAttribute("width", vb[2]);
     c.setAttribute("height", vb[3]);
-    var bg = ctx.style === "sketch" ? (r.dark ? "#16181c" : "#ffffff") : core.BG[ctx.style];
-    var pre = '<style>' + r.css.replace(/<\/style/g, "<\\/style") + "</style>";
+    var bg = core.BG[ctx.style];
+    if (ctx.style === "sketch") bg = r.dark ? "#16181c" : "#ffffff";
+    var pre = '<style>' + r.css.replaceAll("</style", String.raw`<\/style`) + "</style>";
     if (ctx.style === "dark") pre += '<defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#14213A" stroke-width="1"/></pattern></defs>';
     pre += '<rect x="' + vb[0] + '" y="' + vb[1] + '" width="' + vb[2] + '" height="' + vb[3] + '" fill="' + bg + '"/>';
     if (ctx.style === "dark") pre += '<rect x="' + vb[0] + '" y="' + vb[1] + '" width="' + vb[2] + '" height="' + vb[3] + '" fill="url(#grid)"/>';
@@ -1259,7 +1361,56 @@ InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], functio
 });
 
 InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/networks", "ui/legend", "ui/panels", "ui/selection", "ui/copy", "ui/export-image"], function (core, details, skins, networks, legend, panels, selection, copy, exportImage) {
-  var D = core.D, svg = core.svg, els = core.els, ctx = core.ctx, hooks = core.hooks, STYLES = core.STYLES, $ = core.$;
+  const { D, svg, els, ctx, hooks, STYLES, $ } = core;
+
+  function ipText(tg, id) {
+    return els[D.idx.nodes[id].i[+tg.dataset.i]].textContent;
+  }
+
+  function onSvgClick(e) {
+    if (hooks.isEdit()) return;
+    const tg = e.target, nb = tg.closest?.(".nwb");
+    if (nb) { networks.toggleNet(+nb.dataset.n); return; }
+    const t = tg.closest?.("[data-ent]");
+    const k = t?.dataset.ent;
+    if (!k || (k.charAt(0) !== "n" && k.charAt(0) !== "c")) { selection.select(null); return; }
+    const cl = tg.classList, id = k.slice(2);
+    if (k.charAt(0) === "n" && (cl.contains("nb") || cl.contains("ni") || cl.contains("ip"))) {
+      const txt = cl.contains("ip") ? ipText(tg, id) : tg.textContent;
+      copy.copyText(txt, e.clientX, e.clientY);
+      return;
+    }
+    if (cl.contains("nt") || cl.contains("ct") || t.classList.contains("osg")) { selection.select(k); return; }
+    if (k.charAt(0) === "n" && t.classList.contains("ch")) {
+      const m = svg.getScreenCTM(), y = m ? (e.clientY - m.f) / m.d : 0;
+      if (y < hooks.getState().nodes[id].y) selection.select(k);
+    }
+  }
+
+  function onPanelClick(e) {
+    if (e.target.id === "pc") { selection.select(null); return; }
+    const nb = e.target.closest?.(".nwd");
+    if (nb) networks.toggleNet(+nb.dataset.n);
+  }
+
+  function onSvgKeydown(e) {
+    const nb = e.target.closest?.(".nwb");
+    if (!nb || hooks.isEdit() || (e.key !== "Enter" && e.key !== " ")) return;
+    e.preventDefault();
+    networks.toggleNet(+nb.dataset.n);
+  }
+
+  function onEscape(e) {
+    if (e.key !== "Escape") return;
+    if (ctx.sel) selection.select(null);
+    if (ctx.net !== null) networks.setNet(null);
+  }
+
+  function onFontsReady() {
+    if (ctx.style === "sketch") return;
+    skins.rebuildChrome();
+    if (hooks.fit) hooks.fit();
+  }
 
   // o: { getState, isEdit, fit } from the canvas.
   function init(o) {
@@ -1270,55 +1421,24 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
     legend.initLegend();
     networks.initNetworks();
     panels.initPanels();
-    var q = (location.search.match(/[?&]style=(\w+)/) || [])[1];
-    var s = STYLES.indexOf(q) >= 0 ? q : core.lsGet("style");
-    skins.setStyle(STYLES.indexOf(s) >= 0 ? s : "clean", false);
-    [].forEach.call(document.querySelectorAll("#ss button"), function (b) {
-      b.addEventListener("click", function () { skins.setStyle(b.getAttribute("data-s"), true); });
+    const q = /[?&]style=(\w+)/.exec(location.search)?.[1];
+    const s = STYLES.includes(q) ? q : core.lsGet("style");
+    skins.setStyle(STYLES.includes(s) ? s : "clean", false);
+    document.querySelectorAll("#ss button").forEach(function (b) {
+      b.addEventListener("click", function () { skins.setStyle(b.dataset.s, true); });
     });
     $("xs").addEventListener("click", exportImage.downloadSvg);
     $("xp").addEventListener("click", exportImage.downloadPng);
-    $("pn").addEventListener("click", function (e) {
-      if (e.target.id === "pc") { selection.select(null); return; }
-      var nb = e.target.closest && e.target.closest(".nwd");
-      if (nb) networks.toggleNet(+nb.getAttribute("data-n"));
-    });
-    svg.addEventListener("keydown", function (e) {
-      var nb = e.target.closest && e.target.closest(".nwb");
-      if (!nb || hooks.isEdit() || (e.key !== "Enter" && e.key !== " ")) return;
-      e.preventDefault();
-      networks.toggleNet(+nb.getAttribute("data-n"));
-    });
-    svg.addEventListener("click", function (e) {
-      if (hooks.isEdit()) return;
-      var tg = e.target, nb = tg.closest && tg.closest(".nwb");
-      if (nb) { networks.toggleNet(+nb.getAttribute("data-n")); return; }
-      var t = tg.closest && tg.closest("[data-ent]");
-      var k = t && t.getAttribute("data-ent");
-      if (!k || (k.charAt(0) !== "n" && k.charAt(0) !== "c")) { selection.select(null); return; }
-      var cl = tg.classList, id = k.slice(2);
-      if (k.charAt(0) === "n" && (cl.contains("nb") || cl.contains("ni") || cl.contains("ip"))) {
-        var txt = cl.contains("ip") ? els[D.idx.nodes[id].i[+tg.getAttribute("data-i")]].textContent : tg.textContent;
-        copy.copyText(txt, e.clientX, e.clientY);
-        return;
-      }
-      if (cl.contains("nt") || cl.contains("ct") || t.classList.contains("osg")) { selection.select(k); return; }
-      if (k.charAt(0) === "n" && t.classList.contains("ch")) {
-        var m = svg.getScreenCTM(), y = m ? (e.clientY - m.f) / m.d : 0;
-        if (y < hooks.getState().nodes[id].y) { selection.select(k); return; }
-      }
-    });
-    document.addEventListener("keydown", function (e) {
-      if (e.key !== "Escape") return;
-      if (ctx.sel) selection.select(null);
-      if (ctx.net !== null) networks.setNet(null);
-    });
-    try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (ctx.style !== "sketch") { skins.rebuildChrome(); if (hooks.fit) hooks.fit(); } }); } catch (e) {}
+    $("pn").addEventListener("click", onPanelClick);
+    svg.addEventListener("keydown", onSvgKeydown);
+    svg.addEventListener("click", onSvgClick);
+    document.addEventListener("keydown", onEscape);
+    document.fonts?.ready?.then(onFontsReady).catch(() => null);
   }
   function editChanged(flag) { if (flag && ctx.ready) { selection.select(null); networks.setNet(null); } }
 
   // Console / automation API, e.g. InfraDiagram.setStyle("dark").
-  var api = {
+  const api = {
     setStyle: skins.setStyle, toggle: legend.toggle, showAll: legend.showAll, select: selection.select,
     exportSvg: exportImage.exportSvg, md: details.md, related: selection.related, ctx: ctx, setNet: networks.setNet
   };
@@ -1377,7 +1497,7 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
 
   function card(i) {
     var n = cards[i], a = el("article", "note"), p;
-    a.setAttribute("data-i", i);
+    a.dataset.i = i;
     a.appendChild(el("h3", "", n.title));
     n.paras.forEach(function (t) { a.appendChild(el("p", "", t)); });
     p = el("time", "", show(n.date, new Date()));
@@ -1395,7 +1515,7 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
 
   function editor(i, text) {
     var a = el("article", "note editing"), ta = el("textarea", "ned"), err = el("div", "nerr"), row = el("div", "nrow");
-    a.setAttribute("data-i", i);
+    a.dataset.i = i;
     ta.value = text;
     ta.rows = Math.max(6, text.split("\n").length + 1);
     ta.spellcheck = false;
@@ -1431,8 +1551,8 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
     list.forEach(function (t, i) {
       nodes.push(edit && !edit.isNew && edit.i === i ? editor(i, t) : card(i));
     });
-    if (edit && edit.isNew) nodes.push(editor(list.length, ""));
-    host.replaceChildren.apply(host, nodes);
+    if (edit?.isNew) nodes.push(editor(list.length, ""));
+    host.replaceChildren(...nodes);
     $("nh").textContent = "Notes (" + list.length + ")";
     syncData();
     panels.placeChrome();
@@ -1504,18 +1624,18 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
     var add = button("Add note", "nadd", addNote);
     add.id = "na";
     host.insertBefore(add, host.firstChild);
-    [].forEach.call(host.querySelectorAll(".note"), function (n, i) {
-      n.setAttribute("data-i", i);
+    host.querySelectorAll(".note").forEach(function (n, i) {
+      n.dataset.i = i;
       var t = n.querySelector("time");
       if (t) t.textContent = show(cards[i].date, new Date());
     });
     syncData();
     host.addEventListener("click", function (e) {
-      var n = e.target.closest && e.target.closest(".note");
+      var n = e.target.closest?.(".note");
       if (!n || n.classList.contains("editing")) return;
       var s = window.getSelection();
       if (s && !s.isCollapsed && n.contains(s.anchorNode)) return;
-      startEdit(+n.getAttribute("data-i"));
+      startEdit(+n.dataset.i);
     });
   }
 
@@ -1529,7 +1649,7 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function (core, p
 
 InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], function (core, selection, panels) {
   var $ = core.$;
-  var TEXTS = [["os", "OS", "Ubuntu 24.04"], ["hardware", "Hardware", "8 vCPU, 16 GB RAM"], ["cpu", "CPU", "8 cores"], ["ram", "RAM", "16 GiB"], ["swap", "Swap", "2 GiB"], ["disk", "Disk", "50G"], ["role", "Role", "Reverse proxy"]];
+  var TEXTS = [["os", "OS", "Ubuntu 24.04"], ["hardware", "Hardware", "8 vCPU, 16 GB RAM"], ["cpu", "CPU (cores)", "8"], ["ram", "RAM (size)", "16G"], ["swap", "Swap (size)", "2G"], ["disk", "Disk (size)", "50G"], ["role", "Role", "Reverse proxy"]];
   var LISTS = [
     ["ips", "IPs", "Add IP", "192.0.2.10/24"], ["dns", "DNS", "Add DNS name", "host.example.test"], ["jobs", "Jobs", "Add job", "Job 104 batch import"],
     ["rmi_services", "RMI services", "Add RMI service", "ExampleService"], ["systemd_services", "systemd services", "Add systemd service", "example.service"]
@@ -1571,7 +1691,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
   }
 
   function norm(f) {
-    var o = { name: f.name.trim(), server_type: f.server_type, details: (f.details || "").replace(/\s+$/, "") };
+    var o = { name: f.name.trim(), server_type: f.server_type, details: (f.details || "").trimEnd() };
     TEXTS.forEach(function (t) { o[t[0]] = (f[t[0]] || "").trim(); });
     LISTS.forEach(function (l) { o[l[0]] = trimmed(f[l[0]] || []); });
     return o;
@@ -1581,7 +1701,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
     var f = { name: edit.name.value, server_type: edit.type, details: edit.notes ? edit.notes.value : edit.raw.details || "" };
     TEXTS.forEach(function (t) { f[t[0]] = edit.texts[t[0]].value; });
     LISTS.forEach(function (l) {
-      f[l[0]] = [].map.call(edit.lists[l[0]].querySelectorAll("input"), function (i) { return i.value; });
+      f[l[0]] = Array.from(edit.lists[l[0]].querySelectorAll("input"), function (i) { return i.value; });
     });
     return f;
   }
@@ -1598,7 +1718,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
     var raw = bridge().source(key.slice(2)), pn = $("pn");
     if (!raw) return;
     var close = pn.querySelector("#pc"), tg = pn.querySelector(".tg");
-    edit = { key: key, raw: raw, form: el("div", "sf"), texts: {}, lists: {}, notes: null, type: raw.server_type, tg: tg, suffix: / · PROPOSED$/.test(tg.textContent) ? " · PROPOSED" : "" };
+    edit = { key: key, raw: raw, form: el("div", "sf"), texts: {}, lists: {}, notes: null, type: raw.server_type, tg: tg, suffix: tg.textContent.endsWith(" · PROPOSED") ? " · PROPOSED" : "" };
     tg.classList.add("sedb");
     tg.setAttribute("role", "button");
     tg.setAttribute("tabindex", "0");
@@ -1680,7 +1800,7 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
   }
 
   function cancel() {
-    var key = edit && edit.key;
+    var key = edit?.key;
     edit = null;
     if (key) selection.select(key);
   }
@@ -1691,6 +1811,8 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
     edit.err.hidden = false;
     return false;
   };
+
+  core.hooks.pending = function () { return !!edit && changed(); };
 
   core.hooks.panel = function (key, pn) {
     edit = null;
@@ -1706,7 +1828,10 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
   $("pn").addEventListener("click", function (e) {
     if (!current || !e.target.closest) return;
     var badge = e.target.closest(".tg") && !e.target.closest(".sfp");
-    if (edit) { if (badge) edit.pick.hidden = !edit.pick.hidden; return; }
+    if (edit) {
+      if (badge) edit.pick.hidden = !edit.pick.hidden;
+      return;
+    }
     if (e.target.closest("#pe") || (e.target.closest("h1.sed") && !e.target.closest("a"))) openForm(current);
     else if (badge) { openForm(current); if (edit) edit.pick.hidden = false; }
   });
@@ -1736,17 +1861,22 @@ InfraDiagram.define("canvas/geometry", [], function () {
     function r1(v) { return Math.round(v * 10) / 10; }
     function num(a, b) { return a - b; }
 
+    // Start of a server header text: TEXT_X from the left, vertically centred in the header bar (CSS dominant-baseline: central); Sketch keeps the saved spot above the box.
+    function headerTitle(g, style) {
+      return style === "sketch" ? [g.title[0], g.title[1]] : [r1(g.x + TEXT_X), r1(g.y - HEAD / 2)];
+    }
+
     function boxExtent(g, tl, w) {
       var bottom = g.y + g.h;
-      for (var i = 0; i < g.ip.length; i++) bottom = Math.max(bottom, g.ip[i][1] + 7);
-      return { x0: g.x, y0: g.y - HEAD, x1: g.x + (w || Math.max(g.w, g.title[0] - g.x + tl * TITLE_CW + 28)), y1: bottom };
+      for (const p of g.ip) bottom = Math.max(bottom, p[1] + 7);
+      return { x0: g.x, y0: g.y - HEAD, x1: g.x + (w || Math.max(g.w, TEXT_X + tl * TITLE_CW + 28)), y1: bottom };
     }
 
     // Body and IP lines sit at the box's text padding; the box is wide enough for its title, body lines and IP pills plus network buttons.
     function fitBox(g, t) {
       g.body.forEach(function (p) { p[0] = g.x + TEXT_X; });
       g.ip.forEach(function (p) { p[0] = g.x + TEXT_X; });
-      var need = Math.max(g.title[0] - g.x + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0, t.os ? TEXT_X + (t.ol + 4) * OS_CW + 14 : 0, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0);
+      var need = Math.max(TEXT_X + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0, t.os ? TEXT_X + (t.ol + 4) * OS_CW + 14 : 0, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0);
       g.w = Math.max(g.w, Math.ceil(need));
     }
 
@@ -1756,7 +1886,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
       Object.keys(meta.nodes).forEach(function (id) {
         var g = s.nodes[id];
         if (meta.nodes[id].cl !== cid || !g || g.hidden) return;
-        var e = boxExtent(g, meta.nodes[id].tl, w && w[id]);
+        var e = boxExtent(g, meta.nodes[id].tl, w?.[id]);
         r = r || { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
         r.x0 = Math.min(r.x0, e.x0 - PAD); r.x1 = Math.max(r.x1, e.x1 + PAD); r.y1 = Math.max(r.y1, e.y1 + PAD);
         r.y0 = Math.min(r.y0, e.y0 - BAND - BAND_GAP);
@@ -1778,10 +1908,10 @@ InfraDiagram.define("canvas/geometry", [], function () {
     function resizeRegion(s, meta, cid, side, dx, dy, w) {
       var c = s.clusters[cid], b = regionBounds(s, meta, cid, w), t = c.title, centred = Math.abs(t[0] - (c.x + c.w / 2)) <= 2;
       var x0 = c.x, y0 = c.y, x1 = c.x + c.w, y1 = c.y + c.h;
-      if (side.indexOf("w") >= 0) x0 = Math.min(x0 + dx, b ? b.x0 : Infinity, x1 - MIN_W);
-      if (side.indexOf("e") >= 0) x1 = Math.max(x1 + dx, b ? b.x1 : -Infinity, x0 + MIN_W);
-      if (side.indexOf("n") >= 0) y0 = Math.min(y0 + dy, b ? b.y0 : Infinity, y1 - MIN_H);
-      if (side.indexOf("s") >= 0) y1 = Math.max(y1 + dy, b ? b.y1 : -Infinity, y0 + MIN_H);
+      if (side.includes("w")) x0 = Math.min(x0 + dx, b ? b.x0 : Infinity, x1 - MIN_W);
+      if (side.includes("e")) x1 = Math.max(x1 + dx, b ? b.x1 : -Infinity, x0 + MIN_W);
+      if (side.includes("n")) y0 = Math.min(y0 + dy, b ? b.y0 : Infinity, y1 - MIN_H);
+      if (side.includes("s")) y1 = Math.max(y1 + dy, b ? b.y1 : -Infinity, y0 + MIN_H);
       c.title = [centred ? r1((x0 + x1) / 2) : t[0] + (x0 - c.x), t[1] + (y0 - c.y)];
       c.x = x0; c.y = y0; c.w = x1 - x0; c.h = y1 - y0;
     }
@@ -1797,15 +1927,17 @@ InfraDiagram.define("canvas/geometry", [], function () {
       Object.keys(meta.nodes).forEach(function (id) {
         var g = s.nodes[id];
         if (!g || g.hidden) return;
-        var r = boxExtent(g, meta.nodes[id].tl, w && w[id]);
+        var r = boxExtent(g, meta.nodes[id].tl, w?.[id]);
         r.k = "n:" + id;
         r.cl = meta.nodes[id].cl ? ent["c:" + meta.nodes[id].cl].i : -1;
         ent[r.k] = r; nodes.push(r);
       });
       var bands = [];
       clusters.forEach(function (c) {
-        bands.push({ x0: c.x0, y0: c.y0 - 3, x1: c.x1, y1: c.y0 + 3 }, { x0: c.x0, y0: c.y1 - 3, x1: c.x1, y1: c.y1 + 3 });
-        bands.push({ x0: c.x0 - 3, y0: c.y0, x1: c.x0 + 3, y1: c.y1 }, { x0: c.x1 - 3, y0: c.y0, x1: c.x1 + 3, y1: c.y1 });
+        bands.push(
+          { x0: c.x0, y0: c.y0 - 3, x1: c.x1, y1: c.y0 + 3 }, { x0: c.x0, y0: c.y1 - 3, x1: c.x1, y1: c.y1 + 3 },
+          { x0: c.x0 - 3, y0: c.y0, x1: c.x0 + 3, y1: c.y1 }, { x0: c.x1 - 3, y0: c.y0, x1: c.x1 + 3, y1: c.y1 }
+        );
       });
       return { ent: ent, nodes: nodes, titles: titles, clusters: clusters, bands: bands };
     }
@@ -1813,7 +1945,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
     function uniq(a) {
       a.sort(num);
       var out = [];
-      a.forEach(function (v) { if (!out.length || v - out[out.length - 1] > 0.5) out.push(v); });
+      a.forEach(function (v) { if (!out.length || v - out.at(-1) > 0.5) out.push(v); });
       var mid = [];
       out.forEach(function (v, i) {
         mid.push(v);
@@ -1839,13 +1971,21 @@ InfraDiagram.define("canvas/geometry", [], function () {
       var nx = xs.length, ny = ys.length, P = nx * ny;
       var blk = new Uint8Array(P), hb = new Uint8Array(P), vb = new Uint8Array(P), hc = new Int16Array(P), vc = new Int16Array(P), hh = new Uint8Array(P), vh = new Uint8Array(P);
       var obst = S.nodes.map(function (r) { return [r, M]; }).concat(S.titles.map(function (r) { return [r, 4]; }));
-      function hit(x, y) { for (var k = 0; k < obst.length; k++) if (inside(x, y, obst[k][0], obst[k][1])) return 1; return 0; }
+      function hit(x, y) {
+        for (const o of obst) if (inside(x, y, o[0], o[1])) return 1;
+        return 0;
+      }
       // Bit 2: a segment within 5px of the narrowest allowed clearance (narrow channel).
-      function tight(x, y) { for (var k = 0; k < S.nodes.length; k++) if (inside(x, y, S.nodes[k], M + 5)) return 2; return 0; }
-      function region(x, y) { for (var k = 0; k < S.clusters.length; k++) if (inside(x, y, S.clusters[k], 0)) return k; return -1; }
+      function tight(x, y) {
+        for (const r of S.nodes) if (inside(x, y, r, M + 5)) return 2;
+        return 0;
+      }
+      function region(x, y) {
+        for (const [k, r] of S.clusters.entries()) if (inside(x, y, r, 0)) return k;
+        return -1;
+      }
       function hug(x, y, horiz) {
-        for (var k = 0; k < S.clusters.length; k++) {
-          var c = S.clusters[k];
+        for (const c of S.clusters) {
           if (horiz ? x > c.x0 && x < c.x1 && (Math.abs(y - c.y0) < 9 || Math.abs(y - c.y1) < 9) : y > c.y0 && y < c.y1 && (Math.abs(x - c.x0) < 9 || Math.abs(x - c.x1) < 9)) return 1;
         }
         return 0;
@@ -1863,73 +2003,123 @@ InfraDiagram.define("canvas/geometry", [], function () {
       return i < 0 || j < 0 ? -1 : i * G.ny + j;
     }
 
+    function heapPush(heap, f, st) {
+      heap.push([f, st]);
+      var i = heap.length - 1;
+      while (i > 0) {
+        var q = (i - 1) >> 1;
+        if (heap[q][0] <= heap[i][0]) break;
+        var t = heap[q];
+        heap[q] = heap[i];
+        heap[i] = t;
+        i = q;
+      }
+    }
+    function heapPop(heap) {
+      var top = heap[0], last = heap.pop();
+      if (!heap.length) return top;
+      heap[0] = last;
+      var i = 0;
+      for (;;) {
+        var l = 2 * i + 1, r = l + 1, m = i;
+        if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+        if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+        if (m === i) break;
+        var t = heap[m];
+        heap[m] = heap[i];
+        heap[i] = t;
+        i = m;
+      }
+      return top;
+    }
+    function manhattan(G, hx, p) {
+      var x = G.xs[Math.floor(p / G.ny)], y = G.ys[p % G.ny], m = Infinity;
+      for (const q of hx) m = Math.min(m, Math.abs(x - q[0]) + Math.abs(y - q[1]));
+      return m;
+    }
+    // Extra cost of reaching a goal with heading gd (-1: any) when arriving with heading d.
+    function turnCost(gd, d) {
+      if (gd < 0 || gd === d) return 0;
+      return gd === (d + 2) % 4 ? Infinity : BEND;
+    }
+    // Cost of moving from grid point p (column i, row j) in heading d2 after heading d, and the point reached; null when blocked.
+    function step(G, p, i, j, d, d2, home) {
+      var i2 = i + DX[d2], j2 = j + DY[d2];
+      if (i2 < 0 || j2 < 0 || i2 >= G.nx || j2 >= G.ny) return null;
+      var p2 = i2 * G.ny + j2;
+      if (G.blk[p2]) return null;
+      var horiz = d2 % 2 === 0, lowFirst = horiz ? d2 === 0 : d2 === 1, si = lowFirst ? p : p2;
+      if ((horiz ? G.hb : G.vb)[si]) return null;
+      var cl = (horiz ? G.hc : G.vc)[si], flags = (horiz ? G.hh : G.vh)[si];
+      var len = horiz ? Math.abs(G.xs[i2] - G.xs[i]) : Math.abs(G.ys[j2] - G.ys[j]);
+      var mul = 1;
+      if (cl >= 0 && !home.includes(cl)) mul += REGION;
+      if (flags & 1) mul += HUG;
+      if (flags & 2) mul += TIGHT;
+      return { p2: p2, cost: len * mul + (d2 === d ? 0 : BEND) };
+    }
+    function firstState(prev, st) {
+      while (prev[st] >= 0) st = prev[st];
+      return st;
+    }
+
     // A* over (grid point, heading); cost = length (x region / hug penalties) + bends. starts / goals: {p, d, c}.
     function search(G, starts, goals, home) {
       var n = G.nx * G.ny * 4;
-      if (cache.n < n) { cache.n = n; cache.dist = new Float64Array(n); cache.prev = new Int32Array(n); }
+      if (cache.n < n) {
+        cache.n = n;
+        cache.dist = new Float64Array(n);
+        cache.prev = new Int32Array(n);
+      }
       var dist = cache.dist, prev = cache.prev;
-      dist.fill(Infinity, 0, n); prev.fill(-1, 0, n);
+      dist.fill(Infinity, 0, n);
+      prev.fill(-1, 0, n);
       var goalAt = {}, hx = [], heap = [];
-      goals.forEach(function (g) { (goalAt[g.p] = goalAt[g.p] || []).push(g); hx.push([G.xs[Math.floor(g.p / G.ny)], G.ys[g.p % G.ny]]); });
-      function h(p) {
-        var x = G.xs[Math.floor(p / G.ny)], y = G.ys[p % G.ny], m = Infinity;
-        for (var k = 0; k < hx.length; k++) m = Math.min(m, Math.abs(x - hx[k][0]) + Math.abs(y - hx[k][1]));
-        return m;
-      }
-      function push(f, st) {
-        heap.push([f, st]);
-        for (var i = heap.length - 1; i > 0;) { var q = (i - 1) >> 1; if (heap[q][0] <= heap[i][0]) break; var t = heap[q]; heap[q] = heap[i]; heap[i] = t; i = q; }
-      }
-      function pop() {
-        var top = heap[0], last = heap.pop();
-        if (heap.length) {
-          heap[0] = last;
-          for (var i = 0; ;) {
-            var l = 2 * i + 1, r = l + 1, m = i;
-            if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
-            if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
-            if (m === i) break;
-            var t = heap[m]; heap[m] = heap[i]; heap[i] = t; i = m;
-          }
-        }
-        return top;
-      }
+      goals.forEach(function (g) {
+        goalAt[g.p] = goalAt[g.p] || [];
+        goalAt[g.p].push(g);
+        hx.push([G.xs[Math.floor(g.p / G.ny)], G.ys[g.p % G.ny]]);
+      });
+      function h(p) { return manhattan(G, hx, p); }
       starts.forEach(function (s) {
         var st = s.p * 4 + s.d;
-        if (s.c < dist[st]) { dist[st] = s.c; prev[st] = -1; push(s.c + h(s.p), st); }
+        if (s.c < dist[st]) {
+          dist[st] = s.c;
+          prev[st] = -1;
+          heapPush(heap, s.c + h(s.p), st);
+        }
       });
-      var best = Infinity, bestSt = -1, bestGoal = null;
+      var best = { cost: Infinity, st: -1, goal: null };
       while (heap.length) {
-        var e = pop(), st = e[1], d0 = dist[st];
-        if (e[0] >= best) break;
-        if (e[0] > d0 + h(Math.floor(st / 4)) + 1e-6) continue;
-        var p = Math.floor(st / 4), d = st % 4;
-        (goalAt[p] || []).forEach(function (g) {
-          var extra = g.d < 0 || g.d === d ? 0 : g.d === (d + 2) % 4 ? Infinity : BEND;
-          if (d0 + extra + g.c < best) { best = d0 + extra + g.c; bestSt = st; bestGoal = g; }
-        });
+        var e = heapPop(heap), st = e[1], d0 = dist[st], p = Math.floor(st / 4), d = st % 4;
+        if (e[0] >= best.cost) break;
+        if (e[0] > d0 + h(p) + 1e-6) continue;
+        for (const g of goalAt[p] || []) {
+          var total = d0 + turnCost(g.d, d) + g.c;
+          if (total < best.cost) best = { cost: total, st: st, goal: g };
+        }
         var i = Math.floor(p / G.ny), j = p % G.ny;
         for (var d2 = 0; d2 < 4; d2++) {
           if (d2 === (d + 2) % 4) continue;
-          var i2 = i + DX[d2], j2 = j + DY[d2];
-          if (i2 < 0 || j2 < 0 || i2 >= G.nx || j2 >= G.ny) continue;
-          var p2 = i2 * G.ny + j2;
-          if (G.blk[p2]) continue;
-          var horiz = d2 % 2 === 0, si = horiz ? (d2 === 0 ? p : p2) : (d2 === 1 ? p : p2);
-          if ((horiz ? G.hb : G.vb)[si]) continue;
-          var cl = (horiz ? G.hc : G.vc)[si];
-          var len = horiz ? Math.abs(G.xs[i2] - G.xs[i]) : Math.abs(G.ys[j2] - G.ys[j]);
-          var cost = len * (1 + (cl >= 0 && home.indexOf(cl) < 0 ? REGION : 0) + ((horiz ? G.hh : G.vh)[si] & 1 ? HUG : 0) + ((horiz ? G.hh : G.vh)[si] & 2 ? TIGHT : 0)) + (d2 === d ? 0 : BEND);
-          var st2 = p2 * 4 + d2, nd = d0 + cost;
-          if (nd < dist[st2]) { dist[st2] = nd; prev[st2] = st; push(nd + h(p2), st2); }
+          var mv = step(G, p, i, j, d, d2, home);
+          if (!mv) continue;
+          var st2 = mv.p2 * 4 + d2, nd = d0 + mv.cost;
+          if (nd < dist[st2]) {
+            dist[st2] = nd;
+            prev[st2] = st;
+            heapPush(heap, nd + h(mv.p2), st2);
+          }
         }
       }
-      if (bestSt < 0) return null;
+      if (best.st < 0) return null;
       var pts = [];
-      for (var s2 = bestSt; s2 >= 0; s2 = prev[s2]) { var pp = Math.floor(s2 / 4); pts.unshift([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]); }
-      var first = starts.find(function (s) { return s.p * 4 + (s.d) === firstState(bestSt); });
-      return { pts: pts, start: first, goal: bestGoal, cost: best };
-      function firstState(s3) { while (prev[s3] >= 0) s3 = prev[s3]; return s3; }
+      for (var s2 = best.st; s2 >= 0; s2 = prev[s2]) {
+        var pp = Math.floor(s2 / 4);
+        pts.unshift([G.xs[Math.floor(pp / G.ny)], G.ys[pp % G.ny]]);
+      }
+      var origin = firstState(prev, best.st);
+      var first = starts.find(function (s) { return s.p * 4 + s.d === origin; });
+      return { pts: pts, start: first, goal: best.goal, cost: best.cost };
     }
 
     // Port on side sd (0 right, 1 bottom, 2 left, 3 top; = outward heading) at position v along the side.
@@ -1963,7 +2153,8 @@ InfraDiagram.define("canvas/geometry", [], function () {
     // Rounded orthogonal path: corner radius up to RAD, keeping 6px straight at the start and 12px before the arrowhead.
     function shape(pts) {
       var n = pts.length, seg = [], rad = [0];
-      for (var k = 0; k + 1 < n; k++) seg.push(Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1]));
+      var k;
+      for (k = 0; k + 1 < n; k++) seg.push(Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1]));
       for (k = 1; k + 1 < n; k++) {
         var a = k - 1 === 0 ? seg[k - 1] - 6 : seg[k - 1] / 2, b = k + 1 === n - 1 ? seg[k] - 12 : seg[k] / 2;
         rad.push(Math.max(0, Math.min(RAD, a, b)));
@@ -2012,7 +2203,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
       if (!st.length) st = stations(sh, 2, 6);
       if (!st.length) st = stations(sh, 0, 0);
       st.forEach(function (s) {
-        if (best && best.clear) return;
+        if (best?.clear) return;
         var mk = s.h ? { x0: s.x - 6, y0: s.y - 12, x1: s.x + 6, y1: s.y + 12 } : { x0: s.x - 12, y0: s.y - 6, x1: s.x + 12, y1: s.y + 6 };
         var opts = s.h
           ? [{ label: [s.x, s.y + 21], anchor: "middle", box: { x0: s.x - 26, y0: s.y + 12, x1: s.x + 26, y1: s.y + 24 } }, { label: [s.x, s.y - 15], anchor: "middle", box: { x0: s.x - 26, y0: s.y - 25, x1: s.x + 26, y1: s.y - 13 } }]
@@ -2028,7 +2219,7 @@ InfraDiagram.define("canvas/geometry", [], function () {
     function placeLabel(sh, lw, hard, soft) {
       var best = null;
       stations(sh, 4, 22).forEach(function (s) {
-        if (best && best.clear) return;
+        if (best?.clear) return;
         var b = { x0: s.x - lw / 2, y0: s.y - 8.5, x1: s.x + lw / 2, y1: s.y + 8.5 };
         var hit = cost([b], hard) * 100 + cost([b], soft) * 5 + (s.h ? 0 : 400), sc = hit + s.off * 0.01;
         if (!best || sc < best.score) best = { score: sc, clear: hit === 0, label: [r1(b.x0 + 7), r1(s.y + 3.5)], box: b };
@@ -2080,13 +2271,13 @@ InfraDiagram.define("canvas/geometry", [], function () {
           [0, 1, 2, 3].forEach(function (sd) { var p = port(r, sd, centre(r, sd)); extra.push(p.pt, p.stub); });
           if (lineY(e, end) !== null) [0, 2].forEach(function (sd) { var p = port(r, sd, lineY(e, end)); extra.push(p.pt, p.stub); });
         });
-        ((ov[e.k] || {}).via || []).forEach(function (v) { extra.push(v); });
+        (ov[e.k]?.via || []).forEach(function (v) { extra.push(v); });
       });
       var G = grid(S, extra), first = {};
       E.forEach(function (e) {
         var A = S.ent[e.from], B = S.ent[e.to];
         if (!A || !B) return;
-        var via = (ov[e.k] || {}).via || [], h = home(e);
+        var via = ov[e.k]?.via || [], h = home(e);
         if (!via.length) {
           var r = run(G, A, B, endCands(e, 0, A, B), endCands(e, 1, B, A), h);
           if (r) first[e.k] = { sa: r.start.cand.sd, sb: (r.goal.d + 2) % 4, pts: [r.start.cand.p.pt].concat(r.pts, [r.goal.cand.p.pt]) };
@@ -2121,8 +2312,10 @@ InfraDiagram.define("canvas/geometry", [], function () {
         }
         [[e.from, f.sa, B, 0, A], [e.to, f.sb, A, 1, B]].forEach(function (x) {
           if (ly[x[3]] !== null) { ports[e.k + "|" + x[3]] = { v: ly[x[3]], r: x[4], sd: x[1] }; return; }
-          var o2 = x[2], want = mid !== null ? mid : x[1] % 2 === 0 ? (o2.y0 + o2.y1) / 2 : (o2.x0 + o2.x1) / 2;
-          (bySide[x[0] + "|" + x[1]] = bySide[x[0] + "|" + x[1]] || []).push({ k: e.k, end: x[3], r: S.ent[x[0]], sd: x[1], want: want });
+          var o2 = x[2], sk = x[0] + "|" + x[1], want = mid;
+          if (want === null) want = x[1] % 2 === 0 ? (o2.y0 + o2.y1) / 2 : (o2.x0 + o2.x1) / 2;
+          bySide[sk] = bySide[sk] || [];
+          bySide[sk].push({ k: e.k, end: x[3], r: S.ent[x[0]], sd: x[1], want: want });
         });
       });
       Object.keys(bySide).forEach(function (key) {
@@ -2166,10 +2359,10 @@ InfraDiagram.define("canvas/geometry", [], function () {
         if (!rt) return;
         rt.label = null;
         if (e.ll) {
-          var fix = (ov[e.k] || {}).label;
+          var fix = ov[e.k]?.label;
           if (fix) rt.label = fix.slice();
           else {
-            var lw = (o.lw && o.lw[e.k]) || e.ll * 6 + 14, l = placeLabel(rt.sh, lw, hard.concat(placed), S.bands);
+            var lw = o.lw?.[e.k] || e.ll * 6 + 14, l = placeLabel(rt.sh, lw, hard.concat(placed), S.bands);
             if (l) { placed.push(l.box); rt.label = l.label; }
           }
         }
@@ -2183,22 +2376,32 @@ InfraDiagram.define("canvas/geometry", [], function () {
       var S = shapes(s, meta, w), bad = {};
       function gap(a, b) { return Math.max(b.x0 - a.x1, a.x0 - b.x1, b.y0 - a.y1, a.y0 - b.y1); }
       var nodes = S.nodes;
-      for (var i = 0; i < nodes.length; i++) for (var j = i + 1; j < nodes.length; j++) if (gap(nodes[i], nodes[j]) < MIN_GAP) bad[nodes[i].k] = bad[nodes[j].k] = 1;
+      function flagPairs(list) {
+        for (var i = 0; i < list.length; i++) {
+          for (var j = i + 1; j < list.length; j++) {
+            if (gap(list[i], list[j]) < MIN_GAP) {
+              bad[list[i].k] = 1;
+              bad[list[j].k] = 1;
+            }
+          }
+        }
+      }
+      flagPairs(nodes);
       nodes.forEach(function (b) {
         if (b.cl < 0) return;
         var c = S.clusters[b.cl];
         if (b.x0 - c.x0 < PAD || c.x1 - b.x1 < PAD || c.y1 - b.y1 < PAD || b.y0 < c.y0 + BAND + BAND_GAP) bad[b.k] = 1;
       });
       var cl = S.clusters;
-      for (i = 0; i < cl.length; i++) for (j = i + 1; j < cl.length; j++) if (gap(cl[i], cl[j]) < MIN_GAP) bad[cl[i].k] = bad[cl[j].k] = 1;
+      flagPairs(cl);
       cl.forEach(function (c) { nodes.forEach(function (b) { if (b.cl !== c.i && gap(c, b) < MIN_GAP) bad[c.k] = bad[b.k] = 1; }); });
       return bad;
     }
 
-    return { boxExtent: boxExtent, fitBox: fitBox, fitRegion: fitRegion, regionBounds: regionBounds, resizeRegion: resizeRegion, route: route, problems: problems };
+    return { headerTitle: headerTitle, boxExtent: boxExtent, fitBox: fitBox, fitRegion: fitRegion, regionBounds: regionBounds, resizeRegion: resizeRegion, route: route, problems: problems };
   })();
 
-  return { boxExtent: kit.boxExtent, fitBox: kit.fitBox, fitRegion: kit.fitRegion, regionBounds: kit.regionBounds, resizeRegion: kit.resizeRegion, route: kit.route, problems: kit.problems };
+  return { headerTitle: kit.headerTitle, boxExtent: kit.boxExtent, fitBox: kit.fitBox, fitRegion: kit.fitRegion, regionBounds: kit.regionBounds, resizeRegion: kit.resizeRegion, route: kit.route, problems: kit.problems };
 });
 
 InfraDiagram.define("canvas/draw-kit", [], function () {
@@ -2212,7 +2415,7 @@ InfraDiagram.define("canvas/draw-kit", [], function () {
     function decimate(points, step) {
       var min = step === undefined ? MIN_STEP : step, out = [];
       for (var i = 0; i < points.length; i++) {
-        var x = round1(points[i][0]), y = round1(points[i][1]), last = out[out.length - 1];
+        var x = round1(points[i][0]), y = round1(points[i][1]), last = out.at(-1);
         if (last && Math.hypot(x - last[0], y - last[1]) < min) {
           if (i === points.length - 1 && out.length > 1) out[out.length - 1] = [x, y];
           continue;
@@ -2261,9 +2464,20 @@ InfraDiagram.define("canvas/draw-kit", [], function () {
       var states = [initial], at = 0;
       return {
         current: function () { return states[at]; },
-        push: function (list) { states = states.slice(0, at + 1); states.push(list); at++; return list; },
-        undo: function () { if (at > 0) at--; return states[at]; },
-        redo: function () { if (at < states.length - 1) at++; return states[at]; },
+        push: function (list) {
+          states = states.slice(0, at + 1);
+          states.push(list);
+          at++;
+          return list;
+        },
+        undo: function () {
+          if (at > 0) at--;
+          return states[at];
+        },
+        redo: function () {
+          if (at < states.length - 1) at++;
+          return states[at];
+        },
         canUndo: function () { return at > 0; },
         canRedo: function () { return at < states.length - 1; },
       };
@@ -2279,7 +2493,7 @@ InfraDiagram.define("canvas/draw-kit", [], function () {
         if (typeof s.id !== "string" || !ID.test(s.id) || seen[s.id]) throw new Error(at + ": bad or duplicate id");
         if (typeof s.color !== "string" || !COLOR.test(s.color)) throw new Error(at + ": color must be #rrggbb");
         if (typeof s.width !== "number" || !(s.width >= 0.5 && s.width <= 40)) throw new Error(at + ": bad width");
-        if (!Array.isArray(s.points) || !s.points.length || s.points.length > MAX_POINTS || !s.points.every(function (p) { return Array.isArray(p) && p.length === 2 && isFinite(p[0]) && isFinite(p[1]) && typeof p[0] === "number" && typeof p[1] === "number"; })) throw new Error(at + ": bad points");
+        if (!Array.isArray(s.points) || !s.points.length || s.points.length > MAX_POINTS || !s.points.every(function (p) { return Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]) && typeof p[0] === "number" && typeof p[1] === "number"; })) throw new Error(at + ": bad points");
         seen[s.id] = true;
         return { id: s.id, color: s.color.toLowerCase(), width: s.width, points: s.points.map(function (p) { return [p[0], p[1]]; }) };
       });
@@ -2309,7 +2523,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
   // Shared canvas state: st is the draft layout, on is edit mode.
   var state = { st: clone(base), on: false };
 
-  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function clone(o) { return structuredClone(o); }
   function setXY(el, p) { el.setAttribute("x", p[0]); el.setAttribute("y", p[1]); }
   function setRect(el, g) { el.setAttribute("x", g.x); el.setAttribute("y", g.y); el.setAttribute("width", g.w); el.setAttribute("height", g.h); }
   function shift(p, dx, dy) { p[0] += dx; p[1] += dy; }
@@ -2403,7 +2617,7 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
       if (e.l >= 0 && r.label) setXY(els[e.l], r.label);
       if (e.fw !== undefined && r.fw) {
         var fg = els[e.fw], ft = fg.querySelector("text"), tr = "translate(" + r.fw.at.join(" ") + ") rotate(" + r.fw.a + ")";
-        [].forEach.call(fg.querySelectorAll("path"), function (p) { p.setAttribute("transform", tr); });
+        fg.querySelectorAll("path").forEach(function (p) { p.setAttribute("transform", tr); });
         setXY(ft, r.fw.label);
         ft.setAttribute("text-anchor", r.fw.anchor);
       }
@@ -2421,26 +2635,46 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry"], 
     Object.keys(D.idx.clusters).forEach(function (id) { els[D.idx.clusters[id][0]].classList.toggle("bad", !!bad["c:" + id]); });
   }
 
-  function render(s) {
+  // Display geometry: with the system information off, a card loses its OS and hardware rows (IP pills move up, the box shrinks). The saved state keeps the full size.
+  function viewNode(id, g) {
+    var m = D.meta.nodes[id], r = 0;
+    if (!ctx.sys && m) r = Number(!!m.hw) + Number(!!m.os);
+    if (!r) return g;
+    var need = 20 + 16 * m.nb + 18 * m.ni;
+    return { ...g, h: Math.max(g.h - 16 * r, need), ip: g.ip.map(function (p) { return [p[0], p[1] - 16 * r]; }) };
+  }
+  function view(s) {
+    if (ctx.sys) return s;
+    var v = { ...s, nodes: {} };
+    Object.keys(s.nodes).forEach(function (id) { v.nodes[id] = viewNode(id, s.nodes[id]); });
+    return v;
+  }
+  core.hooks.view = view;
+  core.hooks.viewNode = viewNode;
+  core.hooks.rerender = function () { var s = core.hooks.getState?.(); if (s) render(s); };
+
+  function render(s0) {
+    var s = view(s0);
     Object.keys(D.idx.clusters).forEach(function (id) {
       var e = D.idx.clusters[id], g = s.clusters[id];
       setRect(els[e[0]], g); setXY(els[e[1]], g.title);
     });
     Object.keys(D.idx.nodes).forEach(function (id) {
       var e = D.idx.nodes[id], g = s.nodes[id];
-      setXY(els[e.t], g.title); setRect(els[e.r], g);
+      setXY(els[e.t], geometry.headerTitle(g, ctx.style)); setRect(els[e.r], g);
       e.b.forEach(function (i, k) { setXY(els[i], g.body[k]); });
       e.i.forEach(function (i, k) { setXY(els[i], g.ip[k]); });
     });
     routeEdges(s);
     markBad(s);
     syncHandles(s);
-    skins.sync(s);
+    skins.sync(s0);
   }
 
+  core.hooks.title = geometry.headerTitle;
   core.hooks.route = function () {
-    var s = core.hooks.getState && core.hooks.getState();
-    if (s) { routeEdges(s); markBad(s); }
+    var s = core.hooks.getState?.();
+    if (s) { s = view(s); routeEdges(s); markBad(s); }
   };
 
   function point(e) {
@@ -2468,7 +2702,7 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
   var PAD = 20;
   function fit() {
     var b;
-    try { b = svg.getBBox(); } catch (e) { return; }
+    try { b = svg.getBBox(); } catch (error_) { return; }
     if (!(b.width > 0 && b.height > 0)) return;
     var x = Math.floor(b.x - PAD), y = Math.floor(b.y - PAD);
     var w = Math.ceil(b.x + b.width + PAD) - x, h = Math.ceil(b.y + b.height + PAD) - y;
@@ -2481,9 +2715,10 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
     var keep = Math.min(100 / k, 0.15 * (hi - lo));
     return Math.min(hi - keep + view / 2, Math.max(lo + keep - view / 2, c));
   }
+  function round2(v) { return Math.round(v * 100) / 100; }
   function applyZoom() {
     var b = Z.base;
-    var w = b[2] / Z.z, h = b[3] / Z.z, r = function (v) { return Math.round(v * 100) / 100; };
+    var w = b[2] / Z.z, h = b[3] / Z.z, r = round2;
     if (!Z.free) { Z.cx = b[0] + b[2] / 2; Z.cy = b[1] + b[3] / 2; }
     else {
       var rc = svg.getBoundingClientRect();
@@ -2510,18 +2745,19 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
   }
   function zoomFit() { Z.z = 1; Z.free = false; applyZoom(); }
   svg.addEventListener("wheel", function (e) {
-    if (e.target.closest && e.target.closest(".cp,#rc,#pn,#ta")) return;
+    if (e.target.closest?.(".cp,#rc,#pn,#ta")) return;
     e.preventDefault();
-    var dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1);
+    var lineH = e.deltaMode === 2 ? innerHeight : 1;
+    var dy = e.deltaY * (e.deltaMode === 1 ? 16 : lineH);
     zoomBy(Math.exp(-Math.max(-300, Math.min(300, dy)) * 0.002), model.point(e));
   }, { passive: false });
   svg.addEventListener("pointerdown", function (e) {
-    if (model.state.on || e.button > 0 || (e.target.closest && e.target.closest("[data-ent]"))) return;
+    if (model.state.on || e.button > 0 || e.target.closest?.("[data-ent]")) return;
     var m = svg.getScreenCTM();
     Z.pan = { x: e.clientX, y: e.clientY, cx: Z.cx, cy: Z.cy, k: m ? m.a : 1, id: e.pointerId };
     Z.panned = false;
     svg.classList.add("panning");
-    try { svg.setPointerCapture(e.pointerId); } catch (x) {}
+    try { svg.setPointerCapture(e.pointerId); } catch (error_) { /* capture is optional */ }
   });
   svg.addEventListener("pointermove", function (e) {
     var p = Z.pan;
@@ -2544,8 +2780,8 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
     if (Z.panned) { Z.panned = false; e.stopPropagation(); }
   }, true);
   document.addEventListener("keydown", function (e) {
-    var t = e.target, tag = t && t.tagName;
-    if (e.ctrlKey || e.metaKey || e.altKey || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+    var t = e.target, tag = t?.tagName;
+    if (e.ctrlKey || e.metaKey || e.altKey || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t?.isContentEditable) return;
     if (e.key === "+" || e.key === "=") zoomBy(1.25);
     else if (e.key === "-" || e.key === "_") zoomBy(1 / 1.25);
     else if (e.key === "0") zoomFit();
@@ -2571,8 +2807,13 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
 
   try {
     var p = JSON.parse(core.lsGet("pen"));
-    if (p && COLORS.indexOf(p.color) >= 0 && WIDTHS.indexOf(p.width) >= 0) pen = p;
-  } catch (e) {}
+    if (p && COLORS.includes(p.color) && WIDTHS.includes(p.width)) pen = p;
+  } catch (e) { /* unreadable stored pen: keep the default */ }
+
+  function inField(t) {
+    var tag = t?.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!t?.isContentEditable;
+  }
 
   function list() { return hist.current(); }
   function currentTool() { return tool; }
@@ -2595,7 +2836,7 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     tool = t;
     svg.classList.toggle("draw-pencil", t === "pencil");
     svg.classList.toggle("draw-eraser", t === "eraser");
-    [].forEach.call(document.querySelectorAll("#dtl [data-t]"), function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-t") === t)); });
+    document.querySelectorAll("#dtl [data-t]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-t") === t)); });
     $("dpo").hidden = t !== "pencil";
     clearHot();
   }
@@ -2605,16 +2846,16 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     paintPen();
   }
   function paintPen() {
-    [].forEach.call(document.querySelectorAll("#dpo [data-c]"), function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-c") === pen.color)); });
-    [].forEach.call(document.querySelectorAll("#dpo [data-w]"), function (b) { b.setAttribute("aria-pressed", String(+b.getAttribute("data-w") === pen.width)); });
+    document.querySelectorAll("#dpo [data-c]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-c") === pen.color)); });
+    document.querySelectorAll("#dpo [data-w]").forEach(function (b) { b.setAttribute("aria-pressed", String(+b.getAttribute("data-w") === pen.width)); });
   }
 
   function undo() { if (hist.canUndo()) show(hist.undo()); }
   function redo() { if (hist.canRedo()) show(hist.redo()); }
 
-  function scale() { var m = svg.getScreenCTM(); return m && m.a ? m.a : 1; }
+  function scale() { var m = svg.getScreenCTM(); return m?.a ? m.a : 1; }
   function clearHot() { if (hot) { hot.classList.remove("hot"); hot = null; } }
-  function paths() { return [].slice.call(layer.children); }
+  function paths() { return Array.from(layer.children); }
 
   function eraseAt(e) {
     var pt = model.point(e), l = erasing.work, i = drawKit.hitIndex(l, pt.x, pt.y, ERASER_PX / scale());
@@ -2641,7 +2882,7 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     e.preventDefault();
     e.stopImmediatePropagation();
     var pt = model.point(e);
-    try { svg.setPointerCapture(e.pointerId); } catch (x) {}
+    try { svg.setPointerCapture(e.pointerId); } catch (error_) { /* capture is optional */ }
     if (tool === "eraser") {
       clearHot();
       erasing = { id: e.pointerId, work: list(), changed: false };
@@ -2703,8 +2944,7 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
   svg.addEventListener("dblclick", swallowClick, true);
 
   document.addEventListener("keydown", function (e) {
-    var t = e.target, tag = t && t.tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+    if (inField(e.target)) return;
     var k = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && !e.altKey && (k === "z" || k === "y")) {
       if (cur || erasing) return;
@@ -2716,14 +2956,14 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
   });
 
   $("dtl").addEventListener("click", function (e) {
-    var b = e.target.closest && e.target.closest("button");
+    var b = e.target.closest?.("button");
     if (!b) return;
     if (b.id === "dtu") undo();
     else if (b.id === "dtr") redo();
     else if (b.getAttribute("data-t")) setTool(b.getAttribute("data-t"));
   });
   $("dpo").addEventListener("click", function (e) {
-    var b = e.target.closest && e.target.closest("button");
+    var b = e.target.closest?.("button");
     if (!b) return;
     if (b.getAttribute("data-c")) setPen(b.getAttribute("data-c"), pen.width);
     else if (b.getAttribute("data-w")) setPen(pen.color, +b.getAttribute("data-w"));
@@ -2751,8 +2991,8 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     if (window.InfraDiagramFileBacked) return null;
     try {
       var d = JSON.parse(core.lsGet(KEY));
-      if (d && d.nodes && d.clusters && d.edges) return d;
-    } catch (e) {}
+      if (d?.nodes && d.clusters && d.edges) return d;
+    } catch (e) { /* no usable draft */ }
     return null;
   }
   function saveDraft() { if (!window.InfraDiagramFileBacked) core.lsSet(KEY, JSON.stringify(state.st)); }
@@ -2817,6 +3057,8 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     fit();
   }
 
+  function snapDelta(start, d) { return Math.round((start + d) / GRID) * GRID - start; }
+
   function origin(s, key) {
     var t = key.charAt(0), id = key.slice(2);
     return (t === "c" ? s.clusters : s.nodes)[id];
@@ -2824,12 +3066,12 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
 
   svg.addEventListener("pointerdown", function (e) {
     if (!state.on || e.button > 0) return;
-    var t = e.target.closest && e.target.closest("[data-e]"), h = !t && e.target.closest && e.target.closest("[data-rc]");
+    var t = e.target.closest?.("[data-e]"), h = !t && e.target.closest?.("[data-rc]");
     if (!t && !h) return;
     e.preventDefault();
     var p = model.point(e);
-    drag = { key: h ? "c:" + h.getAttribute("data-rc") : t.getAttribute("data-e"), side: h && h.getAttribute("data-rs"), x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
-    try { svg.setPointerCapture(e.pointerId); } catch (x) {}
+    drag = { key: h ? "c:" + h.getAttribute("data-rc") : t.getAttribute("data-e"), side: h ? h.getAttribute("data-rs") : null, x: p.x, y: p.y, from: model.clone(state.st), id: e.pointerId };
+    try { svg.setPointerCapture(e.pointerId); } catch (error_) { /* capture is optional */ }
   });
 
   svg.addEventListener("pointermove", function (e) {
@@ -2839,17 +3081,17 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
     if (drag.side) {
       var r = drag.from.clusters[drag.key.slice(2)], sn = $("ts").checked && !e.shiftKey, sd = drag.side;
       if (sn) {
-        if (sd.indexOf("w") >= 0) dx = Math.round((r.x + dx) / GRID) * GRID - r.x;
-        if (sd.indexOf("e") >= 0) dx = Math.round((r.x + r.w + dx) / GRID) * GRID - r.x - r.w;
-        if (sd.indexOf("n") >= 0) dy = Math.round((r.y + dy) / GRID) * GRID - r.y;
-        if (sd.indexOf("s") >= 0) dy = Math.round((r.y + r.h + dy) / GRID) * GRID - r.y - r.h;
+        if (sd.includes("w")) dx = snapDelta(r.x, dx);
+        if (sd.includes("e")) dx = snapDelta(r.x + r.w, dx);
+        if (sd.includes("n")) dy = snapDelta(r.y, dy);
+        if (sd.includes("s")) dy = snapDelta(r.y + r.h, dy);
       }
       state.st = model.resize(drag.from, drag.key.slice(2), sd, dx, dy);
     } else {
       if ($("ts").checked && !e.shiftKey) {
         var o = origin(drag.from, drag.key);
-        dx = Math.round((o.x + dx) / GRID) * GRID - o.x;
-        dy = Math.round((o.y + dy) / GRID) * GRID - o.y;
+        dx = snapDelta(o.x, dx);
+        dy = snapDelta(o.y, dy);
       }
       state.st = model.apply(drag.from, drag.key, dx, dy);
     }
@@ -2859,7 +3101,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
 
   function drop(d, e) {
     var api = window.InfraDiagram.serverEditor, id = d.key.slice(2), meta = core.D.meta.nodes[id];
-    if (d.key.charAt(0) !== "n" || !api || !api.move || !meta) return false;
+    if (d.key.charAt(0) !== "n" || !api?.move || !meta) return false;
     var from = meta.cl || null, to = model.regionAt(d.from, model.point(e));
     if (to === from) return false;
     if (from) state.st.clusters[from] = model.clone(d.from.clusters[from]);
@@ -2892,7 +3134,7 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   return { currentLayout: currentLayout, isDirty: isDirty, commit: commit };
 });
 
-InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model"], function (core, model) {
+InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/networks"], function (core, model, networks) {
   var state = model.state;
   var menu = null;
 
@@ -2919,13 +3161,13 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model"], function
   }
 
   function serverAt(target) {
-    var el = target && target.closest && target.closest("[data-ent]"), k = el && el.getAttribute("data-ent");
-    return k && k.indexOf("n:") === 0 ? k.slice(2) : null;
+    var el = target?.closest?.("[data-ent]"), k = el?.getAttribute("data-ent");
+    return k?.startsWith("n:") ? k.slice(2) : null;
   }
 
   function editable(t) {
-    var tag = t && t.tagName;
-    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!(t && t.isContentEditable);
+    var tag = t?.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!t?.isContentEditable;
   }
 
   function show(e, fill) {
@@ -2951,6 +3193,17 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model"], function
     });
   }
 
+  function networkAt(target) {
+    var b = target?.closest?.("#wl .nw");
+    if (!b) return null;
+    var i = +b.getAttribute("data-n"), net = core.D?.nets?.[i];
+    return net?.cidr ? { i: i, net: net } : null;
+  }
+
+  function openNetwork(e, at) {
+    show(e, function () { return addItem(at.net.name ? "Edit name" : "Add name", function () { networks.editName(at.i); }); });
+  }
+
   function open(e) {
     var p = model.point(e), api = bridge(), id = serverAt(e.target), region = model.regionAt(state.st, p), at = { clientX: e.clientX, clientY: e.clientY };
     show(e, function () {
@@ -2969,10 +3222,11 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model"], function
   }
 
   document.addEventListener("contextmenu", function (e) {
-    if (!state.on || !bridge() || !bridge().add || editable(e.target)) return;
+    if (!state.on || !bridge()?.add || editable(e.target)) return;
     e.preventDefault();
     close();
-    open(e);
+    var nw = networkAt(e.target);
+    if (nw && bridge().renameNetwork) openNetwork(e, nw); else open(e);
   });
   document.addEventListener("pointerdown", function (e) { if (menu && !menu.contains(e.target)) close(); }, true);
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && menu) { e.stopPropagation(); close(); } }, true);

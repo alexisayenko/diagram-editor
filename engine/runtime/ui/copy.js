@@ -1,8 +1,8 @@
 InfraDiagram.define("ui/copy", ["ui/core"], function (core) {
-  var hintT;
+  let hintT;
 
   function hint(msg, x, y) {
-    var h = core.$("ch");
+    const h = core.$("ch");
     h.textContent = msg;
     h.style.left = Math.min(x + 12, innerWidth - 80) + "px";
     h.style.top = Math.max(y - 28, 4) + "px";

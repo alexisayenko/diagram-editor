@@ -4,20 +4,25 @@ import { drawKit } from "../render/draw-kit.mjs";
 const FONTS = "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap";
 const STYLES = [["sketch", "Sketch"], ["clean", "Clean"], ["dark", "Dark"], ["swiss", "Swiss"]];
 
+const paragraphs = (paras) => paras.map((p) => `<p>${esc(p)}</p>`).join("");
 const notesHtml = (notes) => notes
-  .map((n) => `<article class="note"><h3>${esc(n.title)}</h3>${n.paras.map((p) => `<p>${esc(p)}</p>`).join("")}<time>${esc(n.date)}</time></article>`)
+  .map((n) => `<article class="note"><h3>${esc(n.title)}</h3>${paragraphs(n.paras)}<time>${esc(n.date)}</time></article>`)
   .join("\n");
+const docDesc = (d) => (d.desc ? ` <span>— ${esc(d.desc)}</span>` : "");
 const docsHtml = (docs) => docs
-  .map((d) => `<li><a href="${esc(d.url).replace(/"/g, "&quot;")}" target="_blank" rel="noopener">${esc(d.title)}</a>${d.desc ? ` <span>— ${esc(d.desc)}</span>` : ""}</li>`)
+  .map((d) => `<li><a href="${esc(d.url).replaceAll('"', "&quot;")}" target="_blank" rel="noopener">${esc(d.title)}</a>${docDesc(d)}</li>`)
   .join("\n");
+const netCidr = (n) => (n.cidr ? `<code>${esc(n.cidr)}</code> ` : "");
 const netsHtml = (nets) => nets
-  .map((n, i) => `<button type="button" class="nw${n.hosts ? "" : " z"}" data-n="${i}" aria-pressed="false" style="--d:${n.depth}"><span>${n.cidr ? `<code>${esc(n.cidr)}</code> ` : ""}${esc(n.name)}</span><span class="nk" title="${n.hosts} host${n.hosts === 1 ? "" : "s"}">${n.hosts}</span></button>`)
+  .map((n, i) => `<button type="button" class="nw${n.hosts ? "" : " z"}" data-n="${i}" aria-pressed="false" style="--d:${n.depth}"><span>${netCidr(n)}${esc(n.name)}</span><span class="nk" title="${n.hosts} host${n.hosts === 1 ? "" : "s"}">${n.hosts}</span></button>`)
   .join("\n");
 const netsPanel = (nets) => nets
   ? `\n<aside id="wp" class="cp" aria-label="Networks"><button id="wh" class="cph" type="button" aria-expanded="true" aria-controls="wb">Networks</button><div id="wb" class="cpb"><div id="wl" role="group" aria-label="Network filter">\n${netsHtml(nets)}\n</div><button type="button" class="reset" id="wr">Show all</button></div></aside>`
   : "";
 const PEN_COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#a855f7"], PEN_WIDTHS = [2, 4, 8];
-const drawTools = `<span id="dtl"><span id="dtg" role="group" aria-label="Drawing tools"><button type="button" data-t="select" aria-pressed="true" title="Select and drag (Esc)">Select</button><button type="button" data-t="pencil" aria-pressed="false" title="Draw free-hand">Pencil</button><button type="button" data-t="eraser" aria-pressed="false" title="Erase whole strokes">Eraser</button></span><span id="dtc" role="group" aria-label="Drawing history"><button id="dtu" type="button" title="Undo drawing (Ctrl+Z)" disabled>Undo</button><button id="dtr" type="button" title="Redo drawing (Ctrl+Y)" disabled>Redo</button></span><div id="dpo" hidden>${PEN_COLORS.map((c) => `<button type="button" class="dpc" data-c="${c}" aria-label="Color ${c}" style="--c:${c}"></button>`).join("")}${PEN_WIDTHS.map((w) => `<button type="button" class="dpw" data-w="${w}" aria-label="Width ${w}px"><i style="height:${w}px"></i></button>`).join("")}</div></span>`;
+const penColors = PEN_COLORS.map((c) => `<button type="button" class="dpc" data-c="${c}" aria-label="Color ${c}" style="--c:${c}"></button>`).join("");
+const penWidths = PEN_WIDTHS.map((w) => `<button type="button" class="dpw" data-w="${w}" aria-label="Width ${w}px"><i style="height:${w}px"></i></button>`).join("");
+const drawTools = `<span id="dtl"><span id="dtg" role="group" aria-label="Drawing tools"><button type="button" data-t="select" aria-pressed="true" title="Select and drag (Esc)">Select</button><button type="button" data-t="pencil" aria-pressed="false" title="Draw free-hand">Pencil</button><button type="button" data-t="eraser" aria-pressed="false" title="Erase whole strokes">Eraser</button></span><span id="dtc" role="group" aria-label="Drawing history"><button id="dtu" type="button" title="Undo drawing (Ctrl+Z)" disabled>Undo</button><button id="dtr" type="button" title="Redo drawing (Ctrl+Y)" disabled>Redo</button></span><div id="dpo" hidden>${penColors}${penWidths}</div></span>`;
 const styleBtns = STYLES
   .map(([k, l]) => `<button type="button" data-s="${k}" aria-pressed="${k === "clean"}">${l}</button>`)
   .join("");

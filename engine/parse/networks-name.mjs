@@ -27,7 +27,10 @@ export function setNetworkName(existing, cidr, name) {
   const nl = text.includes("\r\n") ? "\r\n" : "\n";
   const lines = text.split(/(?<=\n)/);
   const body = (l) => l.replace(/\r?\n$/, "");
-  const eolOf = (l) => (l.endsWith("\r\n") ? "\r\n" : l.endsWith("\n") ? "\n" : "");
+  const eolOf = (l) => {
+    if (l.endsWith("\r\n")) return "\r\n";
+    return l.endsWith("\n") ? "\n" : "";
+  };
   let at = -1, end = lines.length;
   for (let i = 0; i < lines.length && at < 0; i++) {
     if (!/^\s*\[\[\s*networks\s*\]\]\s*(#.*)?$/.test(body(lines[i]))) continue;
@@ -40,7 +43,8 @@ export function setNetworkName(existing, cidr, name) {
   }
   if (at < 0) {
     if (!n) return existing;
-    const head = text.trim() ? (text.endsWith("\n") ? text : text + nl) + nl : text;
+    let head = text;
+    if (text.trim()) head = (text.endsWith("\n") ? text : text + nl) + nl;
     return head + `[[networks]]${nl}cidr = "${cidr}"${nl}name = ${quote(n)}${nl}`;
   }
   let nameAt = -1, cidrLine = -1;

@@ -6,12 +6,12 @@ InfraDiagram.define("ui/clear-click", ["ui/core", "ui/selection", "ui/networks"]
 
   // Is a pointer target an empty place: page background, empty canvas, or the bare container of a panel.
   function isEmptyTarget(t) {
-    if (!t || t.nodeType !== 1) return false;
+    if (t?.nodeType !== 1) return false;
     var tag = t.tagName;
     if (tag === "HTML" || tag === "BODY") return true;
-    if (t.closest && t.closest(BLOCK)) return false;
-    if (t === svg || (svg.contains && svg.contains(t))) return true;
-    return !!CONTAINERS[t.id] || (t.classList && t.classList.contains("cp"));
+    if (t.closest?.(BLOCK)) return false;
+    if (t === svg || (svg.contains?.(t))) return true;
+    return !!CONTAINERS[t.id] || (t.classList?.contains("cp"));
   }
 
   // A click clears when it began and ended on empty places without moving 4px or more, with the primary button.
@@ -23,7 +23,7 @@ InfraDiagram.define("ui/clear-click", ["ui/core", "ui/selection", "ui/networks"]
 
   // Clears the selection and network filter like Esc; an open server form with pending edits is left alone.
   function clearSelection(pending) {
-    if (pending && pending()) return false;
+    if (pending?.()) return false;
     if (ctx.sel) selection.select(null);
     if (ctx.net !== null) networks.setNet(null);
     return true;

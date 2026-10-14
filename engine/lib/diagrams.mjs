@@ -32,14 +32,21 @@ export function nameProblem(name, existing = []) {
   return null;
 }
 
+function trimDashes(s) {
+  let from = 0, to = s.length;
+  while (from < to && s[from] === "-") from++;
+  while (to > from && s[to - 1] === "-") to--;
+  return s.slice(from, to);
+}
+
 export function sanitizeName(raw) {
-  const s = String(raw).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60).replace(/-+$/, "");
-  return s || "diagram";
+  const dashed = String(raw).toLowerCase().replaceAll(/[^a-z0-9]+/g, "-");
+  return trimDashes(trimDashes(dashed).slice(0, 60)) || "diagram";
 }
 
 // Diagram name for an imported archive: the topology id when present, else the archive file name without .diag.zip.
 export function archiveDiagramName(topologyText, fileName) {
-  const id = /^id\s*=\s*"([^"\n]+)"/m.exec(topologyText || "");
+  const id = /^id[ \t]*=[ \t]*"([^"\n]+)"/m.exec(topologyText || "");
   const stem = String(fileName).slice(0, Math.max(0, String(fileName).length - ARCHIVE_EXT.length));
   return sanitizeName(id ? id[1] : stem);
 }

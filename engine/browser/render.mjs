@@ -14,6 +14,57 @@ import { buildEdgeKey, groupAssets } from "../render/edge-key.mjs";
 import { buildDataJson } from "../page/data.mjs";
 import { renderLayoutHtml } from "../page/layout-html.mjs";
 
+const point = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
+const plainObject = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+
+function checkSaved(saved, config) {
+  if (saved !== null && !plainObject(saved)) throw new Error("Layout must be a JSON object");
+  if (saved?.diagramId && saved.diagramId !== config.id) throw new Error("Saved layout belongs to another diagram id");
+  if (saved?.version !== undefined && saved.version !== 1) throw new Error("Unsupported saved layout version");
+  for (const kind of ["nodes", "clusters", "edges"]) {
+    if (saved?.[kind] !== undefined && !plainObject(saved[kind])) throw new Error(`Layout '${kind}' must be an object`);
+  }
+}
+
+function restoreClusters(model, saved, layout) {
+  for (const [id] of model.clusters) {
+    const c = saved?.clusters?.[id];
+    if (!c) continue;
+    if (![c.x, c.y, c.w, c.h].every(Number.isFinite) || c.w <= 0 || c.h <= 0 || !point(c.title)) throw new Error(`Invalid saved region geometry: ${id}`);
+    layout.clusters[id] = structuredClone(c);
+  }
+}
+
+function restoreNodes(model, saved, layout, refit) {
+  for (const [id, n] of model.nodes) {
+    const g = saved?.nodes?.[id];
+    if (!g) continue;
+    if (![g.x, g.y, g.w, g.h].every(Number.isFinite) || g.w <= 0 || g.h <= 0 || !point(g.title)) throw new Error(`Invalid saved server geometry: ${id}`);
+    // Text positions depend on the current services, preserving the server's position.
+    const rows = n.body.length + (n.hw ? 1 : 0) + (n.os ? 1 : 0), need = 20 + 16 * rows + 18 * n.ip.length;
+    layout.nodes[id] = { x: g.x, y: g.y, w: refit.includes(id) ? 0 : g.w, h: refit.includes(id) ? need : Math.max(g.h, need), title: g.title.slice(),
+      body: n.body.map((_, i) => [g.x + 10, g.y + 18 + 16 * i]), ip: n.ip.map((_, i) => [g.x + 10, g.y + 22 + 16 * rows + 18 * i]) };
+  }
+}
+
+function restoreEdges(model, saved, layout) {
+  for (const e of model.edges) {
+    const k = edgeKey(e), old = saved?.edges?.[k];
+    if (old && !plainObject(old)) throw new Error(`Invalid saved connection: ${k}`);
+    const g = {};
+    if (old?.via !== undefined) {
+      if (!Array.isArray(old.via) || !old.via.every(point)) throw new Error(`Invalid connection waypoints: ${k}`);
+      g.via = old.via.map((p) => p.slice());
+    }
+    if (old?.label !== undefined) {
+      if (!point(old.label)) throw new Error(`Invalid connection label position: ${k}`);
+      g.label = old.label.slice();
+    }
+    if (e.fw) g.firewall = true;
+    layout.edges[k] = g;
+  }
+}
+
 // Restore positions by stable object id; prune removed objects and refresh text geometry.
 // `files` maps folder-relative paths (topology.toml, servers/<id>.toml, ...) to their text.
 export function prepareDiagram(files, folder, saved = null, refit = []) {
@@ -26,40 +77,10 @@ export function prepareDiagram(files, folder, saved = null, refit = []) {
   checkConnections(config, model.edges.map(edgeKey), model.nodes);
   const meta = geometryMeta(model, config.groups, config.processes), kit = geometryKit();
   const layout = { clusters: {}, nodes: {}, edges: {} };
-  const point = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
-  if (saved !== null && (!saved || typeof saved !== "object" || Array.isArray(saved))) throw new Error("Layout must be a JSON object");
-  if (saved?.diagramId && saved.diagramId !== config.id) throw new Error("Saved layout belongs to another diagram id");
-  if (saved?.version !== undefined && saved.version !== 1) throw new Error("Unsupported saved layout version");
-  for (const kind of ["nodes", "clusters", "edges"]) {
-    if (saved?.[kind] !== undefined && (!saved[kind] || typeof saved[kind] !== "object" || Array.isArray(saved[kind]))) throw new Error(`Layout '${kind}' must be an object`);
-  }
-  for (const [id] of model.clusters) {
-    const c = saved?.clusters?.[id];
-    if (!c) continue;
-    if (![c.x, c.y, c.w, c.h].every(Number.isFinite) || c.w <= 0 || c.h <= 0 || !point(c.title)) throw new Error(`Invalid saved region geometry: ${id}`);
-    layout.clusters[id] = JSON.parse(JSON.stringify(c));
-  }
-  for (const [id, n] of model.nodes) {
-    const g = saved?.nodes?.[id];
-    if (!g) continue;
-    if (![g.x, g.y, g.w, g.h].every(Number.isFinite) || g.w <= 0 || g.h <= 0 || !point(g.title)) throw new Error(`Invalid saved server geometry: ${id}`);
-    // Text positions depend on the current services, preserving the server's position.
-    const rows = n.body.length + (n.hw ? 1 : 0) + (n.os ? 1 : 0), need = 20 + 16 * rows + 18 * n.ip.length;
-    layout.nodes[id] = { x: g.x, y: g.y, w: refit.includes(id) ? 0 : g.w, h: refit.includes(id) ? need : Math.max(g.h, need), title: g.title.slice(),
-      body: n.body.map((_, i) => [g.x + 10, g.y + 18 + 16 * i]), ip: n.ip.map((_, i) => [g.x + 10, g.y + 22 + 16 * rows + 18 * i]) };
-  }
-  for (const e of model.edges) {
-    const k = edgeKey(e), old = saved?.edges?.[k];
-    if (old && (typeof old !== "object" || Array.isArray(old))) throw new Error(`Invalid saved connection: ${k}`);
-    const g = {};
-    if (old?.via !== undefined) {
-      if (!Array.isArray(old.via) || !old.via.every(point)) throw new Error(`Invalid connection waypoints: ${k}`);
-      g.via = old.via.map((p) => p.slice());
-    }
-    if (old?.label !== undefined) { if (!point(old.label)) throw new Error(`Invalid connection label position: ${k}`); g.label = old.label.slice(); }
-    if (e.fw) g.firewall = true;
-    layout.edges[k] = g;
-  }
+  checkSaved(saved, config);
+  restoreClusters(model, saved, layout);
+  restoreNodes(model, saved, layout, refit);
+  restoreEdges(model, saved, layout);
   autoLayoutKit(kit).fill(layout, meta);
   for (const id of model.nodes.keys()) kit.fitBox(layout.nodes[id], meta.nodes[id]);
   for (const id of model.clusters.keys()) kit.fitRegion(layout, meta, id);

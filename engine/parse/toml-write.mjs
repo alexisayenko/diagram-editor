@@ -11,14 +11,14 @@ function multiline(text, eol) {
   let out = "";
   for (const ch of text) {
     const c = ch.codePointAt(0);
-    if (ch === "\\") out += "\\\\";
+    if (ch === "\\") out += String.raw`\\`;
     else if (ch === "\n") out += eol;
     else if (ch === "\t") out += ch;
-    else if (c < 32 || c === 127) out += "\\u" + c.toString(16).padStart(4, "0");
+    else if (c < 32 || c === 127) out += String.raw`\u` + c.toString(16).padStart(4, "0");
     else if (c >= 0xd800 && c <= 0xdfff) throw new Error("Note text contains an unpaired surrogate");
     else out += ch;
   }
-  return out.replace(/"{3,}|"+$/g, (q) => '\\"'.repeat(q.length));
+  return out.replace(/(?:"{3,})|(?:"+$)/g, (q) => String.raw`\"`.repeat(q.length));
 }
 
 export function formatNotes(texts, eol = "\n") {
@@ -91,11 +91,11 @@ function basic(text) {
   let out = "";
   for (const ch of text) {
     const c = ch.codePointAt(0);
-    if (ch === "\\") out += "\\\\";
-    else if (ch === '"') out += '\\"';
-    else if (ch === "\n") out += "\\n";
-    else if (ch === "\t") out += "\\t";
-    else if (c < 32 || c === 127) out += "\\u" + c.toString(16).padStart(4, "0");
+    if (ch === "\\") out += String.raw`\\`;
+    else if (ch === '"') out += String.raw`\"`;
+    else if (ch === "\n") out += String.raw`\n`;
+    else if (ch === "\t") out += String.raw`\t`;
+    else if (c < 32 || c === 127) out += String.raw`\u` + c.toString(16).padStart(4, "0");
     else if (c >= 0xd800 && c <= 0xdfff) throw new Error("Text contains an unpaired surrogate");
     else out += ch;
   }
@@ -104,7 +104,8 @@ function basic(text) {
 
 function formatList(list, eol, multi) {
   if (!multi) return `[${list.map(basic).join(", ")}]`;
-  return `[${eol}${list.map((s) => `  ${basic(s)},${eol}`).join("")}]`;
+  const items = list.map((s) => `  ${basic(s)},${eol}`).join("");
+  return `[${eol}${items}]`;
 }
 
 function formatDetails(text, eol) {
@@ -127,7 +128,7 @@ export function checkServerFields(fields) {
 
 function canonical(v) {
   if (Array.isArray(v)) return v.map(canonical);
-  if (v && typeof v === "object") return Object.fromEntries(Object.keys(v).sort().map((k) => [k, canonical(v[k])]));
+  if (v && typeof v === "object") return Object.fromEntries(Object.keys(v).sort((a, b) => (a < b ? -1 : Number(a > b))).map((k) => [k, canonical(v[k])]));
   return v;
 }
 
@@ -140,16 +141,21 @@ export function setServer(src, id, fields, ctx = {}) {
   if (fields.server_type !== undefined && !Object.hasOwn(types, fields.server_type)) throw new Error(`Unknown server type '${fields.server_type}'. Known: ${Object.keys(types).join(", ")}.`);
   const inherited = old.server_type ?? (ctx.regions || []).find((r) => r.id === old.region)?.server_type;
   if ((ctx.servers || []).some((o) => o.id !== id && (o.name ?? o.id) === fields.name.trim())) throw new Error(`duplicate server name '${fields.name.trim()}'`);
-  const want = { name: fields.name.trim(), server_type: fields.server_type ?? inherited, details: fields.details.trim() ? fields.details.replace(/\s+$/, "") : "" };
+  const want = { name: fields.name.trim(), server_type: fields.server_type ?? inherited, details: fields.details.trim() ? fields.details.trimEnd() : "" };
   for (const k of SERVER_STRINGS) want[k] = fields[k].trim();
   for (const k of SERVER_LISTS) want[k] = fields[k].map((s) => s.trim());
-  const was = (k) => k === "name" ? old.name ?? id : k === "server_type" ? inherited : SERVER_LISTS.includes(k) ? (old[k] ?? []).map((s) => s.trim()) : (k === "details" ? old[k] ?? "" : (old[k] ?? "").trim());
+  const was = (k) => {
+    if (k === "name") return old.name ?? id;
+    if (k === "server_type") return inherited;
+    if (SERVER_LISTS.includes(k)) return (old[k] ?? []).map((s) => s.trim());
+    return k === "details" ? old[k] ?? "" : (old[k] ?? "").trim();
+  };
   const emptyValue = (v) => v === "" || (Array.isArray(v) && !v.length);
   const lineEnd = (k) => { const i = flat.indexOf("\n", rec.keys[k].valueEnd); return i < 0 ? flat.length : i + 1; };
   const expect = { ...old }, edits = [], lines = [];
   for (const k of FIELD_ORDER) {
     const v = want[k], cur = rec.keys[k], before = was(k);
-    const unchanged = k === "details" ? typeof before === "string" && before.replace(/\s+$/, "") === v : JSON.stringify(before) === JSON.stringify(v);
+    const unchanged = k === "details" ? typeof before === "string" && before.trimEnd() === v : JSON.stringify(before) === JSON.stringify(v);
     if (unchanged) continue;
     if (cur && emptyValue(v)) {
       edits.push({ from: at(flat.lastIndexOf("\n", cur.start - 1) + 1), to: at(lineEnd(k)), text: "" });
@@ -157,7 +163,9 @@ export function setServer(src, id, fields, ctx = {}) {
       continue;
     }
     const multi = cur && flat.slice(cur.valueStart, cur.valueEnd).includes("\n");
-    const text = SERVER_LISTS.includes(k) ? formatList(v, eol, multi) : k === "details" ? formatDetails(v, eol) : basic(v);
+    let text;
+    if (SERVER_LISTS.includes(k)) text = formatList(v, eol, multi);
+    else text = k === "details" ? formatDetails(v, eol) : basic(v);
     expect[k] = v;
     if (cur) edits.push({ from: at(cur.valueStart), to: at(cur.valueEnd), text });
     else lines.push(`${k} = ${text}`);
@@ -168,7 +176,7 @@ export function setServer(src, id, fields, ctx = {}) {
     edits.push({ from: at(end), to: at(end), text: atEof ? eol + block : block + eol });
   }
   let out = src;
-  for (const e of edits.sort((a, b) => b.from - a.from || b.to - a.to)) out = out.slice(0, e.from) + e.text + out.slice(e.to);
+  for (const e of edits.toSorted((a, b) => b.from - a.from || b.to - a.to)) out = out.slice(0, e.from) + e.text + out.slice(e.to);
   const after = parseToml(out);
   if (JSON.stringify(canonical(after)) !== JSON.stringify(canonical(expect))) {
     throw new Error("Internal error: the rewritten TOML does not match the edit; nothing was written");
@@ -206,7 +214,7 @@ export function setKeys(src, pairs) {
     edits.push({ from: pos, to: pos, text: lead + lines.join(eol) + eol });
   }
   let text = src;
-  for (const e of edits.sort((a, b) => b.from - a.from || b.to - a.to)) text = text.slice(0, e.from) + e.text + text.slice(e.to);
+  for (const e of edits.toSorted((a, b) => b.from - a.from || b.to - a.to)) text = text.slice(0, e.from) + e.text + text.slice(e.to);
   const after = parseToml(text);
   for (const [k, v] of pairs) if (after[k] !== v) throw new Error("Internal error: the rewritten TOML does not match the edit; nothing was written");
   return text;
@@ -236,7 +244,7 @@ export function duplicateServer(files, id) {
     edits.push({ from: pos, to: pos, text: lead + lines.join(eol) + eol });
   }
   let text = src;
-  for (const e of edits.sort((a, b) => b.from - a.from || b.to - a.to)) text = text.slice(0, e.from) + e.text + text.slice(e.to);
+  for (const e of edits.toSorted((a, b) => b.from - a.from || b.to - a.to)) text = text.slice(0, e.from) + e.text + text.slice(e.to);
   const after = parseToml(text);
   if (JSON.stringify(canonical({ ...after, id: 0, name: 0 })) !== JSON.stringify(canonical({ ...parseToml(prepare(src).flat), id: 0, name: 0 })) || after.id !== newId || after.name !== name) {
     throw new Error("Internal error: the duplicated TOML does not match the original; nothing was written");
@@ -267,7 +275,7 @@ export function addRegion(files, { server_type } = {}) {
   const tables = spans.tables || [], last = tables.map((t) => t.name).lastIndexOf("regions");
   let out;
   if (last >= 0) {
-    const stop = last + 1 < tables.length ? tables[last + 1].start : flat.length, end = flat.slice(0, stop).replace(/\s+$/, "").length;
+    const stop = last + 1 < tables.length ? tables[last + 1].start : flat.length, end = flat.slice(0, stop).trimEnd().length;
     out = src.slice(0, at(end)) + eol + eol + block + (stop === flat.length && !flat.endsWith("\n") ? eol : "") + src.slice(at(end));
   } else if (tables.length) out = src.slice(0, at(tables[0].start)) + block + eol + eol + src.slice(at(tables[0].start));
   else out = src + (!src.length || flat.endsWith("\n") ? "" : eol) + (src.trim() ? eol : "") + block + eol;
@@ -299,7 +307,7 @@ function setTopKeys(src, changes) {
     edits.push({ from: at(end), to: at(end), text: atEof ? eol + block + eol : block + eol });
   }
   let out = src;
-  for (const e of edits.sort((a, b) => b.from - a.from || b.to - a.to)) out = out.slice(0, e.from) + e.text + out.slice(e.to);
+  for (const e of edits.toSorted((a, b) => b.from - a.from || b.to - a.to)) out = out.slice(0, e.from) + e.text + out.slice(e.to);
   if (JSON.stringify(canonical(parseToml(out))) !== JSON.stringify(canonical(expect))) throw new Error("Internal error: the rewritten TOML does not match the edit; nothing was written");
   return out;
 }

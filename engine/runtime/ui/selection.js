@@ -10,10 +10,10 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels"], func
       else if (e.to === key) { B[e.from] = 1; near.push(e.from); B["e:" + e.k] = 1; }
     });
     near.forEach(function (k) {
-      if (k.charAt(0) === "c") (D.kids[k.slice(2)] || []).forEach(function (n) { B["n:" + n] = 1; });
+      if (k.startsWith("c")) (D.kids[k.slice(2)] || []).forEach(function (n) { B["n:" + n] = 1; });
     });
     Object.keys(B).forEach(function (k) {
-      if (k.charAt(0) === "n" && D.ent[k] && D.ent[k].cl) B["c:" + D.ent[k].cl] = 1;
+      if (k.charAt(0) === "n" && D.ent[k]?.cl) B["c:" + D.ent[k].cl] = 1;
     });
     return B;
   }
@@ -23,7 +23,7 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels"], func
     ctx.sel = key;
     var B = key ? related(key) : null;
     core.ents.forEach(function (el) {
-      var k = el.getAttribute("data-ent");
+      var k = el.dataset.ent;
       el.classList.toggle("dim", !!B && !B[k]);
       el.classList.toggle("sel", !!B && k === key);
     });

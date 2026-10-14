@@ -26,8 +26,9 @@ const LINE = { request: "<i></i>", dashed: '<i class="dash"></i>' };
 // Mermaid view of the model; edgeKinds is buildEdgeKey().kinds (the firewall row has no Mermaid equivalent).
 export function renderIndexHtml({ title, mmd, details, notes, edgeKinds }) {
   if (/<\/script/i.test(details)) fail('details.md: contains "</script"');
+  const paragraphs = (paras) => paras.map((p) => `<p>${esc(p)}</p>`).join("\n");
   const notesHtml = notes
-    .map((n) => `<div class="note">\n<h2>${esc(n.title)}, ${esc(n.date)}</h2>\n${n.paras.map((p) => `<p>${esc(p)}</p>`).join("\n")}\n</div>`)
+    .map((n) => `<div class="note">\n<h2>${esc(n.title)}, ${esc(n.date)}</h2>\n${paragraphs(n.paras)}\n</div>`)
     .join("\n");
   const legend = edgeKinds.filter(([k]) => LINE[k]).map(([k, l]) => `<div>${LINE[k]} ${esc(l)}</div>`).join("\n");
   return `<!doctype html>
@@ -46,7 +47,7 @@ ${CSS}
 <div class="layout">
 <div class="diagram">
 <pre class="mermaid">
-${mmd.trimEnd().replace(/&/g, "&amp;").replace(/</g, "&lt;")}
+${mmd.trimEnd().replaceAll("&", "&amp;").replaceAll("<", "&lt;")}
 </pre>
 </div>
 <aside class="side">

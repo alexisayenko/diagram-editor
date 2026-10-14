@@ -13,17 +13,17 @@ InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], functio
   function exportSvg() {
     var c = svg.cloneNode(true);
     var r = resolveCss();
-    [].forEach.call(c.querySelectorAll("[data-e]"), function (n) { n.removeAttribute("data-e"); });
-    [].forEach.call(c.querySelectorAll(".nwb,#rh"), function (n) { n.remove(); });
+    c.querySelectorAll("[data-e]").forEach(function (n) { delete n.dataset.e; });
+    c.querySelectorAll(".nwb,#rh").forEach(function (n) { n.remove(); });
     c.classList.remove("edit", "zoomed", "panning", "draw-pencil", "draw-eraser");
-    [].forEach.call(c.querySelectorAll(".dwp.hot"), function (n) { n.classList.remove("hot"); });
+    c.querySelectorAll(".dwp.hot").forEach(function (n) { n.classList.remove("hot"); });
     c.removeAttribute("style");
-    if (c.getAttribute("data-fit")) c.setAttribute("viewBox", c.getAttribute("data-fit"));
-    c.removeAttribute("data-fit");
+    if (c.dataset.fit) c.setAttribute("viewBox", c.dataset.fit);
+    delete c.dataset.fit;
     c.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    c.setAttribute("data-style", ctx.style);
+    c.dataset.style = ctx.style;
     var vb = c.getAttribute("viewBox").split(/\s+/).map(Number);
-    if (D.notes && D.notes.length) {
+    if (D.notes?.length) {
       var ns = exportColumns.notesSvg(vb[0] + vb[2] + 10, vb[1] + 20);
       c.insertAdjacentHTML("beforeend", ns.h);
       vb[2] += ns.w + 30;
@@ -37,8 +37,9 @@ InfraDiagram.define("ui/export-image", ["ui/core", "ui/export-columns"], functio
     c.setAttribute("viewBox", vb.join(" "));
     c.setAttribute("width", vb[2]);
     c.setAttribute("height", vb[3]);
-    var bg = ctx.style === "sketch" ? (r.dark ? "#16181c" : "#ffffff") : core.BG[ctx.style];
-    var pre = '<style>' + r.css.replace(/<\/style/g, "<\\/style") + "</style>";
+    var bg = core.BG[ctx.style];
+    if (ctx.style === "sketch") bg = r.dark ? "#16181c" : "#ffffff";
+    var pre = '<style>' + r.css.replaceAll("</style", String.raw`<\/style`) + "</style>";
     if (ctx.style === "dark") pre += '<defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#14213A" stroke-width="1"/></pattern></defs>';
     pre += '<rect x="' + vb[0] + '" y="' + vb[1] + '" width="' + vb[2] + '" height="' + vb[3] + '" fill="' + bg + '"/>';
     if (ctx.style === "dark") pre += '<rect x="' + vb[0] + '" y="' + vb[1] + '" width="' + vb[2] + '" height="' + vb[3] + '" fill="url(#grid)"/>';

@@ -24,11 +24,11 @@ export function parseNetworks(src) {
   src.split("\n").forEach((raw, i) => {
     const at = `networks.md:${i + 1}`;
     if (!raw.trim() || /^# \S/.test(raw.trim())) return;
-    const m = raw.replace(/\t/g, "  ").match(ITEM);
+    const m = ITEM.exec(raw.replaceAll("\t", "  "));
     if (!m) fail(`${at}: expected "- \`a.b.c.d/nn\` Name" or "- Group name" (nested by indentation), got: ${raw.trim()}`);
     const ind = m[1].length;
-    while (stack.length && stack[stack.length - 1].ind >= ind) stack.pop();
-    const parent = stack.length ? stack[stack.length - 1].i : -1;
+    while (stack.length && stack.at(-1).ind >= ind) stack.pop();
+    const parent = stack.length ? stack.at(-1).i : -1;
     if (parent < 0 && ind > 0) fail(`${at}: top-level item must not be indented`);
     const it = { cidr: m[2] || "", name: m[3].trim(), depth: stack.length, parent, line: i + 1 };
     if (it.cidr) {

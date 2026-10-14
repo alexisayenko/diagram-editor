@@ -27,6 +27,7 @@ const serverApi = () => ready ? frame.contentWindow.InfraDiagram?.modules["ui/se
 const drawApi = () => ready ? frame.contentWindow.InfraDiagram?.modules["canvas/draw"] : null;
 const unsaved = () => !!active && (JSON.stringify([...active.work]) !== JSON.stringify([...active.source]) || active.carryLayout || (notesApi() ? JSON.stringify(notesApi().texts()) !== JSON.stringify(active.notes) : false));
 const dirty = () => editor()?.isDirty() || notesApi()?.isDirty() || serverApi()?.isDirty() || drawApi()?.isDirty() || unsaved() || false;
+const plural = (n) => (n === 1 ? "" : "s");
 function message(text, error = false) { status.textContent = text; status.classList.toggle("error", error); }
 function controls() {
   frame.inert = busy;
@@ -48,7 +49,10 @@ async function call(path, options) {
 }
 async function stored(name) {
   try { return (await call("/api/file?name=" + encodeURIComponent(name))).text; }
-  catch (e) { if (e.status === 404) return null; throw e; }
+  catch (e) {
+    if (e.status === 404) return null;
+    throw e;
+  }
 }
 const putFiles = (files) => call("/api/files", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ files }) });
 async function listStored() { return listDiagrams((await call("/api/files")).files); }
@@ -59,8 +63,8 @@ function load(folder, files, layoutText) {
   if (layoutText !== null) { try { saved = JSON.parse(layoutText); } catch (e) { throw new Error(layoutName + ": invalid JSON: " + e.message); } }
   const result = require("browser/render.mjs").renderDiagram(files, folder, saved, ASSETS, []);
   ready = false;
-  const LAYOUT_KEYS = ["version", "diagramId", "nodes", "clusters", "edges", "drawings"];
-  const extra = saved ? Object.fromEntries(Object.entries(saved).filter(([k]) => !LAYOUT_KEYS.includes(k))) : {};
+  const LAYOUT_KEYS = new Set(["version", "diagramId", "nodes", "clusters", "edges", "drawings"]);
+  const extra = saved ? Object.fromEntries(Object.entries(saved).filter(([k]) => !LAYOUT_KEYS.has(k))) : {};
   active = { folder, layoutName, source: new Map(files), work: new Map(files), text: layoutText, extra, hadDrawings: !!saved && "drawings" in saved, id: result.id, notes: result.notes, carryLayout: false, reload: null, after: null, netNames: new Map() };
   frame.srcdoc = result.html;
   document.querySelector("#welcome").hidden = true;
@@ -180,9 +184,21 @@ async function importArchive(file) {
   finally { busy = false; controls(); }
 }
 diagButton.addEventListener("click", () => diagFile.click());
-diagFile.addEventListener("change", () => { const f = diagFile.files[0]; diagFile.value = ""; if (f) importArchive(f); });
+diagFile.addEventListener("change", () => {
+  const f = diagFile.files[0];
+  diagFile.value = "";
+  if (f) {
+    importArchive(f).catch((e) => message(e.message, true));
+  }
+});
 window.addEventListener("dragover", (e) => { if (e.dataTransfer?.types?.includes("Files")) e.preventDefault(); });
-window.addEventListener("drop", (e) => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); if (!busy) importArchive(e.dataTransfer.files[0]); });
+window.addEventListener("drop", (e) => {
+  if (!e.dataTransfer?.files?.length) return;
+  e.preventDefault();
+  if (!busy) {
+    importArchive(e.dataTransfer.files[0]).catch((err) => message(err.message, true));
+  }
+});
 const serverPath = (id) => `servers/${id}.toml`;
 function serverSource(id) {
   const root = mergeFolder(active.work), s = (root.servers || []).find((x) => x.id === id);
@@ -303,7 +319,11 @@ async function syncNetworks() {
   for (let attempt = 0; attempt < 2; attempt++) {
     const base = await stored(name);
     let text = base, renamed = 0;
-    for (const [cidr, label] of active.netNames) { const next = setNetworkName(text, cidr, label); if (next !== text) renamed++; text = next; }
+    for (const [cidr, label] of active.netNames) {
+      const next = setNetworkName(text, cidr, label);
+      if (next !== text) renamed++;
+      text = next;
+    }
     const res = appendNetworks(text, ips);
     if (res.text === base) { active.netNames.clear(); return { count: 0, renamed: 0 }; }
     try {
@@ -332,7 +352,10 @@ saveButton.addEventListener("click", async () => {
     afterSave(p, files.map((f) => f.name));
     const net = await syncNetworks().catch((e) => ({ count: 0, error: e.message }));
     const saved = p.changed.length ? `Saved ${active.layoutName} and ${p.changed.length} file(s) in local/${active.folder}/` : `Saved ${active.layoutName} in local/`;
-    message(saved + (net.count ? ` · ${net.count} new networks added to networks.toml` : "") + (net.renamed ? ` · ${net.renamed} network name${net.renamed === 1 ? "" : "s"} saved to networks.toml` : "") + (net.error ? ` · networks.toml not updated: ${net.error}` : ""), !!net.error);
+    const added = net.count ? ` · ${net.count} new networks added to networks.toml` : "";
+    const renamedNote = net.renamed ? ` · ${net.renamed} network name${plural(net.renamed)} saved to networks.toml` : "";
+    const failed = net.error ? ` · networks.toml not updated: ${net.error}` : "";
+    message(saved + added + renamedNote + failed, !!net.error);
   } catch (e) {
     if (p && e.saved?.length) {
       afterSave(p, e.saved);
@@ -379,14 +402,20 @@ function impRender() {
     const li = document.createElement("li"), label = document.createElement("label"), box = document.createElement("input"), text = document.createElement("span");
     box.type = "checkbox"; box.dataset.file = row.file; box.checked = row.included && !row.error; box.disabled = !!row.error;
     box.addEventListener("change", impRender);
-    text.textContent = row.error ? `${row.file}: ${row.error}` : `${row.id} · ${row.name} · ${row.ips} IP${row.ips === 1 ? "" : "s"}`;
+    const ipLabel = `${row.ips} IP${plural(row.ips)}`;
+    text.textContent = row.error ? `${row.file}: ${row.error}` : `${row.id} · ${row.name} · ${ipLabel}`;
     if (row.error) text.className = "bad";
     label.append(box, text);
-    if (row.renamed) { const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = `renamed to ${row.id}${row.name !== row.origName ? ` (${row.name})` : ""}`; label.append(tag); }
+    if (row.renamed) {
+      const tag = document.createElement("span"), nameNote = row.name === row.origName ? "" : ` (${row.name})`;
+      tag.className = "tag";
+      tag.textContent = `renamed to ${row.id}${nameNote}`;
+      label.append(tag);
+    }
     li.append(label); impList.append(li);
   }
   const n = impPlan.files.size;
-  impInfo.textContent = n ? `${n} server${n === 1 ? "" : "s"} will be added` : "Nothing selected";
+  impInfo.textContent = n ? `${n} server${plural(n)} will be added` : "Nothing selected";
   impOk.disabled = !n;
 }
 function impOpen(entries) {
@@ -437,12 +466,21 @@ impPanel.addEventListener("mousedown", (e) => { if (e.target === impPanel) impCl
 const hostPanel = document.querySelector("#hs"), hostText = document.querySelector("#hstext"), hostNote = document.querySelector("#hsnote");
 function hostClose() { hostPanel.hidden = true; document.querySelector("#hostscript").focus(); }
 async function copyText(text) {
-  try { await navigator.clipboard.writeText(text); return true; } catch (_) {}
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (_) {
+    // clipboard API unavailable or denied: fall back to execCommand
+  }
   const t = document.createElement("textarea");
   t.value = text; t.setAttribute("readonly", ""); t.style.cssText = "position:fixed;left:-9999px;top:0";
   document.body.appendChild(t); t.select();
   let ok = false;
-  try { ok = document.execCommand("copy"); } catch (_) {}
+  try {
+    ok = document.execCommand("copy");
+  } catch (_) {
+    ok = false;
+  }
   t.remove();
   return ok;
 }
@@ -474,4 +512,4 @@ setInterval(() => { if (!busy) controls(); }, 250);
     }
   }
   controls();
-})();
+})().catch((e) => message(e.message, true));

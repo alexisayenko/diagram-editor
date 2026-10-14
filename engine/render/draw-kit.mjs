@@ -10,7 +10,7 @@ export function drawKit() {
   function decimate(points, step) {
     var min = step === undefined ? MIN_STEP : step, out = [];
     for (var i = 0; i < points.length; i++) {
-      var x = round1(points[i][0]), y = round1(points[i][1]), last = out[out.length - 1];
+      var x = round1(points[i][0]), y = round1(points[i][1]), last = out.at(-1);
       if (last && Math.hypot(x - last[0], y - last[1]) < min) {
         if (i === points.length - 1 && out.length > 1) out[out.length - 1] = [x, y];
         continue;
@@ -59,9 +59,20 @@ export function drawKit() {
     var states = [initial], at = 0;
     return {
       current: function () { return states[at]; },
-      push: function (list) { states = states.slice(0, at + 1); states.push(list); at++; return list; },
-      undo: function () { if (at > 0) at--; return states[at]; },
-      redo: function () { if (at < states.length - 1) at++; return states[at]; },
+      push: function (list) {
+        states = states.slice(0, at + 1);
+        states.push(list);
+        at++;
+        return list;
+      },
+      undo: function () {
+        if (at > 0) at--;
+        return states[at];
+      },
+      redo: function () {
+        if (at < states.length - 1) at++;
+        return states[at];
+      },
       canUndo: function () { return at > 0; },
       canRedo: function () { return at < states.length - 1; },
     };
@@ -77,7 +88,7 @@ export function drawKit() {
       if (typeof s.id !== "string" || !ID.test(s.id) || seen[s.id]) throw new Error(at + ": bad or duplicate id");
       if (typeof s.color !== "string" || !COLOR.test(s.color)) throw new Error(at + ": color must be #rrggbb");
       if (typeof s.width !== "number" || !(s.width >= 0.5 && s.width <= 40)) throw new Error(at + ": bad width");
-      if (!Array.isArray(s.points) || !s.points.length || s.points.length > MAX_POINTS || !s.points.every(function (p) { return Array.isArray(p) && p.length === 2 && isFinite(p[0]) && isFinite(p[1]) && typeof p[0] === "number" && typeof p[1] === "number"; })) throw new Error(at + ": bad points");
+      if (!Array.isArray(s.points) || !s.points.length || s.points.length > MAX_POINTS || !s.points.every(function (p) { return Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]) && typeof p[0] === "number" && typeof p[1] === "number"; })) throw new Error(at + ": bad points");
       seen[s.id] = true;
       return { id: s.id, color: s.color.toLowerCase(), width: s.width, points: s.points.map(function (p) { return [p[0], p[1]]; }) };
     });

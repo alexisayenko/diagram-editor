@@ -25,13 +25,13 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
   }
 
   function serverAt(target) {
-    var el = target && target.closest && target.closest("[data-ent]"), k = el && el.getAttribute("data-ent");
-    return k && k.indexOf("n:") === 0 ? k.slice(2) : null;
+    var el = target?.closest?.("[data-ent]"), k = el?.getAttribute("data-ent");
+    return k?.startsWith("n:") ? k.slice(2) : null;
   }
 
   function editable(t) {
-    var tag = t && t.tagName;
-    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!(t && t.isContentEditable);
+    var tag = t?.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!t?.isContentEditable;
   }
 
   function show(e, fill) {
@@ -58,8 +58,10 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
   }
 
   function networkAt(target) {
-    var b = target && target.closest && target.closest("#wl .nw"), i = b && +b.getAttribute("data-n"), net = b && core.D && core.D.nets && core.D.nets[i];
-    return net && net.cidr ? { i: i, net: net } : null;
+    var b = target?.closest?.("#wl .nw");
+    if (!b) return null;
+    var i = +b.getAttribute("data-n"), net = core.D?.nets?.[i];
+    return net?.cidr ? { i: i, net: net } : null;
   }
 
   function openNetwork(e, at) {
@@ -84,7 +86,7 @@ InfraDiagram.define("canvas/context-menu", ["ui/core", "canvas/model", "ui/netwo
   }
 
   document.addEventListener("contextmenu", function (e) {
-    if (!state.on || !bridge() || !bridge().add || editable(e.target)) return;
+    if (!state.on || !bridge()?.add || editable(e.target)) return;
     e.preventDefault();
     close();
     var nw = networkAt(e.target);

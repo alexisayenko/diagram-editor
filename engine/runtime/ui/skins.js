@@ -13,7 +13,16 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
   }
 
   // Card meta with the system information (OS pill, hardware strip) removed while it is switched off.
-  function sysMeta(m) { return ctx.sys ? m : Object.assign({}, m, { hw: "", os: 0 }); }
+  function sysMeta(m) { return ctx.sys ? m : { ...m, hw: "", os: 0 }; }
+  function frameHtml(S, W, bottom, HH) {
+    if (S === "clean") {
+      return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="10"/><path class="hd" d="M0 0V-10Q0 -20 10 -20H' + (W - 10) + "Q" + W + " -20 " + W + ' -10V0Z"/>';
+    }
+    if (S === "dark") {
+      return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="5"/><rect class="hd" x="0" y="-' + HH + '" width="' + W + '" height="' + HH + '"/><rect class="ab" x="0" y="-' + HH + '" width="3" height="' + HH + '"/>';
+    }
+    return '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
+  }
   function nodeChrome(id) {
     var S = ctx.style, g = hooks.viewNode ? hooks.viewNode(id, D.layout.nodes[id]) : D.layout.nodes[id], e = D.ent["n:" + id], ix = D.idx.nodes[id];
     var tl = TEXT_X;
@@ -25,16 +34,10 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     });
     var W = Math.max(g.w, tl + tw + 28), HH = 20, m = sysMeta(D.meta.nodes[id] || {}), nb = g.body.length, hwY = 18 + 16 * nb;
     boxW[id] = W;
-    var h = "";
-    var hw = m.hw ? '<text class="hw" x="' + (g.body.length ? g.body[0][0] - g.x : 10) + '" y="' + hwY + '">' + core.esc(m.hw) + "</text>" : "";
+    var hwX = g.body.length ? g.body[0][0] - g.x : 10;
+    var hw = m.hw ? '<text class="hw" x="' + hwX + '" y="' + hwY + '">' + core.esc(m.hw) + "</text>" : "";
     if (S === "sketch") { delete boxW[id]; return hw; }
-    if (S === "clean") {
-      h = '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="10"/><path class="hd" d="M0 0V-10Q0 -20 10 -20H' + (W - 10) + "Q" + W + " -20 " + W + ' -10V0Z"/>';
-    } else if (S === "dark") {
-      h = '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '" rx="5"/><rect class="hd" x="0" y="-' + HH + '" width="' + W + '" height="' + HH + '"/><rect class="ab" x="0" y="-' + HH + '" width="3" height="' + HH + '"/>';
-    } else {
-      h = '<rect class="cd" x="0" y="-' + HH + '" width="' + W + '" height="' + (bottom + HH) + '"/><rect class="ab" x="0" y="-' + HH + '" width="' + W + '" height="3"/><path class="sep" d="M0 0H' + W + '"/>';
-    }
+    var h = frameHtml(S, W, bottom, HH);
     h += '<g class="ic" transform="translate(' + (W - 22.8) + ' -16.8) scale(.85)">' + icon(e.db ? "db" : "server") + "</g>";
     h += hw;
     var dv = function (y) { return '<path class="dv" d="M8 ' + y + "H" + (W - 8) + '"/>'; };
@@ -45,7 +48,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     if (m.os && g.ip.length) h += dv(g.ip[0][1] - g.y - 12.5);
     g.ip.forEach(function (p, k) {
       var w = Math.round(ipw[k] + 10);
-      h += '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x - 5) + '" y="' + (p[1] - g.y - 11) + '" width="' + w + '" height="15" rx="' + (S === "clean" ? 8 : S === "dark" ? 3 : 0) + '"/>';
+      h += '<rect class="ip" data-i="' + k + '" x="' + (p[0] - g.x - 5) + '" y="' + (p[1] - g.y - 11) + '" width="' + w + '" height="15" rx="' + ({ clean: 8, dark: 3 }[S] ?? 0) + '"/>';
     });
     return h;
   }
@@ -67,7 +70,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
       if (o === undefined) return;
       var t = els[o].querySelector("text"), r = els[o].querySelector("rect");
       r.setAttribute("width", Math.round(measure(t, t.textContent.length, ctx.style === "sketch" ? 5.6 : 5.2) + 8));
-      r.setAttribute("rx", ctx.style === "clean" ? 6 : ctx.style === "dark" ? 3 : ctx.style === "sketch" ? 2 : 0);
+      r.setAttribute("rx", { clean: 6, dark: 3, sketch: 2 }[ctx.style] ?? 0);
     });
     pillW = {};
     Object.keys(D.idx.edges).forEach(function (k) {
@@ -87,7 +90,9 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     var ys = function (a) { return a.map(function (p) { return p[1]; }); };
     var top = g.ip.length ? Math.min.apply(null, ys(g.ip)) - g.y - 11 : g.h - 3;
     var floor = g.body.length ? Math.max.apply(null, ys(g.body)) - g.y + 4 : 2;
-    var lx = g.ip.length ? g.ip[0][0] : g.body.length ? g.body[0][0] : g.title[0];
+    var lx = g.title[0];
+    if (g.ip.length) lx = g.ip[0][0];
+    else if (g.body.length) lx = g.body[0][0];
     var y = top - 3 - 12, fits = y >= floor + 1;
     els[o].setAttribute("transform", "translate(" + (lx - 5) + " " + (g.y + y) + ")");
     els[o].setAttribute("visibility", fits ? "visible" : "hidden");
@@ -125,7 +130,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     Object.keys(D.idx.edges).forEach(function (k) {
       var e = D.idx.edges[k];
       if (e.l < 0) return;
-      var p = els[e.lp], r = ctx.routes && ctx.routes[k], l = r && r.label;
+      var p = els[e.lp], r = ctx.routes?.[k], l = r?.label;
       if (!l) return;
       p.setAttribute("x", l[0] - 7);
       p.setAttribute("y", l[1] - 12);
@@ -135,17 +140,17 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
   }
 
   function setStyle(s, persist) {
-    if (STYLES.indexOf(s) < 0) s = "clean";
+    if (!STYLES.includes(s)) s = "clean";
     ctx.style = s;
-    document.documentElement.setAttribute("data-style", s);
+    document.documentElement.dataset.style = s;
     STYLES.forEach(function (x) { svg.classList.remove("s-" + x); });
     svg.classList.add("s-" + s);
-    [].forEach.call(document.querySelectorAll(".lks"), function (k) {
+    document.querySelectorAll(".lks").forEach(function (k) {
       STYLES.forEach(function (x) { k.classList.remove("s-" + x); });
       k.classList.add("s-" + s);
     });
-    [].forEach.call(document.querySelectorAll("#ss button"), function (b) {
-      b.setAttribute("aria-pressed", b.getAttribute("data-s") === s ? "true" : "false");
+    document.querySelectorAll("#ss button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.dataset.s === s ? "true" : "false");
     });
     rebuildChrome();
     if (hooks.fit && s !== "sketch") hooks.fit();

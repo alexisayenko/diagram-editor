@@ -51,10 +51,11 @@ export function resolveTypes({ clusters, nodes, classDefs, classes, types }, lay
     const ty = tys[0];
     if (ty && !typeColors[ty]) typeProblems.push(`${key}: server type "${ty}" has no classDef in diagram.mmd`);
     const prop = mods.includes("proposed");
-    ent[key] = { ...base, ty, prop, tk: prop ? "proposed" : ty, tag: ty ? TYPES[ty].tag + (prop ? " · PROPOSED" : "") : "" };
+    const tag = ty ? TYPES[ty].tag + (prop ? " · PROPOSED" : "") : "";
+    ent[key] = { ...base, ty, prop, tk: prop ? "proposed" : ty, tag };
   };
   for (const c of clusters.values()) addEnt("c:" + c.id, c.id, { title: c.title, cl: null, db: false });
-  for (const n of nodes.values()) if (!layout.nodes[n.id].hidden) addEnt("n:" + n.id, n.id, { title: n.title, cl: n.cluster, db: n.db, body: n.body, ip: n.ip, ...(n.hwc && n.hwc.length ? { hwc: n.hwc } : {}) });
+  for (const n of nodes.values()) if (!layout.nodes[n.id].hidden) addEnt("n:" + n.id, n.id, { title: n.title, cl: n.cluster, db: n.db, body: n.body, ip: n.ip, ...(n.hwc?.length ? { hwc: n.hwc } : {}) });
   if (typeProblems.length) fail("\n  " + typeProblems.join("\n  "));
 
   const used = new Set(Object.values(ent).map((e) => e.tk));

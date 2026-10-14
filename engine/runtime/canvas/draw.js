@@ -10,8 +10,13 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
 
   try {
     var p = JSON.parse(core.lsGet("pen"));
-    if (p && COLORS.indexOf(p.color) >= 0 && WIDTHS.indexOf(p.width) >= 0) pen = p;
-  } catch (e) {}
+    if (p && COLORS.includes(p.color) && WIDTHS.includes(p.width)) pen = p;
+  } catch (e) { /* unreadable stored pen: keep the default */ }
+
+  function inField(t) {
+    var tag = t?.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!t?.isContentEditable;
+  }
 
   function list() { return hist.current(); }
   function currentTool() { return tool; }
@@ -34,7 +39,7 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     tool = t;
     svg.classList.toggle("draw-pencil", t === "pencil");
     svg.classList.toggle("draw-eraser", t === "eraser");
-    [].forEach.call(document.querySelectorAll("#dtl [data-t]"), function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-t") === t)); });
+    document.querySelectorAll("#dtl [data-t]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-t") === t)); });
     $("dpo").hidden = t !== "pencil";
     clearHot();
   }
@@ -44,16 +49,16 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     paintPen();
   }
   function paintPen() {
-    [].forEach.call(document.querySelectorAll("#dpo [data-c]"), function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-c") === pen.color)); });
-    [].forEach.call(document.querySelectorAll("#dpo [data-w]"), function (b) { b.setAttribute("aria-pressed", String(+b.getAttribute("data-w") === pen.width)); });
+    document.querySelectorAll("#dpo [data-c]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-c") === pen.color)); });
+    document.querySelectorAll("#dpo [data-w]").forEach(function (b) { b.setAttribute("aria-pressed", String(+b.getAttribute("data-w") === pen.width)); });
   }
 
   function undo() { if (hist.canUndo()) show(hist.undo()); }
   function redo() { if (hist.canRedo()) show(hist.redo()); }
 
-  function scale() { var m = svg.getScreenCTM(); return m && m.a ? m.a : 1; }
+  function scale() { var m = svg.getScreenCTM(); return m?.a ? m.a : 1; }
   function clearHot() { if (hot) { hot.classList.remove("hot"); hot = null; } }
-  function paths() { return [].slice.call(layer.children); }
+  function paths() { return Array.from(layer.children); }
 
   function eraseAt(e) {
     var pt = model.point(e), l = erasing.work, i = drawKit.hitIndex(l, pt.x, pt.y, ERASER_PX / scale());
@@ -80,7 +85,7 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     e.preventDefault();
     e.stopImmediatePropagation();
     var pt = model.point(e);
-    try { svg.setPointerCapture(e.pointerId); } catch (x) {}
+    try { svg.setPointerCapture(e.pointerId); } catch (error_) { /* capture is optional */ }
     if (tool === "eraser") {
       clearHot();
       erasing = { id: e.pointerId, work: list(), changed: false };
@@ -142,8 +147,7 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
   svg.addEventListener("dblclick", swallowClick, true);
 
   document.addEventListener("keydown", function (e) {
-    var t = e.target, tag = t && t.tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+    if (inField(e.target)) return;
     var k = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && !e.altKey && (k === "z" || k === "y")) {
       if (cur || erasing) return;
@@ -155,14 +159,14 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
   });
 
   $("dtl").addEventListener("click", function (e) {
-    var b = e.target.closest && e.target.closest("button");
+    var b = e.target.closest?.("button");
     if (!b) return;
     if (b.id === "dtu") undo();
     else if (b.id === "dtr") redo();
     else if (b.getAttribute("data-t")) setTool(b.getAttribute("data-t"));
   });
   $("dpo").addEventListener("click", function (e) {
-    var b = e.target.closest && e.target.closest("button");
+    var b = e.target.closest?.("button");
     if (!b) return;
     if (b.getAttribute("data-c")) setPen(b.getAttribute("data-c"), pen.width);
     else if (b.getAttribute("data-w")) setPen(pen.color, +b.getAttribute("data-w"));

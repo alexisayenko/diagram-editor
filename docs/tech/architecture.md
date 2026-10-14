@@ -113,3 +113,12 @@ CSS (`css/svg/*` is also embedded in exports):
 ## Local data
 
 Real diagram data never enters this repo. Keep it outside the checkout, or under `/local/` (git-ignored, along with `*.private.*`). The engine accepts any absolute folder path (`node engine/build.mjs <dir>`). Everything committed under `examples/` is fictional (RFC 5737 IPs, `example.test` hosts, generic service names).
+
+## Static analysis scope
+
+`.sonarcloud.properties` (read by SonarCloud automatic analysis) excludes the
+generated outputs `diagram.html` and `examples/**/*.html` (and the exported
+`.excalidraw` scenes) from analysis, so issues and duplication are measured on
+hand-written source only. Engine tests and examples are excluded from
+duplication checks (`sonar.cpd.exclusions`). Exclusions take effect only after
+the next analysis, which runs on push.

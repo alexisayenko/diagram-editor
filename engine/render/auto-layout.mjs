@@ -8,8 +8,12 @@ export function autoLayoutKit(geometry) {
   var HEAD = 20, PAD = 16, TOP = 40, GAP = 20, RGAP = 60, ORIGIN = 20, MAXW = 1200, COLS = 3, EMPTY_W = 220, EMPTY_H = 120;
 
   function r1(v) { return Math.round(v * 10) / 10; }
-  function range(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
-  function dup(o) { return JSON.parse(JSON.stringify(o)); }
+  function range(n) {
+    var a = [];
+    for (var i = 0; i < n; i++) a.push(i);
+    return a;
+  }
+  function dup(o) { return structuredClone(o); }
 
   // Text rows above the IP pills: body lines, hardware strip, OS pill.
   function rows(t) { return t.nb + (t.hw ? 1 : 0) + (t.os ? 1 : 0); }

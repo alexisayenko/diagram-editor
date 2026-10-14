@@ -3,13 +3,13 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
 
   function applyToggles() {
     core.ents.forEach(function (el) {
-      var tk = el.getAttribute("data-tk");
-      if (tk === null) return;
+      var tk = el.dataset.tk;
+      if (tk === undefined) return;
       var off = tk.split(" ").some(function (k) { return ctx.hidden[k]; });
       el.classList.toggle("off", off);
     });
-    [].forEach.call(document.querySelectorAll("#lb .sw[data-k]"), function (b) {
-      b.setAttribute("aria-checked", ctx.hidden[b.getAttribute("data-k")] ? "false" : "true");
+    document.querySelectorAll("#lb .sw[data-k]").forEach(function (b) {
+      b.setAttribute("aria-checked", ctx.hidden[b.dataset.k] ? "false" : "true");
     });
   }
   function loadToggles() {
@@ -31,9 +31,9 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
     var ap = D.types.filter(function (t) { return !t.infra; }), inf = D.types.filter(function (t) { return t.infra; });
     lg.innerHTML = "<b>Server types</b>" + ap.map(sw).join("") + (inf.length ? "<b>Other infrastructure</b>" + inf.map(sw).join("") : "") + '<button type="button" class="reset">Show all</button>';
     lg.addEventListener("click", function (e) {
-      var b = e.target.closest && e.target.closest(".sw");
-      if (b) { toggle(b.getAttribute("data-k")); return; }
-      if (e.target.closest && e.target.closest(".reset")) showAll();
+      var b = e.target.closest?.(".sw");
+      if (b) { toggle(b.dataset.k); return; }
+      if (e.target.closest?.(".reset")) showAll();
     });
     var lk = document.querySelector("#lp .lk");
     // Connection switches (levels "lv:server" / "lv:process", groups "g:<id>"): a connection shows only while all its switches are on.
@@ -41,8 +41,8 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
       return '<button type="button" class="sw es" role="switch" aria-checked="true" data-k="' + g.k + '"' + (g.g ? ' data-g="' + g.g + '"' : "") + '><span class="trk"></span><i class="ln"></i><span class="t">' + esc(g.label) + "</span></button>";
     }).join(""));
     lk.addEventListener("click", function (e) {
-      var b = e.target.closest && e.target.closest(".sw.es");
-      if (b) toggle(b.getAttribute("data-k"));
+      var b = e.target.closest?.(".sw.es");
+      if (b) toggle(b.dataset.k);
     });
     lk.insertAdjacentHTML("beforeend", '<button type="button" id="lbl" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Connection labels</span></button>');
     $("lbl").addEventListener("click", function () { setLabels(!ctx.labels, true); });

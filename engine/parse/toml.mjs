@@ -3,15 +3,15 @@
 import { parseNotes } from "./notes.mjs";
 import { mergeTypes, RESERVED_TYPES } from "./types.mjs";
 export function ipProblem(ip) {
-  const m = typeof ip === "string" && ip.match(/^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/);
+  const m = typeof ip === "string" && /^(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})$/.exec(ip);
   return !m || m[1].split(".").some((n) => +n > 255) || +m[2] > 32 ? `invalid IPv4 CIDR '${ip}'` : null;
 }
 export function dnsProblem(name) {
-  const ok = typeof name === "string" && name.length <= 253 && /^[A-Za-z0-9_]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?(\.[A-Za-z0-9_]([A-Za-z0-9_-]{0,61}[A-Za-z0-9_])?)*\.?$/.test(name);
+  const ok = typeof name === "string" && name.length <= 253 && /^\w([\w-]{0,61}\w)?(\.\w([\w-]{0,61}\w)?)*\.?$/.test(name);
   return ok ? null : `invalid host name '${name}'`;
 }
 export function parseToml(src, spans = null) {
-  src = src.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+  src = src.replace(/^\uFEFF/, "").replaceAll("\r\n", "\n");
   let p = 0, table, current = null;
   const root = Object.create(null);
   table = root;
@@ -40,7 +40,7 @@ export function parseToml(src, spans = null) {
         out += quote.repeat(run);
         continue;
       }
-      if (c === "\n" ? !multi : c.charCodeAt(0) < 32 && !(multi && c === "\t")) error("strings must be on one line; use \\n or a multi-line string");
+      if (c === "\n" ? !multi : c.codePointAt(0) < 32 && !(multi && c === "\t")) error(String.raw`strings must be on one line; use \n or a multi-line string`);
       if (c !== "\\" || quote === "'") { out += c; continue; }
       if (multi && /[ \t\n]/.test(src[p])) {
         let q = p;
@@ -52,7 +52,7 @@ export function parseToml(src, spans = null) {
       const e = src[p++], escapes = { b: "\b", t: "\t", n: "\n", f: "\f", r: "\r", '"': '"', "\\": "\\" };
       if (Object.hasOwn(escapes, e)) out += escapes[e];
       else if (e === "u" || e === "U") {
-        const n = e === "u" ? 4 : 8, h = src.slice(p, p + n), v = parseInt(h, 16);
+        const n = e === "u" ? 4 : 8, h = src.slice(p, p + n), v = Number.parseInt(h, 16);
         if (h.length !== n || !/^[0-9a-f]+$/i.test(h) || v > 0x10ffff || (v >= 0xd800 && v <= 0xdfff)) error("invalid Unicode escape");
         out += String.fromCodePoint(v); p += n;
       } else error("unsupported string escape");
@@ -86,8 +86,14 @@ export function parseToml(src, spans = null) {
       if (spans && spans.firstTable === undefined) spans.firstTable = p;
       p += m[0].length;
       if (Object.hasOwn(root, m[1]) && !Array.isArray(root[m[1]])) error("table name already used as a key");
-      table = Object.create(null); (root[m[1]] ||= []).push(table);
-      if (spans) (spans.tables ||= []).push(current = { name: m[1], start: p - m[0].length, keys: {}, table });
+      table = Object.create(null);
+      root[m[1]] ||= [];
+      root[m[1]].push(table);
+      if (spans) {
+        current = { name: m[1], start: p - m[0].length, keys: {}, table };
+        spans.tables ||= [];
+        spans.tables.push(current);
+      }
     } else {
       const m = src.slice(p).match(/^([a-z][a-z0-9_]*)[ \t]*=/), start = p;
       if (!m) error("expected key = value");
@@ -116,7 +122,7 @@ export function parseNoteText(text, at = "note", strict = false) {
   if (dated && !/^\s*Date:\s*\S/.test(rest[0])) fail("empty Date");
   const body = rest.slice(dated ? 1 : 0).join("\n");
   if (!body.trim()) fail("needs a title line and body text");
-  if (/^\s*#/m.test(body)) fail("body lines cannot start with #");
+  if (/^[^\S\n]*#/m.test(body)) fail("body lines cannot start with #");
   return { ...parseNotes(`## ${head}\n${dated ? "" : "Date: Note\n\n"}${rest.join("\n")}`)[0], text: text.trim() };
 }
 
@@ -149,7 +155,7 @@ export function mergeFolder(input) {
   const fail = (m) => { throw new Error("TOML: " + m); };
   if (!files.has("topology.toml")) fail("topology.toml is missing");
   const root = Object.create(null), servers = [];
-  for (const name of [...files.keys()].sort()) {
+  for (const name of [...files.keys()].sort((a, b) => (a < b ? -1 : Number(a > b)))) {
     const text = files.get(name), server = name.startsWith(SERVER_DIR) && name.slice(SERVER_DIR.length).match(/^([^/]+)\.toml$/);
     if (name === NETWORKS_FILE) continue;
     if (server) {
@@ -172,9 +178,19 @@ export function tomlModel(files, folder = "diagram", nets = null) {
     const unknown = Object.keys(o).filter((k) => !allowed.includes(k));
     if (unknown.length) fail(`${at}: unknown key ${unknown.join(", ")}`);
   }
-  function str(v, at) { if (typeof v !== "string" || !v.trim()) fail(`${at} must be a non-empty string`); return v; }
-  function list(v, at) { if (v === undefined) return []; if (!Array.isArray(v) || v.some((s) => typeof s !== "string" || !s.trim())) fail(`${at} must be an array of non-empty strings`); return v; }
-  function bool(v, at) { if (v !== undefined && typeof v !== "boolean") fail(`${at} must be true or false`); return v || false; }
+  function str(v, at) {
+    if (typeof v !== "string" || !v.trim()) fail(`${at} must be a non-empty string`);
+    return v;
+  }
+  function list(v, at) {
+    if (v === undefined) return [];
+    if (!Array.isArray(v) || v.some((s) => typeof s !== "string" || !s.trim())) fail(`${at} must be an array of non-empty strings`);
+    return v;
+  }
+  function bool(v, at) {
+    if (v !== undefined && typeof v !== "boolean") fail(`${at} must be true or false`);
+    return v || false;
+  }
   keys(t, ["id", "title", "notes", "server_types", "regions", "service_groups", "servers", "connections", "documents"], "diagram");
   for (const key of ["server_types", "regions", "service_groups", "servers", "connections", "documents"]) {
     if (t[key] !== undefined && (!Array.isArray(t[key]) || t[key].some((v) => !v || typeof v !== "object" || Array.isArray(v)))) fail(`${key} must use [[${key}]] tables`);
@@ -191,14 +207,16 @@ export function tomlModel(files, folder = "diagram", nets = null) {
   const id = t.id ?? folder;
   if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) fail("id must contain lowercase letters, digits and hyphens");
   const config = { id, title: str(t.title, "title"), groups: {}, processes: {} };
-  const noteList = t.notes === undefined ? [] : typeof t.notes === "string" ? [t.notes] : t.notes;
+  let noteList = t.notes;
+  if (noteList === undefined) noteList = [];
+  else if (typeof noteList === "string") noteList = [noteList];
   if (!Array.isArray(noteList) || noteList.some((n) => typeof n !== "string" || !n.trim())) fail("notes must be a non-empty string or an array of non-empty strings");
   const notes = noteList.map((n, i) => parseNoteText(n, `notes[${i + 1}]`));
   const docs = (t.documents || []).map((d, i) => {
     const at = "documents[" + (i + 1) + "]";
     keys(d, ["title", "url", "description"], at);
     const url = str(d.url, at + ".url");
-    if (!/^https?:[/][/][^\s]+$/.test(url)) fail(at + ".url must be an http or https URL");
+    if (!/^https?:\/\/\S+$/.test(url)) fail(at + ".url must be an http or https URL");
     if (d.description !== undefined && typeof d.description !== "string") fail(at + ".description must be a string");
     return { title: str(d.title, at + ".title").trim(), url, desc: (d.description || "").trim() };
   });
@@ -221,7 +239,10 @@ export function tomlModel(files, folder = "diagram", nets = null) {
   });
   const TYPES = mergeTypes(custom);
   for (const c of custom) if (!TYPES[c.id].label || !TYPES[c.id].color) fail(`server_types '${c.id}': a new type needs label and color`);
-  function type(v, at) { if (typeof v !== "string" || !Object.hasOwn(TYPES, v)) fail(`${at}: server_type must be one of ${Object.keys(TYPES).join(", ")}`); return v; }
+  function type(v, at) {
+    if (typeof v !== "string" || !Object.hasOwn(TYPES, v)) fail(`${at}: server_type must be one of ${Object.keys(TYPES).join(", ")}`);
+    return v;
+  }
   const model = { types: custom, clusters: new Map(), nodes: new Map(), edges: [], linkStyles: new Map(), classDefs: new Map(), classes: new Map() };
   const sections = Object.create(null), used = new Set();
   function entity(o, at) {
@@ -257,9 +278,9 @@ export function tomlModel(files, folder = "diagram", nets = null) {
     classes(eid, ty, bool(s.proposed, eid + ".proposed"));
     for (const k of ["os", "hardware", "cpu", "ram", "swap", "disk", "role"]) if (s[k] !== undefined) str(s[k], eid + "." + k);
     if (s.details !== undefined && typeof s.details !== "string") fail(`${eid}.details must be a string`);
-    const dns = list(s.dns, eid + ".dns"), jobs = list(s.jobs, eid + ".jobs"), rmi = list(s.rmi_services, eid + ".rmi_services"), units = list(s.systemd_services, eid + ".systemd_services");
+    const dns = list(s.dns, eid + ".dns"), rmi = list(s.rmi_services, eid + ".rmi_services"), units = list(s.systemd_services, eid + ".systemd_services");
     for (const name of dns) { const problem = dnsProblem(name); if (problem) fail(`${eid}: ${problem}`); }
-    const rows = [["OS", s.os], ["Hardware", s.hardware], ["CPU", s.cpu], ["RAM", s.ram], ["Swap", s.swap], ["Disk", s.disk], ["Role", s.role]].filter(([, v]) => v).map(([k, v]) => `| ${k} | ${v.replace(/\|/g, "/")} |`);
+    const rows = [["OS", s.os], ["Hardware", s.hardware], ["CPU", s.cpu], ["RAM", s.ram], ["Swap", s.swap], ["Disk", s.disk], ["Role", s.role]].filter(([, v]) => v).map(([k, v]) => `| ${k} | ${v.replaceAll("|", "/")} |`);
     const block = (head, items) => items.length ? `## ${head}\n\n${items.map((i) => "- " + i).join("\n")}\n\n` : "";
     const groupedBlocks = (us, gs) => groupUnits(us, gs).map(([h, a]) => block(h, a)).join("");
     sections[title] = (rows.length ? `| Key | Value |\n|---|---|\n${rows.join("\n")}\n\n` : "") + block("IPs", nets ? ips.map((ip) => `${ip} — ${(({ name, cidr } = nets.of(ip) ?? {}) => cidr ? name || cidr : "unassigned network")()}`) : ips) + block("DNS", dns) + block("RMI services", rmi) + groupedBlocks(units, groups) + (s.details || "");
@@ -330,7 +351,7 @@ export function hardwareStrip(s) {
 
 // Glob with `*` (any run) and `?` (one character), case-insensitive, matched against the whole service name.
 export function globRegExp(p) {
-  return new RegExp("^" + p.trim().replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".") + "$", "i");
+  return new RegExp("^" + p.trim().replaceAll(/[.+^${}()|[\]\\]/g, String.raw`\$&`).replaceAll("*", ".*").replaceAll("?", ".") + "$", "i");
 }
 // Splits systemd units by `[[service_groups]]` (first matching group wins, name compared without ".service"):
 // [[label, units], ...] in group order; unmatched units are intentionally dropped; with no groups the single "systemd services" list; empty sections omitted.

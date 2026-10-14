@@ -7,7 +7,7 @@ const MIN_GAP = 20, CLUSTER_PAD = 16;
 const EDGE_KEYS = ["via", "label", "firewall"];
 const kit = geometryKit();
 
-const isPt = (p) => Array.isArray(p) && p.length === 2 && p.every((v) => typeof v === "number" && isFinite(v));
+const isPt = (p) => Array.isArray(p) && p.length === 2 && p.every((v) => typeof v === "number" && Number.isFinite(v));
 
 // Checks ids and keys, then normalises geometry in place (text x, box widths, regions grown around their servers) and checks spacing.
 export function validateGeometry({ clusters, nodes, edges }, layout, meta) {

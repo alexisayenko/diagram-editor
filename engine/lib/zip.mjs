@@ -12,10 +12,16 @@ let table = null;
 export function crc32(bytes) {
   if (!table) {
     table = new Uint32Array(256);
-    for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; table[n] = c >>> 0; }
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) {
+        c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      }
+      table[n] = c >>> 0;
+    }
   }
   let c = 0xffffffff;
-  for (let i = 0; i < bytes.length; i++) c = table[(c ^ bytes[i]) & 255] ^ (c >>> 8);
+  for (const b of bytes) c = table[(c ^ b) & 255] ^ (c >>> 8);
   return (c ^ 0xffffffff) >>> 0;
 }
 
@@ -84,59 +90,85 @@ export function entryProblem(name) {
 
 const ignorable = (name) => name.startsWith("__MACOSX/") || name.split("/").some((s) => s !== ".." && s !== "." && s.startsWith("."));
 
+const SIG_EOCD = 0x06054b50, SIG_CENTRAL = 0x02014b50, SIG_LOCAL = 0x04034b50, NOT_ZIP = "Not a valid zip file.", ZIP64 = "Zip64 archives are not supported.";
+
+function findEocd(bytes, dv) {
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 22 - 65535); i--) {
+    if (dv.getUint32(i, true) === SIG_EOCD) return i;
+  }
+  return -1;
+}
+
+function readHeader(dv, bytes, p, eocd, dec) {
+  if (p + 46 > eocd || dv.getUint32(p, true) !== SIG_CENTRAL) throw new Error(NOT_ZIP);
+  const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), next = p + 46 + nl + xl + cl;
+  if (next > eocd) throw new Error(NOT_ZIP);
+  let name;
+  try { name = dec.decode(bytes.subarray(p + 46, p + 46 + nl)); } catch (_) { throw new Error("An entry name is not valid UTF-8."); }
+  return {
+    name, next, flags: dv.getUint16(p + 8, true), method: dv.getUint16(p + 10, true), crc: dv.getUint32(p + 16, true),
+    csize: dv.getUint32(p + 20, true), usize: dv.getUint32(p + 24, true), local: dv.getUint32(p + 42, true),
+  };
+}
+
+function acceptEntry(h, seen, maxFile) {
+  const { name, flags, method, crc, csize, usize, local } = h;
+  if (name.endsWith("/")) return null;
+  if (flags & 1) throw new Error("Encrypted zip files are not supported.");
+  if (csize === 0xffffffff || usize === 0xffffffff || local === 0xffffffff) throw new Error(ZIP64);
+  if (method !== 0 && method !== 8) throw new Error("Unsupported compression method " + method + " in '" + name + "' (only stored and deflate).");
+  if (ignorable(name)) return null;
+  const problem = entryProblem(name);
+  if (problem) throw new Error("Rejected archive: " + problem + ".");
+  if (seen.has(name)) throw new Error("Rejected archive: duplicate entry '" + name + "'.");
+  seen.add(name);
+  if (usize > maxFile) throw new Error("'" + name + "' is larger than " + maxFile / 1024 / 1024 + " MB.");
+  return { name, method, crc, csize, usize, local };
+}
+
+async function unpackEntry(bytes, dv, j, cdAt, maxFile) {
+  if (j.local + 30 > cdAt || dv.getUint32(j.local, true) !== SIG_LOCAL) throw new Error(NOT_ZIP);
+  const start = j.local + 30 + dv.getUint16(j.local + 26, true) + dv.getUint16(j.local + 28, true);
+  if (start + j.csize > cdAt) throw new Error(NOT_ZIP);
+  const raw = bytes.subarray(start, start + j.csize);
+  let data;
+  if (j.method === 0) {
+    if (raw.length > maxFile) throw new Error("'" + j.name + "' is larger than " + maxFile / 1024 / 1024 + " MB.");
+    data = raw;
+  } else {
+    if (typeof DecompressionStream !== "function") throw new Error("This browser cannot unpack compressed zip entries.");
+    try { data = await pipe(raw, new DecompressionStream("deflate-raw"), Math.min(maxFile, j.usize)); }
+    catch (e) { throw new Error("'" + j.name + "' could not be unpacked: " + e.message + "."); }
+  }
+  if (data.length !== j.usize || crc32(data) !== j.crc) throw new Error("'" + j.name + "' is damaged (size or checksum mismatch).");
+  return data;
+}
+
 // bytes: Uint8Array of a .diag.zip -> Map of relative path -> Uint8Array. Throws Error with a readable reason; nothing partial is returned.
 export async function readZip(bytes, limits = {}) {
   const maxEntries = limits.entries ?? MAX_ENTRIES, maxFile = limits.file ?? MAX_FILE_BYTES, maxTotal = limits.total ?? MAX_TOTAL_BYTES;
   if (!(bytes instanceof Uint8Array)) throw new Error("Not a zip file.");
   if (bytes.length > MAX_ARCHIVE_BYTES) throw new Error("The archive is larger than " + MAX_ARCHIVE_BYTES / 1024 / 1024 + " MB.");
-  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  let eocd = -1;
-  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 22 - 65535); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
-  if (eocd < 0) throw new Error("Not a valid zip file.");
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), eocd = findEocd(bytes, dv);
+  if (eocd < 0) throw new Error(NOT_ZIP);
   const disk = dv.getUint16(eocd + 4, true), cdDisk = dv.getUint16(eocd + 6, true), count = dv.getUint16(eocd + 10, true);
   const cdSize = dv.getUint32(eocd + 12, true), cdAt = dv.getUint32(eocd + 16, true);
   if (disk !== 0 || cdDisk !== 0 || dv.getUint16(eocd + 8, true) !== count) throw new Error("Multi-disk zip files are not supported.");
-  if (count === 0xffff || cdSize === 0xffffffff || cdAt === 0xffffffff) throw new Error("Zip64 archives are not supported.");
+  if (count === 0xffff || cdSize === 0xffffffff || cdAt === 0xffffffff) throw new Error(ZIP64);
   if (count > maxEntries) throw new Error("The archive has more than " + maxEntries + " entries.");
-  if (cdAt + cdSize > eocd) throw new Error("Not a valid zip file.");
+  if (cdAt + cdSize > eocd) throw new Error(NOT_ZIP);
   const dec = new TextDecoder("utf-8", { fatal: true }), jobs = [], seen = new Set();
   let p = cdAt;
   for (let i = 0; i < count; i++) {
-    if (p + 46 > eocd || dv.getUint32(p, true) !== 0x02014b50) throw new Error("Not a valid zip file.");
-    const flags = dv.getUint16(p + 8, true), method = dv.getUint16(p + 10, true), crc = dv.getUint32(p + 16, true);
-    const csize = dv.getUint32(p + 20, true), usize = dv.getUint32(p + 24, true), nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
-    const local = dv.getUint32(p + 42, true);
-    if (p + 46 + nl + xl + cl > eocd) throw new Error("Not a valid zip file.");
-    let name;
-    try { name = dec.decode(bytes.subarray(p + 46, p + 46 + nl)); } catch (_) { throw new Error("An entry name is not valid UTF-8."); }
-    p += 46 + nl + xl + cl;
-    if (name.endsWith("/")) continue;
-    if (flags & 1) throw new Error("Encrypted zip files are not supported.");
-    if (csize === 0xffffffff || usize === 0xffffffff || local === 0xffffffff) throw new Error("Zip64 archives are not supported.");
-    if (method !== 0 && method !== 8) throw new Error("Unsupported compression method " + method + " in '" + name + "' (only stored and deflate).");
-    if (ignorable(name)) continue;
-    const problem = entryProblem(name);
-    if (problem) throw new Error("Rejected archive: " + problem + ".");
-    if (seen.has(name)) throw new Error("Rejected archive: duplicate entry '" + name + "'.");
-    seen.add(name);
-    if (usize > maxFile) throw new Error("'" + name + "' is larger than " + maxFile / 1024 / 1024 + " MB.");
-    jobs.push({ name, method, crc, csize, usize, local });
+    const h = readHeader(dv, bytes, p, eocd, dec);
+    p = h.next;
+    const job = acceptEntry(h, seen, maxFile);
+    if (job) jobs.push(job);
   }
   const out = new Map();
   let total = 0;
   for (const j of jobs) {
-    if (j.local + 30 > cdAt || dv.getUint32(j.local, true) !== 0x04034b50) throw new Error("Not a valid zip file.");
-    const start = j.local + 30 + dv.getUint16(j.local + 26, true) + dv.getUint16(j.local + 28, true);
-    if (start + j.csize > cdAt) throw new Error("Not a valid zip file.");
-    const raw = bytes.subarray(start, start + j.csize);
-    let data;
-    if (j.method === 0) { if (raw.length > maxFile) throw new Error("'" + j.name + "' is larger than " + maxFile / 1024 / 1024 + " MB."); data = raw; }
-    else {
-      if (typeof DecompressionStream !== "function") throw new Error("This browser cannot unpack compressed zip entries.");
-      try { data = await pipe(raw, new DecompressionStream("deflate-raw"), Math.min(maxFile, j.usize)); }
-      catch (e) { throw new Error("'" + j.name + "' could not be unpacked: " + e.message + "."); }
-    }
-    if (data.length !== j.usize || crc32(data) !== j.crc) throw new Error("'" + j.name + "' is damaged (size or checksum mismatch).");
+    const data = await unpackEntry(bytes, dv, j, cdAt, maxFile);
     total += data.length;
     if (total > maxTotal) throw new Error("The archive unpacks to more than " + maxTotal / 1024 / 1024 + " MB.");
     out.set(j.name, new Uint8Array(data));

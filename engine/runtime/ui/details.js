@@ -10,7 +10,8 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
     while (i < L.length) {
       var l = L[i], m;
       if (!l.trim()) { i++; continue; }
-      if ((m = l.match(/^(#{1,6})\s+(.*)$/))) { o.push("<h" + m[1].length + ">" + inline(m[2]) + "</h" + m[1].length + ">"); i++; continue; }
+      m = l.match(/^(#{1,6})\s+(.*)$/);
+      if (m) { o.push("<h" + m[1].length + ">" + inline(m[2]) + "</h" + m[1].length + ">"); i++; continue; }
       if (/^\s*\|/.test(l)) {
         var rows = [];
         while (i < L.length && /^\s*\|/.test(L[i])) { rows.push(L[i]); i++; }
@@ -47,15 +48,15 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
 
   function osRow(pn, os) {
     var cell = null;
-    [].forEach.call(pn.querySelectorAll("td:first-child"), function (td) {
+    pn.querySelectorAll("td:first-child").forEach(function (td) {
       if (!cell && td.textContent.trim() === "OS" && td.nextElementSibling) cell = td.nextElementSibling;
     });
     if (!cell) {
       pn.querySelector(".tg").insertAdjacentHTML("afterend", '<table class="po"><tbody><tr><td>OS</td><td>' + esc(os ? (os.d || os.v) : "TBD") + "</td></tr></tbody></table>");
       cell = pn.querySelector(".po td:last-child");
     }
-    if (os && os.d && os.d !== os.v) { cell.textContent = os.d; cell.title = os.v; }
-    if (os && os.eol) cell.insertAdjacentHTML("beforeend", ' <span class="eolb" title="End of standard support: ' + esc(os.eol) + '">EOL</span>');
+    if (os?.d && os.d !== os.v) { cell.textContent = os.d; cell.title = os.v; }
+    if (os?.eol) cell.insertAdjacentHTML("beforeend", ' <span class="eolb" title="End of standard support: ' + esc(os.eol) + '">EOL</span>');
   }
 
   // Network button after every IP with a network in D.ipNet (outside links); clicks are wired by ui/init.
@@ -75,7 +76,7 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
         frag.appendChild(document.createTextNode(s.slice(last, end)));
         b.type = "button";
         b.className = "nwd" + (core.ctx.net === j ? " on" : "");
-        b.setAttribute("data-n", j);
+        b.dataset.n = j;
         b.setAttribute("aria-pressed", core.ctx.net === j ? "true" : "false");
         b.setAttribute("aria-label", lbl);
         b.title = lbl;
@@ -91,7 +92,7 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
 
   // Hardware strip (value then label, e.g. "4 cpu · 8G ram", as on the card): after the first table of the section, else after the type tag.
   function hwStrip(pn, cells) {
-    if (!cells || !cells.length) return;
+    if (!cells?.length) return;
     var d = document.createElement("div");
     d.className = "hws";
     d.textContent = cells.map(function (c) { return c[1] + " " + c[0]; }).join(" 00b7 ");
@@ -122,7 +123,7 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
     if (key.charAt(0) === "n") hwStrip(pn, e.hwc);
     if (key.charAt(0) === "n") osRow(pn, e.os);
     netButtons(pn);
-    pn.setAttribute("data-ty", e.ty);
+    pn.dataset.ty = e.ty;
     if (core.hooks.panel) core.hooks.panel(key, pn);
   }
 

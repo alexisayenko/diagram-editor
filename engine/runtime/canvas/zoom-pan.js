@@ -4,7 +4,7 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
   var PAD = 20;
   function fit() {
     var b;
-    try { b = svg.getBBox(); } catch (e) { return; }
+    try { b = svg.getBBox(); } catch (error_) { return; }
     if (!(b.width > 0 && b.height > 0)) return;
     var x = Math.floor(b.x - PAD), y = Math.floor(b.y - PAD);
     var w = Math.ceil(b.x + b.width + PAD) - x, h = Math.ceil(b.y + b.height + PAD) - y;
@@ -17,9 +17,10 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
     var keep = Math.min(100 / k, 0.15 * (hi - lo));
     return Math.min(hi - keep + view / 2, Math.max(lo + keep - view / 2, c));
   }
+  function round2(v) { return Math.round(v * 100) / 100; }
   function applyZoom() {
     var b = Z.base;
-    var w = b[2] / Z.z, h = b[3] / Z.z, r = function (v) { return Math.round(v * 100) / 100; };
+    var w = b[2] / Z.z, h = b[3] / Z.z, r = round2;
     if (!Z.free) { Z.cx = b[0] + b[2] / 2; Z.cy = b[1] + b[3] / 2; }
     else {
       var rc = svg.getBoundingClientRect();
@@ -46,18 +47,19 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
   }
   function zoomFit() { Z.z = 1; Z.free = false; applyZoom(); }
   svg.addEventListener("wheel", function (e) {
-    if (e.target.closest && e.target.closest(".cp,#rc,#pn,#ta")) return;
+    if (e.target.closest?.(".cp,#rc,#pn,#ta")) return;
     e.preventDefault();
-    var dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1);
+    var lineH = e.deltaMode === 2 ? innerHeight : 1;
+    var dy = e.deltaY * (e.deltaMode === 1 ? 16 : lineH);
     zoomBy(Math.exp(-Math.max(-300, Math.min(300, dy)) * 0.002), model.point(e));
   }, { passive: false });
   svg.addEventListener("pointerdown", function (e) {
-    if (model.state.on || e.button > 0 || (e.target.closest && e.target.closest("[data-ent]"))) return;
+    if (model.state.on || e.button > 0 || e.target.closest?.("[data-ent]")) return;
     var m = svg.getScreenCTM();
     Z.pan = { x: e.clientX, y: e.clientY, cx: Z.cx, cy: Z.cy, k: m ? m.a : 1, id: e.pointerId };
     Z.panned = false;
     svg.classList.add("panning");
-    try { svg.setPointerCapture(e.pointerId); } catch (x) {}
+    try { svg.setPointerCapture(e.pointerId); } catch (error_) { /* capture is optional */ }
   });
   svg.addEventListener("pointermove", function (e) {
     var p = Z.pan;
@@ -80,8 +82,8 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function (co
     if (Z.panned) { Z.panned = false; e.stopPropagation(); }
   }, true);
   document.addEventListener("keydown", function (e) {
-    var t = e.target, tag = t && t.tagName;
-    if (e.ctrlKey || e.metaKey || e.altKey || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+    var t = e.target, tag = t?.tagName;
+    if (e.ctrlKey || e.metaKey || e.altKey || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t?.isContentEditable) return;
     if (e.key === "+" || e.key === "=") zoomBy(1.25);
     else if (e.key === "-" || e.key === "_") zoomBy(1 / 1.25);
     else if (e.key === "0") zoomFit();

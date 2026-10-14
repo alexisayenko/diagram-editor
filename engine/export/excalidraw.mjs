@@ -18,29 +18,40 @@ const MUTED = "#6b7280";
 const AMBER = "#b26a00";
 const FW_RED = "#d62728";
 const FW_PTS = [[-3.5, -11], [3.5, -6.6], [-3.5, -2.2], [3.5, 2.2], [-3.5, 6.6], [3.5, 11]];
+const LABEL_DX = [0, -10, 10, -20, 20, -40, 40, -60, 60, -80, 80, -100, 100, -120, 120];
+const LABEL_DY = [0, -14, 14, -24, 24, -34, 34];
+const LEGEND_W = 200;
+const LEGEND_PAD = 10;
 
 const r1 = (v) => Math.round(v * 10) / 10;
-const digest = (s) => createHash("sha1").update(s).digest();
+const digest = (s) => createHash("sha1").update(s).digest(); // NOSONAR: not security relevant, only derives stable element ids and seeds
 const mix = (hex, t) => {
-  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const c = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
   return "#" + c.map((v) => Math.round(v + (255 - v) * t).toString(16).padStart(2, "0")).join("");
 };
 const wrap = (s, max) => {
   const out = [];
   let cur = "";
   for (const w of s.split(/\s+/)) {
-    if (cur && (cur + " " + w).length > max) (out.push(cur), (cur = w));
-    else cur = cur ? cur + " " + w : w;
+    if (cur && (cur + " " + w).length > max) {
+      out.push(cur);
+      cur = w;
+    } else cur = cur ? cur + " " + w : w;
   }
   if (cur) out.push(cur);
   return out;
 };
 
-// Excalidraw scene for a diagram: same geometry as the view (fitted boxes, routed connections, label and firewall spots).
-export function renderExcalidraw({ config, model, layout, meta, routes, ent, typeList, typeColors, notes, edgeLabels, viewBox, drawings = [] }) {
-  const kit = geometryKit();
+const relativePoints = (pts) => {
+  const [x0, y0] = pts[0];
+  const rel = pts.map(([x, y]) => [r1(x - x0), r1(y - y0)]);
+  const xs = rel.map((p) => p[0]), ys = rel.map((p) => p[1]);
+  return { x0, y0, rel, w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+};
+
+// Element factories sharing one list and one duplicate-key guard.
+function createBuilder() {
   const els = [];
-  const byId = {};
   const used = new Set();
   const idOf = (key) => {
     const id = digest(key).toString("base64url").slice(0, 20);
@@ -48,7 +59,6 @@ export function renderExcalidraw({ config, model, layout, meta, routes, ent, typ
     used.add(id);
     return id;
   };
-  const gid = (key) => digest("group:" + key).toString("base64url").slice(0, 20);
 
   const base = (key, type, x, y, w, h, o = {}) => {
     const d = digest(key);
@@ -80,10 +90,12 @@ export function renderExcalidraw({ config, model, layout, meta, routes, ent, typ
       locked: false,
     };
     els.push(el);
-    byId[el.id] = el;
     return el;
   };
-  const bind = (container, child) => (container.boundElements ||= []).push({ id: child.id, type: child.type });
+  const bind = (container, child) => {
+    container.boundElements ||= [];
+    container.boundElements.push({ id: child.id, type: child.type });
+  };
 
   const rect = (key, x, y, w, h, o) => base(key, "rectangle", x, y, w, h, o);
   // top: y of the text box; baseline: SVG-style baseline (converted with the font's ascent).
@@ -91,7 +103,9 @@ export function renderExcalidraw({ config, model, layout, meta, routes, ent, typ
     const fs = o.fs || 12, ff = o.ff || SANS, lines = s.split("\n");
     const w = Math.max(...lines.map((l) => l.length)) * fs * CHAR_W[ff], h = lines.length * fs * LINE_H[ff];
     const top = o.top ?? o.baseline - fs * ASCENT[ff];
-    const x = o.align === "center" ? o.x - w / 2 : o.align === "right" ? o.x - w : o.x;
+    let x = o.x;
+    if (o.align === "center") x = o.x - w / 2;
+    else if (o.align === "right") x = o.x - w;
     const el = base(key, "text", x, top, w, h, { stroke: o.color || INK, groups: o.groups });
     Object.assign(el, {
       text: s,
@@ -108,12 +122,10 @@ export function renderExcalidraw({ config, model, layout, meta, routes, ent, typ
     return el;
   };
   const linear = (key, type, pts, o) => {
-    const [x0, y0] = pts[0];
-    const rel = pts.map(([x, y]) => [r1(x - x0), r1(y - y0)]);
-    const xs = rel.map((p) => p[0]), ys = rel.map((p) => p[1]);
-    const el = base(key, type, x0, y0, Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), o);
+    const p = relativePoints(pts);
+    const el = base(key, type, p.x0, p.y0, p.w, p.h, o);
     Object.assign(el, {
-      points: rel,
+      points: p.rel,
       lastCommittedPoint: null,
       startBinding: null,
       endBinding: null,
@@ -123,19 +135,60 @@ export function renderExcalidraw({ config, model, layout, meta, routes, ent, typ
     });
     return el;
   };
+  return { els, base, bind, rect, text, linear };
+}
 
-  const colorOf = (ty) => typeColors[ty] || MUTED;
-  const shapeOf = {};
-
+function addClusters(cx) {
+  const { b, model, layout, ent, colorOf, shapeOf } = cx;
   for (const c of model.clusters.values()) {
     const g = layout.clusters[c.id], e = ent["c:" + c.id], col = colorOf(e.ty);
     const r = SKETCH
-      ? rect("c:" + c.id, g.x, g.y, g.w, g.h, { dashed: true, round: true })
-      : rect("c:" + c.id, g.x, g.y, g.w, g.h, { stroke: col, bg: mix(col, 0.93), dashed: e.prop, round: true });
-    text("c:" + c.id + ":title", c.title, { container: r, x: g.x + g.w / 2, top: g.y + 5, align: "center", fs: 14 });
+      ? b.rect("c:" + c.id, g.x, g.y, g.w, g.h, { dashed: true, round: true })
+      : b.rect("c:" + c.id, g.x, g.y, g.w, g.h, { stroke: col, bg: mix(col, 0.93), dashed: e.prop, round: true });
+    b.text("c:" + c.id + ":title", c.title, { container: r, x: g.x + g.w / 2, top: g.y + 5, align: "center", fs: 14 });
     shapeOf["c:" + c.id] = r;
   }
+}
 
+const osColor = (os) => {
+  if (SKETCH) return MUTED;
+  if (!os) return "#9ca3af";
+  return os.eol ? AMBER : MUTED;
+};
+
+function addServerCard(cx, n, k, b0) {
+  const { b, layout, ent, colorOf } = cx;
+  const g = layout.nodes[n.id], e = ent[k], col = colorOf(e.ty), grp = [gid(k)];
+  if (SKETCH) {
+    const card = b.rect(k, g.x, g.y, g.w, g.h, { sw: 1.5, dashed: e.prop, round: true, groups: grp });
+    b.text(k + ":title", n.title, { x: g.title[0], baseline: g.title[1], fs: 14, groups: grp });
+    return { card, grp };
+  }
+  const card = b.rect(k, b0.x0, b0.y0, b0.x1 - b0.x0, b0.y1 - b0.y0, { stroke: col, bg: "#ffffff", sw: 2, dashed: e.prop, groups: grp });
+  const head = b.rect(k + ":head", b0.x0, b0.y0, b0.x1 - b0.x0, HEAD, { stroke: col, bg: col, sw: 2, dashed: e.prop, groups: grp });
+  b.text(k + ":title", n.title, { container: head, x: b0.x0 + 5, top: b0.y0 + (HEAD - 13 * LINE_H[SANS]) / 2, valign: "middle", fs: 13, color: "#ffffff", groups: grp });
+  return { card, grp };
+}
+
+function addServerOs(cx, k, g, b0, grp) {
+  const os = cx.ent[k].os, eol = os?.eol ? " (EOL)" : "";
+  const label = os ? (os.d || os.v) + eol : "OS ?";
+  const lastBody = g.body.length ? g.body[g.body.length - 1][1] : g.y;
+  const firstIp = g.ip.length ? g.ip[0][1] : b0.y1;
+  const osBase = SKETCH ? g.y + g.h - 4 : firstIp - 15;
+  const fits = osBase - 9 > lastBody + 2;
+  cx.b.text(k + ":os", label, {
+    x: fits ? g.x + 10 : b0.x1 - 6,
+    baseline: fits ? osBase : b0.y0 + HEAD + 12,
+    align: fits ? "left" : "right",
+    fs: 10,
+    color: osColor(os),
+    groups: grp,
+  });
+}
+
+function addServers(cx) {
+  const { b, config, model, layout, meta, kit, shapeOf } = cx;
   const procLine = {};
   for (const m of meta.edges) {
     if (m.fl !== null) procLine[m.from.slice(2) + ":" + m.fl] = m.g;
@@ -144,148 +197,183 @@ export function renderExcalidraw({ config, model, layout, meta, routes, ent, typ
   for (const n of model.nodes.values()) {
     const g = layout.nodes[n.id];
     if (g.hidden) continue;
-    const k = "n:" + n.id, e = ent[k], col = colorOf(e.ty), grp = [gid(k)];
-    const b = kit.boxExtent(g, meta.nodes[n.id].tl);
-    let card;
-    if (SKETCH) {
-      card = rect(k, g.x, g.y, g.w, g.h, { sw: 1.5, dashed: e.prop, round: true, groups: grp });
-      text(k + ":title", n.title, { x: g.title[0], baseline: g.title[1], fs: 14, groups: grp });
-    } else {
-      card = rect(k, b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0, { stroke: col, bg: "#ffffff", sw: 2, dashed: e.prop, groups: grp });
-      const head = rect(k + ":head", b.x0, b.y0, b.x1 - b.x0, HEAD, { stroke: col, bg: col, sw: 2, dashed: e.prop, groups: grp });
-      text(k + ":title", n.title, { container: head, x: b.x0 + 5, top: b.y0 + (HEAD - 13 * LINE_H[SANS]) / 2, valign: "middle", fs: 13, color: "#ffffff", groups: grp });
-    }
+    const k = "n:" + n.id;
+    const b0 = kit.boxExtent(g, meta.nodes[n.id].tl);
+    const { card, grp } = addServerCard(cx, n, k, b0);
     n.body.forEach((s, i) => {
       const pg = procLine[n.id + ":" + i];
-      const color = pg === undefined ? INK : pg ? config.groups[pg].color : INK;
-      text(`${k}:body:${i}`, s, { x: g.body[i][0], baseline: g.body[i][1], color, groups: grp });
+      const color = pg ? config.groups[pg].color : INK;
+      b.text(`${k}:body:${i}`, s, { x: g.body[i][0], baseline: g.body[i][1], color, groups: grp });
     });
-    n.ip.forEach((s, i) => text(`${k}:ip:${i}`, s, { x: g.ip[i][0], baseline: g.ip[i][1], ff: MONO, color: SKETCH ? INK : "#334155", groups: grp }));
-    const os = e.os, label = os ? (os.d || os.v) + (os.eol ? " (EOL)" : "") : "OS ?";
-    const lastBody = g.body.length ? g.body[g.body.length - 1][1] : g.y;
-    const firstIp = g.ip.length ? g.ip[0][1] : b.y1;
-    const osBase = SKETCH ? g.y + g.h - 4 : firstIp - 15;
-    const fits = osBase - 9 > lastBody + 2;
-    text(k + ":os", label, {
-      x: fits ? g.x + 10 : b.x1 - 6,
-      baseline: fits ? osBase : b.y0 + HEAD + 12,
-      align: fits ? "left" : "right",
-      fs: 10,
-      color: SKETCH ? MUTED : os ? (os.eol ? AMBER : MUTED) : "#9ca3af",
-      groups: grp,
-    });
+    n.ip.forEach((s, i) => b.text(`${k}:ip:${i}`, s, { x: g.ip[i][0], baseline: g.ip[i][1], ff: MONO, color: SKETCH ? INK : "#334155", groups: grp }));
+    addServerOs(cx, k, g, b0, grp);
     shapeOf[k] = card;
   }
+}
 
-  const labels = [], fwDraw = [];
+const gid = (key) => digest("group:" + key).toString("base64url").slice(0, 20);
+
+// Spots already taken (servers, region titles, firewall markers, placed labels) that a connection label must avoid.
+function initialBusy(cx) {
+  const { model, layout, meta, kit } = cx;
   const busy = [...model.nodes.values()].filter((n) => !layout.nodes[n.id].hidden).map((n) => kit.boxExtent(layout.nodes[n.id], meta.nodes[n.id].tl));
   for (const c of model.clusters.values()) {
     const [tx, ty] = layout.clusters[c.id].title, hw = c.title.length * 3.9 + 4;
     busy.push({ x0: tx - hw, y0: ty - 13, x1: tx + hw, y1: ty + 4 });
   }
+  return busy;
+}
+
+function bindArrow(cx, a, m) {
+  for (const [side, end] of [["startBinding", m.from], ["endBinding", m.to]]) {
+    const target = cx.shapeOf[end];
+    if (!target) continue;
+    a[side] = { elementId: target.id, focus: 0, gap: 4 };
+    cx.b.bind(target, a);
+  }
+}
+
+function addFirewall(cx, m, fw, busy, fwDraw) {
+  const { b } = cx;
+  const [fx, fy] = fw.at, [lx, ly] = fw.label, rot = fw.a === 90 ? ([x, y]) => [-y, x] : (p) => p;
+  fwDraw.push(() => b.linear("e:" + m.k + ":fw", "line", FW_PTS.map((p) => rot(p)).map(([x, y]) => [fx + x, fy + y]), { stroke: FW_RED, sw: 2 }));
+  const align = { start: "left", middle: "center", end: "right" }[fw.anchor];
+  b.text("e:" + m.k + ":fwtext", "firewall", { x: lx, baseline: ly, align, fs: 10, color: FW_RED });
+  const tx0 = { start: lx, middle: lx - 26, end: lx - 52 }[fw.anchor];
+  busy.push(
+    fw.a === 90 ? { x0: fx - 12, y0: fy - 6, x1: fx + 12, y1: fy + 6 } : { x0: fx - 6, y0: fy - 12, x1: fx + 6, y1: fy + 12 },
+    { x0: tx0, y0: ly - 10, x1: tx0 + 52, y1: ly + 2 }
+  );
+}
+
+function addConnections(cx, routes) {
+  const { b, config, model, meta } = cx;
+  const labels = [], fwDraw = [], busy = initialBusy(cx);
   meta.edges.forEach((m, ei) => {
     const rt = routes[m.k];
     if (!rt || rt.pts.length < 2) return;
     const color = m.g ? config.groups[m.g].color : INK;
-    const a = linear("e:" + m.k, "arrow", rt.pts, { stroke: color, sw: m.g ? 2 : 1, dashed: isDashed(model, ei) });
-    for (const [side, end] of [["startBinding", m.from], ["endBinding", m.to]]) {
-      const target = shapeOf[end];
-      if (!target) continue;
-      a[side] = { elementId: target.id, focus: 0, gap: 4 };
-      bind(target, a);
-    }
-    if (rt.fw) {
-      const [fx, fy] = rt.fw.at, [lx, ly] = rt.fw.label, rot = rt.fw.a === 90 ? ([x, y]) => [-y, x] : (p) => p;
-      fwDraw.push(() => linear("e:" + m.k + ":fw", "line", FW_PTS.map((p) => rot(p)).map(([x, y]) => [fx + x, fy + y]), { stroke: FW_RED, sw: 2 }));
-      const align = { start: "left", middle: "center", end: "right" }[rt.fw.anchor];
-      text("e:" + m.k + ":fwtext", "firewall", { x: lx, baseline: ly, align, fs: 10, color: FW_RED });
-      const tx0 = { start: lx, middle: lx - 26, end: lx - 52 }[rt.fw.anchor];
-      busy.push(rt.fw.a === 90 ? { x0: fx - 12, y0: fy - 6, x1: fx + 12, y1: fy + 6 } : { x0: fx - 6, y0: fy - 12, x1: fx + 6, y1: fy + 12 });
-      busy.push({ x0: tx0, y0: ly - 10, x1: tx0 + 52, y1: ly + 2 });
-    }
+    const a = b.linear("e:" + m.k, "arrow", rt.pts, { stroke: color, sw: m.g ? 2 : 1, dashed: isDashed(model, ei) });
+    bindArrow(cx, a, m);
+    if (rt.fw) addFirewall(cx, m, rt.fw, busy, fwDraw);
     const lbl = model.edges[ei].label;
     if (lbl && rt.label) labels.push({ k: m.k, lbl, at: rt.label, color });
   });
+  return { labels, fwDraw, busy };
+}
 
-  // Labels as free text on a white pill at the view's spot (an arrow-bound label would snap to the arrow's midpoint);
-  // one touching a firewall marker, server or another label takes the nearest clear spot, wrapped onto two lines if that helps.
-  const hit = (b) => busy.some((o) => Math.min(b.x1, o.x1) > Math.max(b.x0, o.x0) && Math.min(b.y1, o.y1) > Math.max(b.y0, o.y0));
-  const DX = [0, -10, 10, -20, 20, -40, 40, -60, 60, -80, 80, -100, 100, -120, 120];
-  const DY = [0, -14, 14, -24, 24, -34, 34];
+const labelBox = (s, dx, dy, cxm, y) => {
+  const ls = s.split("\n"), w = Math.max(...ls.map((l) => l.length)) * 10 * CHAR_W[SANS] + 14;
+  return { s, dx, dy, cost: Math.abs(dx) + 2 * Math.abs(dy) + (ls.length - 1) * 30, x0: cxm + dx - w / 2, y0: y + dy - 12, x1: cxm + dx + w / 2, y1: y + dy + 5 + (ls.length - 1) * 12.5 };
+};
+
+// Labels as free text on a white pill at the view's spot (an arrow-bound label would snap to the arrow's midpoint);
+// one touching a firewall marker, server or another label takes the nearest clear spot, wrapped onto two lines if that helps.
+function placeLabels(cx, labels, busy) {
+  const { b } = cx;
+  const hit = (r) => busy.some((o) => Math.min(r.x1, o.x1) > Math.max(r.x0, o.x0) && Math.min(r.y1, o.y1) > Math.max(r.y0, o.y0));
   for (const { k, lbl, at, color } of labels) {
-    const cx = at[0] - 7 + (lbl.length * 10 * CHAR_W[SANS] + 14) / 2, parts = lbl.split(" · "), cut = Math.ceil(parts.length / 2);
+    const cxm = at[0] - 7 + (lbl.length * 10 * CHAR_W[SANS] + 14) / 2, parts = lbl.split(" · "), cut = Math.ceil(parts.length / 2);
     const forms = [lbl].concat(parts.length > 1 ? [parts.slice(0, cut).join(" · ") + "\n" + parts.slice(cut).join(" · ")] : []);
-    const box = (s, dx, dy) => {
-      const ls = s.split("\n"), w = Math.max(...ls.map((l) => l.length)) * 10 * CHAR_W[SANS] + 14;
-      return { s, dx, dy, cost: Math.abs(dx) + 2 * Math.abs(dy) + (ls.length - 1) * 30, x0: cx + dx - w / 2, y0: at[1] + dy - 12, x1: cx + dx + w / 2, y1: at[1] + dy + 5 + (ls.length - 1) * 12.5 };
-    };
-    const tries = forms.flatMap((s) => DY.flatMap((dy) => DX.map((dx) => box(s, dx, dy)))).sort((p, q) => p.cost - q.cost);
-    const b = tries.find((t) => !hit(t)) || tries[0];
-    busy.push(b);
-    rect("e:" + k + ":pill", b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0, { stroke: "transparent", bg: "#ffffff", round: true });
-    text("e:" + k + ":label", b.s, { x: cx + b.dx, baseline: at[1] + b.dy, align: "center", fs: 10, color, original: lbl });
+    const tries = forms.flatMap((s) => LABEL_DY.flatMap((dy) => LABEL_DX.map((dx) => labelBox(s, dx, dy, cxm, at[1])))).sort((p, q) => p.cost - q.cost);
+    const pick = tries.find((t) => !hit(t)) || tries[0];
+    busy.push(pick);
+    b.rect("e:" + k + ":pill", pick.x0, pick.y0, pick.x1 - pick.x0, pick.y1 - pick.y0, { stroke: "transparent", bg: "#ffffff", round: true });
+    b.text("e:" + k + ":label", pick.s, { x: cxm + pick.dx, baseline: at[1] + pick.dy, align: "center", fs: 10, color, original: lbl });
   }
-  fwDraw.forEach((f) => f());
+}
 
-  const [vx, vy, vw] = viewBox.split(" ").map(Number);
+function legendHead(cx, L, key, s) {
+  cx.b.text("legend:" + key, s, { x: L.x, top: L.y, fs: 11, color: MUTED, groups: L.groups });
+  L.y += 18;
+}
 
-  const LW = 200, P = 10, lg = [gid("legend")];
-  const legend = rect("legend", vx - 20 - LW, vy, LW, 10, SKETCH ? { round: true, groups: lg } : { stroke: "#cbd5e1", bg: "#ffffff", round: true, groups: lg });
-  let y = vy + P;
-  const head = (key, s) => {
-    text("legend:" + key, s, { x: vx - 20 - LW + P, top: y, fs: 11, color: MUTED, groups: lg });
-    y += 18;
-  };
-  if (!SKETCH) head("types", "SERVER TYPES");
+function legendTypes(cx, L) {
+  const { b } = cx;
   let infra = false;
-  for (const t of SKETCH ? [] : typeList) {
+  for (const t of cx.typeList) {
     if (t.infra && !infra) {
       infra = true;
-      y += 6;
-      head("infra", "OTHER INFRASTRUCTURE");
+      L.y += 6;
+      legendHead(cx, L, "infra", "OTHER INFRASTRUCTURE");
     }
-    const col = colorOf(t.ty), lx = vx - 20 - LW + P;
-    rect("legend:sw:" + t.k, lx, y + 1, 12, 12, t.dash ? { stroke: col, dashed: true, groups: lg } : { stroke: col, bg: col, groups: lg });
-    text("legend:t:" + t.k, t.label, { x: lx + 20, top: y, fs: 12, groups: lg });
-    y += 20;
+    const col = cx.colorOf(t.ty);
+    b.rect("legend:sw:" + t.k, L.x, L.y + 1, 12, 12, t.dash ? { stroke: col, dashed: true, groups: L.groups } : { stroke: col, bg: col, groups: L.groups });
+    b.text("legend:t:" + t.k, t.label, { x: L.x + 20, top: L.y, fs: 12, groups: L.groups });
+    L.y += 20;
   }
-  if (!SKETCH) y += 6;
-  head("conn", "CONNECTIONS");
-  const rows = [["request", INK, false, edgeLabels.request]];
-  if (model.edges.some((e, ei) => isDashed(model, ei))) rows.push(["dashed", INK, true, edgeLabels.dashed]);
+}
+
+function legendConnections(cx, L) {
+  const { b, config, model } = cx;
+  const rows = [["request", INK, false, cx.edgeLabels.request]];
+  if (model.edges.some((e, ei) => isDashed(model, ei))) rows.push(["dashed", INK, true, cx.edgeLabels.dashed]);
   for (const [g, d] of Object.entries(config.groups)) rows.push(["g:" + g, d.color, false, d.label]);
   for (const [k, col, dashed, label] of rows) {
-    const lx = vx - 20 - LW + P;
-    linear("legend:a:" + k, "arrow", [[lx, y + 7], [lx + 34, y + 7]], { stroke: col, dashed, sw: k.startsWith("g:") ? 2 : 1, groups: lg });
-    text("legend:l:" + k, label, { x: lx + 44, top: y, fs: 11, groups: lg });
-    y += 20;
+    b.linear("legend:a:" + k, "arrow", [[L.x, L.y + 7], [L.x + 34, L.y + 7]], { stroke: col, dashed, sw: k.startsWith("g:") ? 2 : 1, groups: L.groups });
+    b.text("legend:l:" + k, label, { x: L.x + 44, top: L.y, fs: 11, groups: L.groups });
+    L.y += 20;
   }
   if (model.edges.some((e) => e.fw)) {
-    const lx = vx - 20 - LW + P;
-    linear("legend:fwline", "line", [[lx, y + 7], [lx + 34, y + 7]], { groups: lg });
-    linear("legend:fw", "line", FW_PTS.map(([px, py]) => [lx + 17 + px * 0.6, y + 7 + py * 0.6]), { stroke: FW_RED, sw: 2, groups: lg });
-    text("legend:l:fw", edgeLabels.firewall, { x: lx + 44, top: y, fs: 11, groups: lg });
-    y += 20;
+    b.linear("legend:fwline", "line", [[L.x, L.y + 7], [L.x + 34, L.y + 7]], { groups: L.groups });
+    b.linear("legend:fw", "line", FW_PTS.map(([px, py]) => [L.x + 17 + px * 0.6, L.y + 7 + py * 0.6]), { stroke: FW_RED, sw: 2, groups: L.groups });
+    b.text("legend:l:fw", cx.edgeLabels.firewall, { x: L.x + 44, top: L.y, fs: 11, groups: L.groups });
+    L.y += 20;
   }
-  legend.height = r1(y - vy + 4);
+}
 
-  const NW = 260, nx = vx + vw + 20, fs = 12, max = Math.floor((NW - 10) / (fs * CHAR_W[SANS]));
+function addLegend(cx, vx, vy) {
+  const { b } = cx;
+  const groups = [gid("legend")];
+  const legend = b.rect("legend", vx - 20 - LEGEND_W, vy, LEGEND_W, 10, SKETCH ? { round: true, groups } : { stroke: "#cbd5e1", bg: "#ffffff", round: true, groups });
+  const L = { x: vx - 20 - LEGEND_W + LEGEND_PAD, y: vy + LEGEND_PAD, groups };
+  if (!SKETCH) {
+    legendHead(cx, L, "types", "SERVER TYPES");
+    legendTypes(cx, L);
+    L.y += 6;
+  }
+  legendHead(cx, L, "conn", "CONNECTIONS");
+  legendConnections(cx, L);
+  legend.height = r1(L.y - vy + 4);
+}
+
+function addNotes(cx, notes, nx, vy) {
+  const { b } = cx;
+  const NW = 260, fs = 12, max = Math.floor((NW - 10) / (fs * CHAR_W[SANS]));
   let ny = vy;
   notes.forEach((n, i) => {
     const lines = [...wrap(n.title, max), "", ...n.paras.flatMap((p, j) => [...(j ? [""] : []), ...wrap(p, max)]), "", n.date];
     const h = lines.length * fs * LINE_H[SANS] + 10;
-    const sticky = rect("note:" + i, nx, ny, NW, h, SKETCH ? { stroke: "transparent", bg: "#fff3bf" } : { stroke: "#e0b400", bg: "#fff3a6", round: true });
+    const sticky = b.rect("note:" + i, nx, ny, NW, h, SKETCH ? { stroke: "transparent", bg: "#fff3bf" } : { stroke: "#e0b400", bg: "#fff3a6", round: true });
     const original = [n.title, "", n.paras.join("\n\n"), "", n.date].join("\n");
-    text("note:" + i + ":text", lines.join("\n"), { container: sticky, x: nx + 5, top: ny + 5, fs, original });
+    b.text("note:" + i + ":text", lines.join("\n"), { container: sticky, x: nx + 5, top: ny + 5, fs, original });
     ny += h + 14;
   });
+}
 
-  drawings.forEach((s) => {
-    const [x0, y0] = s.points[0], rel = s.points.map(([x, y]) => [r1(x - x0), r1(y - y0)]);
-    const xs = rel.map((p) => p[0]), ys = rel.map((p) => p[1]);
-    const el = base("draw:" + s.id, "freedraw", x0, y0, Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), { stroke: s.color, sw: s.width });
-    Object.assign(el, { points: rel, pressures: [], simulatePressure: true, lastCommittedPoint: null });
-  });
+function addDrawings(cx, drawings) {
+  for (const s of drawings) {
+    const p = relativePoints(s.points);
+    const el = cx.b.base("draw:" + s.id, "freedraw", p.x0, p.y0, p.w, p.h, { stroke: s.color, sw: s.width });
+    Object.assign(el, { points: p.rel, pressures: [], simulatePressure: true, lastCommittedPoint: null });
+  }
+}
 
-  return JSON.stringify({ type: "excalidraw", version: 2, source: "diagram-editor", elements: els, appState: { viewBackgroundColor: "#ffffff", gridSize: null }, files: {} }, null, 2) + "\n";
+// Excalidraw scene for a diagram: same geometry as the view (fitted boxes, routed connections, label and firewall spots).
+export function renderExcalidraw({ config, model, layout, meta, routes, ent, typeList, typeColors, notes, edgeLabels, viewBox, drawings = [] }) {
+  const b = createBuilder();
+  const cx = { b, kit: geometryKit(), config, model, layout, meta, ent, typeList, edgeLabels, colorOf: (ty) => typeColors[ty] || MUTED, shapeOf: {} };
+
+  addClusters(cx);
+  addServers(cx);
+  const { labels, fwDraw, busy } = addConnections(cx, routes);
+  placeLabels(cx, labels, busy);
+  fwDraw.forEach((f) => f());
+
+  const [vx, vy, vw] = viewBox.split(" ").map(Number);
+  addLegend(cx, vx, vy);
+  addNotes(cx, notes, vx + vw + 20, vy);
+  addDrawings(cx, drawings);
+
+  return JSON.stringify({ type: "excalidraw", version: 2, source: "diagram-editor", elements: b.els, appState: { viewBackgroundColor: "#ffffff", gridSize: null }, files: {} }, null, 2) + "\n";
 }

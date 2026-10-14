@@ -12,9 +12,10 @@ InfraDiagram.define("ui/export-columns", ["ui/core"], function (core) {
         h += '<text class="h" x="' + (x0 + P) + '" y="' + y + '">OTHER INFRASTRUCTURE</text>';
         y += 8;
       }
+      var sr = S === "swiss" ? 0 : 3;
       var sw = t.dash
         ? '<rect class="sd" data-ty="' + t.ty + '" x="' + (x0 + P + 1) + '" y="' + (y + 3) + '" width="10" height="10" rx="2"/>'
-        : '<rect class="sf" data-ty="' + t.ty + '" x="' + (x0 + P) + '" y="' + (y + 2) + '" width="12" height="12" rx="' + (S === "swiss" ? 0 : 3) + '"/>';
+        : '<rect class="sf" data-ty="' + t.ty + '" x="' + (x0 + P) + '" y="' + (y + 2) + '" width="12" height="12" rx="' + sr + '"/>';
       h += sw + '<text x="' + (x0 + P + 20) + '" y="' + (y + 12) + '">' + esc(t.label) + "</text>";
       y += 18;
     });
@@ -50,7 +51,7 @@ InfraDiagram.define("ui/export-columns", ["ui/core"], function (core) {
   function notesSvg(x0, y0) {
     var S = ctx.style, CWN = { sketch: 6.6, clean: 5.6, dark: 6.4, swiss: 5.7 }[S];
     var W = 250, P = 10, LH = 14, h = "", y = y0;
-    var rx = S === "swiss" ? 0 : S === "dark" ? 4 : 2;
+    var rx = { swiss: 0, dark: 4 }[S] ?? 2;
     D.notes.forEach(function (n) {
       var max = Math.floor((W - 2 * P) / CWN), ty = y + P + 11, t = "";
       wrap(n.title, Math.floor(max * 0.9)).forEach(function (l) { t += '<text class="h" x="' + (x0 + P) + '" y="' + ty + '">' + esc(l) + "</text>"; ty += LH + 1; });
