@@ -84,7 +84,7 @@ test("box is sized from content: OS row reserved, width covers the name and OS p
 
 test("OS pill is rendered for every server with an os, none without", () => {
   const withOs = renderDiagram(probe(), "x", null, assets).html;
-  assert.match(withOs, /class="ost"[^>]*>Debian 12\.3 <tspan class="ose">EOL<\/tspan>/);
+  assert.match(withOs, /class="ost"[^>]*>Debian 12\.3<\/text><text class="ose" y="9">EOL<\/text>/);
   const none = renderDiagram(mini('id = "d"\ntitle = "t"\n'), "x", null, assets).html;
   assert.match(none, /osg unk/);
 });

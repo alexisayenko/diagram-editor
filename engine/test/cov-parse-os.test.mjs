@@ -49,8 +49,8 @@ test("osInfo: empty input has no info", () => {
 });
 
 test("osInfo: keeps the stored value, adds the display form", () => {
-  assert.deepEqual(osInfo("CentOS Linux 7 (Core)", today), { v: "CentOS Linux 7 (Core)", d: "CentOS 7", eol: "2024-06" });
-  assert.deepEqual(osInfo("Ubuntu 24.04 LTS", today), { v: "Ubuntu 24.04 LTS", d: "Ubuntu 24.04 LTS", eol: null });
+  assert.deepEqual(osInfo("CentOS Linux 7 (Core)", today), { v: "CentOS Linux 7 (Core)", d: "CentOS 7", f: "centos", eol: "2024-06" });
+  assert.deepEqual(osInfo("Ubuntu 24.04 LTS", today), { v: "Ubuntu 24.04 LTS", d: "Ubuntu 24.04 LTS", f: "ubuntu", eol: null });
 });
 
 test("osInfo: EOL is strictly after the end month", () => {

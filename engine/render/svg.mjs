@@ -2,6 +2,8 @@ import { esc } from "../lib/util.mjs";
 import { edgeKey, endKey, isDashed } from "../parse/mmd.mjs";
 import { fwGlyph } from "./firewall.mjs";
 import { shortTitle, shortOs, displayLabels } from "./geometry.mjs";
+import { osFamily } from "../parse/os-display.mjs";
+import { osIcons } from "./os-icons.mjs";
 
 const NET_ICON = "M5.5 2.5h3v2.5h-3zM2 8.5h3v2.5h-3zM9 8.5h3v2.5h-3zM7 5v1.75M3.5 8.5v-1.75h7v1.75";
 
@@ -25,11 +27,12 @@ const processLines = (meta) => {
 const titleMarkup = (title, full) => esc(title) + (title === full ? "" : `<title>${esc(full)}</title>`);
 
 const osMarkup = (os, attrs) => {
-  const eol = os?.eol ? ' <tspan class="ose">EOL</tspan>' : "";
-  const label = os ? esc(shortOs(os.v)) + eol : "OS ?";
+  const text = os ? shortOs(os.v) : "OS ?", fam = os ? os.f || osFamily(os.v) : "unknown";
+  const tip = os ? os.v + (os.eol ? " - End of life (support ended " + os.eol + ")" : "") : "OS unknown";
   let cls = " unk";
   if (os) cls = os.eol ? " eol" : "";
-  return `<g class="osg${cls}"${attrs}><rect class="osp" height="12"/><text class="ost" x="4" y="9">${label}</text><title>${os ? esc(os.v) : "OS unknown"}</title></g>`;
+  const eol = os?.eol ? '<text class="ose" y="9">EOL</text>' : "";
+  return `<g class="osg${cls}"${attrs}><rect class="osp" height="12"/><g class="osi" data-f="${fam}" transform="translate(2.5 .5) scale(.786)">${osIcons.glyph(fam)}</g><text class="ost" x="16" y="9" data-t="${esc(text)}">${esc(text)}</text>${eol}<title>${esc(tip)}</title></g>`;
 };
 
 const netButton = (attrs, net, j, i, at) => {

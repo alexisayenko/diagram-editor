@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { fail, readText } from "../lib/util.mjs";
 import { geometryKit } from "../render/geometry.mjs";
 import { drawKit } from "../render/draw-kit.mjs";
+import { osIconKit } from "../render/os-icons.mjs";
 
 const ENGINE = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -14,7 +15,7 @@ const CSS = {
 // Runtime modules in load order; a module may only depend on modules listed before it.
 // "canvas/geometry" is generated from render/geometry.mjs (geometryKit) so build and edit mode route connections identically.
 const RUNTIME = [
-  "ui/core", "ui/details", "ui/skins", "ui/panels", "ui/networks", "ui/legend", "ui/selection", "ui/clear-click",
+  "ui/core", "ui/os-icons", "ui/details", "ui/skins", "ui/panels", "ui/networks", "ui/legend", "ui/selection", "ui/clear-click",
   "ui/export-columns", "ui/copy", "ui/export-image", "ui/init", "ui/notes-edit", "ui/server-edit",
   "canvas/geometry", "canvas/draw-kit", "canvas/model", "canvas/zoom-pan", "canvas/draw", "canvas/edit-mode", "canvas/context-menu",
 ];
@@ -35,6 +36,7 @@ const kitSource = (name, fn, names) => {
   );
 };
 const GENERATED = {
+  "ui/os-icons": { fn: osIconKit, file: "engine/render/os-icons.mjs (osIconKit)", names: ["ICONS", "glyph", "iconSvg"] },
   "canvas/geometry": { fn: geometryKit, file: "engine/render/geometry.mjs (geometryKit)", names: ["headerTitle", "boxExtent", "fitBox", "fitRegion", "regionBounds", "resizeRegion", "route", "problems"] },
   "canvas/draw-kit": { fn: drawKit, file: "engine/render/draw-kit.mjs (drawKit)", names: ["decimate", "smoothPath", "distToStroke", "hits", "hitIndex", "history", "validate", "pathMarkup", "markup", "newId"] },
 };

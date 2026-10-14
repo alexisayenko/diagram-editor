@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { osIconKit } from "../render/os-icons.mjs";
 import { Script, createContext } from "node:vm";
 import { fileURLToPath } from "node:url";
 
@@ -322,6 +323,7 @@ export function loadUi(names, { D, html, storage, stubs = {}, globals = {}, conf
   function load(name) {
     if (name in stubs) return stubs[name];
     if (name in modules) return modules[name];
+    if (name === "ui/os-icons") return (modules[name] = osIconKit());
     const file = UI + name.replace(/^ui\//, "") + ".js";
     new Script(readFileSync(file, "utf8"), { filename: file }).runInContext(vmCtx);
     return modules[name];
@@ -353,7 +355,7 @@ export function fixture(over = {}) {
 ${t("a", "nt", "Service A")}
 <text class="ipt" data-ent="n:a" data-tk="web">192.0.2.10</text>
 <g class="nwb" data-n="0" data-ent="n:a"></g>
-<g id="oa" data-ent="n:a"><rect></rect><text>Ubuntu 24.04</text></g>
+<g id="oa" data-ent="n:a"><rect></rect><text class="ost" data-t="Ubuntu 24.04" x="16">Ubuntu 24.04</text></g>
 <g id="cb" data-ent="n:b" data-tk="db"></g>
 ${t("b", "nt", "Service B")}
 <text class="ipt" data-ent="n:b" data-tk="db">192.0.2.20</text>

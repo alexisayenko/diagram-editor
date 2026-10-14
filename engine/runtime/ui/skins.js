@@ -58,6 +58,22 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     return h;
   }
 
+  // OS pill: icon, text, then the "EOL" marker after the pill; the text is cut with an ellipsis when pill and marker would not fit the box.
+  function sizeOs(g, boxWidth) {
+    var t = g.querySelector(".ost"), r = g.querySelector("rect"), e = g.querySelector(".ose"), full = t.getAttribute("data-t") || t.textContent;
+    var cw = ctx.style === "sketch" ? 5.6 : 5.2, ew = e ? measure(e, 3, cw) + 4 : 0, room = boxWidth - 10 - 20 - ew;
+    t.textContent = full;
+    var tw = measure(t, full.length, cw);
+    if (tw > room && room > 0) {
+      t.textContent = full.slice(0, Math.max(2, Math.floor(full.length * room / tw) - 1)) + "…";
+      tw = measure(t, t.textContent.length, cw);
+    }
+    var w = Math.round(tw + 20);
+    r.setAttribute("width", w);
+    r.setAttribute("rx", { clean: 6, dark: 3, sketch: 2 }[ctx.style] ?? 0);
+    if (e) e.setAttribute("x", w + 4);
+  }
+
   function rebuildChrome() {
     boxW = {};
     btn = {};
@@ -73,9 +89,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     Object.keys(D.idx.nodes).forEach(function (id) {
       var o = D.idx.nodes[id].o;
       if (o === undefined) return;
-      var t = els[o].querySelector("text"), r = els[o].querySelector("rect");
-      r.setAttribute("width", Math.round(measure(t, t.textContent.length, ctx.style === "sketch" ? 5.6 : 5.2) + 8));
-      r.setAttribute("rx", { clean: 6, dark: 3, sketch: 2 }[ctx.style] ?? 0);
+      sizeOs(els[o], D.layout.nodes[id].w);
     });
     pillW = {};
     Object.keys(D.idx.edges).forEach(function (k) {

@@ -111,7 +111,7 @@ test("rebuildChrome clears cluster chrome, sizes the OS pill and measures label 
   t.skins.setStyle("clean");
   assert.equal(chrome(t, 8), "");
   const rect = t.els[4].querySelector("rect");
-  assert.equal(rect.getAttribute("width"), "70");
+  assert.equal(rect.getAttribute("width"), "82");
   assert.equal(rect.getAttribute("rx"), "6");
   assert.equal(t.skins.labelWidths()["1"], 38);
   assert.ok(!("2" in t.skins.labelWidths()));
@@ -122,7 +122,7 @@ test("rebuildChrome clears cluster chrome, sizes the OS pill and measures label 
   assert.equal(rect.getAttribute("rx"), "3");
   t.skins.setStyle("sketch");
   assert.equal(rect.getAttribute("rx"), "2");
-  assert.equal(rect.getAttribute("width"), "75");
+  assert.equal(rect.getAttribute("width"), "87");
 });
 
 test("rebuildChrome calls the routing hook and honours viewNode", () => {

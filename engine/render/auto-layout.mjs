@@ -19,7 +19,7 @@ export function autoLayoutKit(geometry) {
   function rows(t) { return t.nb + (t.hw ? 1 : 0) + (t.os ? 1 : 0); }
   // Box size from text lengths and line counts (same width rule as geometryKit.fitBox).
   function size(t) {
-    return { w: Math.ceil(Math.max(t.tl * 6.6 + 38, 20 + t.bl * 6.6, t.il ? 36 + t.il * 7 : 0, t.os ? 24 + (t.ol + 4) * 5.6 : 0, t.hw ? 20 + t.hw.length * 5.6 : 0)), h: 20 + 16 * rows(t) + 18 * t.ni };
+    return { w: Math.ceil(Math.max(t.tl * 6.6 + 38, 20 + t.bl * 6.6, t.il ? 36 + t.il * 7 : 0, t.os ? 36 + (t.ol + (t.oe ? 4 : 1)) * 5.6 : 0, t.hw ? 20 + t.hw.length * 5.6 : 0)), h: 20 + 16 * rows(t) + 18 * t.ni };
   }
   // Server whose drawn box (incl. header) has its top-left corner at x, y.
   function box(t, x, y) {

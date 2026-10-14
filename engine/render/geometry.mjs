@@ -1,6 +1,7 @@
 import { edgeKey, endKey } from "../parse/mmd.mjs";
 import { processAnchors } from "../parse/config.mjs";
 import { displayOs } from "../parse/os-display.mjs";
+import { osInfo } from "../parse/os-eol.mjs";
 
 // Longest server name drawn in a header; longer names are cut with an ellipsis (the full name stays in a tooltip).
 export const TITLE_MAX = 34;
@@ -23,7 +24,7 @@ export function displayLabels(names) {
 }
 
 // Static facts the kit needs besides layout.json geometry; built once, shipped to the runtime as D.meta.
-// Node nb / ni: body and IP line counts, os / ol: 1 and the text length when the server has an OS pill row, hw: hardware strip text (own row when not empty) (auto-layout). Edge lv: "process" when an endpoint is a body line (diagram.json processes), else "server".
+// Node nb / ni: body and IP line counts, os / ol / oe: 1, the text length and 1 when the OS is end-of-life, for a server with an OS pill row, hw: hardware strip text (own row when not empty) (auto-layout). Edge lv: "process" when an endpoint is a body line (diagram.json processes), else "server".
 export function geometryMeta(model, groups, processes) {
   const len = (a) => a.reduce((m, s) => Math.max(m, s.length), 0);
   const labels = displayLabels(Object.fromEntries([...model.nodes.values()].map((n) => [n.id, n.title])));
@@ -31,7 +32,7 @@ export function geometryMeta(model, groups, processes) {
   for (const [g, d] of Object.entries(groups || {})) for (const k of d.edges) gOf[k] = g;
   return {
     clusters: Object.fromEntries([...model.clusters.values()].map((c) => [c.id, { tl: c.title.length }])),
-    nodes: Object.fromEntries([...model.nodes.values()].map((n) => [n.id, { tl: shortTitle(labels[n.id]).length, os: n.os ? 1 : 0, ol: n.os ? shortOs(n.os).length : 0, hw: n.hw || "", bl: len(n.body), il: len(n.ip), nb: n.body.length, nj: n.jn || 0, ni: n.ip.length, cl: n.cluster }])),
+    nodes: Object.fromEntries([...model.nodes.values()].map((n) => [n.id, { tl: shortTitle(labels[n.id]).length, os: n.os ? 1 : 0, ol: n.os ? shortOs(n.os).length : 0, oe: n.os && osInfo(n.os).eol ? 1 : 0, hw: n.hw || "", bl: len(n.body), il: len(n.ip), nb: n.body.length, nj: n.jn || 0, ni: n.ip.length, cl: n.cluster }])),
     edges: model.edges.map((e) => ({ k: edgeKey(e), from: endKey(model, e.from), to: endKey(model, e.to), ll: e.label.length, fw: e.fw, g: gOf[edgeKey(e)] || null, fl: pa[edgeKey(e)]?.fl ?? null, tl: pa[edgeKey(e)]?.tl ?? null, lv: pa[edgeKey(e)] ? "process" : "server" })),
   };
 }
@@ -64,7 +65,7 @@ export function geometryKit() {
   function fitBox(g, t) {
     g.body.forEach(function (p) { p[0] = g.x + TEXT_X; });
     g.ip.forEach(function (p) { p[0] = g.x + TEXT_X; });
-    var need = Math.max(TEXT_X + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0, t.os ? TEXT_X + (t.ol + 4) * OS_CW + 14 : 0, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0);
+    var need = Math.max(TEXT_X + t.tl * TITLE_CW + 28, TEXT_X * 2 + t.bl * BODY_CW, t.il ? TEXT_X + t.il * IP_CW + 26 : 0, t.os ? TEXT_X + (t.ol + (t.oe ? 4 : 1)) * OS_CW + 26 : 0, t.hw ? TEXT_X * 2 + t.hw.length * HW_CW : 0);
     g.w = Math.max(g.w, Math.ceil(need));
   }
 

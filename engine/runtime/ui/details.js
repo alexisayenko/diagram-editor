@@ -1,4 +1,4 @@
-InfraDiagram.define("ui/details", ["ui/core"], function (core) {
+InfraDiagram.define("ui/details", ["ui/core", "ui/os-icons"], function (core, osIcons) {
   var D = core.D, esc = core.esc, $ = core.$;
 
   function inline(s) {
@@ -60,6 +60,7 @@ InfraDiagram.define("ui/details", ["ui/core"], function (core) {
       cell = pn.querySelector(".po td:last-child");
     }
     if (os?.d && os.d !== os.v) { cell.textContent = os.d; cell.title = os.v; }
+    cell.insertAdjacentHTML("afterbegin", osIcons.iconSvg(os ? os.f : "unknown", 14));
     if (os?.eol) cell.insertAdjacentHTML("beforeend", ' <span class="eolb" title="End of standard support: ' + esc(os.eol) + '">EOL</span>');
   }
 
