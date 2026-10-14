@@ -1,8 +1,7 @@
 # Refactoring recommendations
 
-Status: Wave 0 and Wave 1 done, Wave 2 done except the scene swap of
-AR-06 / AR-13 (CD-04, CD-06 and DK-10 done in ADR-0018; router
-speed-up and route cache done) · 2026-10-14 · plan written at commit fdbd033, numbers
+Status: Wave 0 and Wave 1 done, Wave 2 done (CD-04, CD-06 and DK-10 done in ADR-0018;
+router speed-up, route cache and the scene swap of AR-06 / AR-13 done in ADR-0019) · 2026-10-14 · plan written at commit fdbd033, numbers
 re-measured at 2789813. The owner decided all eleven items of section 5
 on 2026-10-14 ([ADR-0013](decisions/adr-0013-adopt-refactoring-roadmap.md)).
 
@@ -200,7 +199,7 @@ Status: **done** (2026-10-14), all in 524d13f
 | CD-03 | `core.host` and `core.on/emit` instead of 11 overwritable hooks and the `window.InfraDiagram.*` globals | Second writer silently overwrites the first | M / medium | `cov-ui-*`, `context-menu.test` | none | Done: `ui/core.js` declares ten services (`provide`, one provider each, a second writer throws), the events (`on` / `emit`, error-isolated) and the host (`attachHost`, once); the `window.InfraDiagram.serverEditor` / `noteParser` globals are gone. Tests: `cov-ui-host-events.test.mjs`. |
 | DM-03, DM-04 | Structural server model; card and details markdown become render functions; one documented IR vocabulary | OS is parsed back out of generated markdown | M / medium | card, details, exports tests | AR-01 | Done for the runtime: `node.fields` (os, hardware parts, lists, notes) and `serverSection` renders the details markdown from it, without the OS row (the details panel renders that from the structured `e.os`); the IR table is in [architecture.md](architecture.md#ir-vocabulary). Open: the card strings (`body`, `hw`) are still built in the parser; the Mermaid-shaped names (`nodes`, `body`, `cluster`) are documented, not renamed. |
 | CD-04, CD-06, DK-10 | `kit.boxFor`, one `METRICS`, `keys.mjs` (`nodeKey`, `parseKey`), readable meta field names, in one regeneration window | Metrics in 3 places; `"n:"` built 30 times, parsed 26 | M-L / medium | `region*.test`, `--check` diffs | none | Done ([ADR-0018](decisions/adr-0018-one-metrics-table-and-node-keys.md)): `render/metrics.mjs`, `kit.boxFor`, `lib/keys.mjs`; the IR names `classDefs`, `classes`, `linkStyles` are now `typeStyles`, `nodeTypes`, `edgeStyles`. Not done: the cryptic `meta` fields (`tl`, `nb`, ...) stay because they are part of every generated page's data. Outputs: only the inlined runtime script changed. |
-| AR-06, AR-13 | Measure first (300 servers, 600 connections), then page shell plus scene swap, then incremental routing | Every edit reloads about 300 KB and loses zoom and selection | M-L / medium | new perf test | D6 | Measured ([performance.md](performance.md)): 400 servers and 600 connections cost 7 s in Node (routing is over 85 %, about O(n^2.3)) and about 30 s per edit in the browser (iframe reload about 20 s, zoom and selection lost); `tools/bench.mjs` and `perf.test.mjs` added. Order: route speed-ups and caching first, then scene swap. Step 1 done: indexed, typed-array router with bit-identical routes (`routes-golden.test.mjs`) and a pure route cache (`render/route-cache.mjs`); 400 servers 7.2 s to about 1.4 s, a no-geometry edit 64 ms; scaling 26x to 13x for 4x servers; scene swap not started. |
+| AR-06, AR-13 | Measure first (300 servers, 600 connections), then page shell plus scene swap, then incremental routing | Every edit reloads about 300 KB and loses zoom and selection | M-L / medium | new perf test | D6 | Measured ([performance.md](performance.md)): 400 servers and 600 connections cost 7 s in Node (routing is over 85 %, about O(n^2.3)) and about 30 s per edit in the browser (iframe reload about 20 s, zoom and selection lost); `tools/bench.mjs` and `perf.test.mjs` added. Order: route speed-ups and caching first, then scene swap. Step 1 done: indexed, typed-array router with bit-identical routes (`routes-golden.test.mjs`) and a pure route cache (`render/route-cache.mjs`); 400 servers 7.2 s to about 1.4 s, a no-geometry edit 64 ms; scaling 26x to 13x for 4x servers. Step 2 done ([ADR-0019](decisions/adr-0019-page-shell-and-scene-swap.md)): the page is a shell plus a scene, an edit swaps the scene inside the loaded frame (`InfraDiagram.replaceScene`, event `scene`), keeps zoom, selection, edit mode and drawing state, and falls back to a reload; in the browser at 400 servers an edit takes about 1.7 s against 5.6 s, at 100 servers 0.2 s against 0.6 s. Not done: incremental routing (the 1.1 s of client-side routing per scene is now most of it). |
 | BP-14 | Native `<dialog>`, keyboard on server and region nodes, arrow-key nudge | No focus trap; selection looks mouse-only (reported) | M / medium | fake DOM gains `dialog` | CD-01 | Runtime side done: servers and regions are Tab stops (`role=button`, `aria-label`, `aria-pressed`), Enter / Space select, arrow keys nudge in edit mode (Shift x10), focus ring in all skins, ARIA on the toolbar, layout group, status and pen options; tests `cov-ui-a11y`, `cov-canvas-edit-mode`. The fake DOM gained `dialog`, focus events and `:focus-visible`. Done: the page dialogs in `browser/dialogs.mjs` and the shell markup are native `<dialog>` elements opened with `showModal()` (focus trap, Escape and focus return native; test `dialogs.test.mjs`). |
 
 ### Wave 3: nice to have (opportunistic)
@@ -300,14 +299,14 @@ decision).
 | AR-03 | Duplicated network model | 2 | done: one networks implementation (ADR-0017) |
 | AR-04 | Hand-rolled regex bundler is load-bearing | 1 | done |
 | AR-05 | Dual module systems and `Function.toString()` kits | 1 | done |
-| AR-06 | Every edit re-renders the whole page into `srcdoc` | 2 | measured: [performance.md](performance.md); routing step done (AR-13 step 1), scene swap open |
+| AR-06 | Every edit re-renders the whole page into `srcdoc` | 2 | done: scene swap ([ADR-0019](decisions/adr-0019-page-shell-and-scene-swap.md)); numbers in [performance.md](performance.md) |
 | AR-07 | `app.js` is a 536-line non-module script | 2 | done |
 | AR-08 | Layering inversions in `parse/` | 2 | done: `layering.test.mjs` |
 | AR-09 | Storage API thin on integrity; no delete or rename | 3 | open |
 | AR-10 | No format versioning or archive marker | 1 | done |
 | AR-11 | Extensibility by editing source tables | 3 | started: `SERVER_FIELDS` |
 | AR-12 | Committed outputs, stale docs, no CI | 0 | done |
-| AR-13 | Runtime script duplicated into every page and export | 2 | measured: about 170 KB of 1.5 MB per page at 400 servers ([performance.md](performance.md)); step 1 (route speed-up and route cache) done: 400 servers 7.2 s to about 1.4 s, scene swap open |
+| AR-13 | Runtime script duplicated into every page and export | 2 | measured: about 170 KB of 1.5 MB per page at 400 servers ([performance.md](performance.md)); step 1 (route speed-up and route cache) done: 400 servers 7.2 s to about 1.4 s; the runtime is still in every page, but an edit no longer re-sends it (scene swap, ADR-0019) |
 | AR-14 | Mini DI through `ctx` and hooks | 3 | open |
 | BP-01 | Same-origin iframe without CSP or sandbox | 0 | done |
 | BP-02 | `index.html` loads unpinned CDN code and raw markdown | 0 | moot: the file is deleted (ADR-0017) |

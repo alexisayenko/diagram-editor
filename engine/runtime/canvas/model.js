@@ -166,6 +166,12 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "
     core.emit("render");
   }
 
+  // A swapped-in scene brings the saved geometry as the new base; the resize handles lived in the replaced svg content.
+  core.on("scene", function () {
+    handles = null;
+    state.st = clone(base);
+  });
+
   core.provide("title", geometry.headerTitle);
   core.provide("route", function () {
     var s = core.services.getState?.();

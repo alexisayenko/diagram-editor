@@ -150,6 +150,7 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
     svg.addEventListener("focusin", onFocusIn);
     svg.addEventListener("focusout", onFocusOut);
     core.on("render", function () { if (ringKey) placeRing(); });
+    core.on("scene", function () { ringKey = null; dropRing(); makeFocusable(); });
     svg.addEventListener("click", onSvgClick);
     document.addEventListener("keydown", onEscape);
     document.fonts?.ready?.then(onFontsReady).catch(() => null);

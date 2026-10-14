@@ -136,7 +136,7 @@ test("saving notes rewrites notes.toml only; documents and servers stay untouche
 const notesEdit = (() => {
   let mod;
   const src = readFileSync(new URL("../runtime/ui/notes-edit.js", import.meta.url), "utf8");
-  new Function("InfraDiagram", "window", "document", src)({ define: (n, d, f) => { mod = f({ core: { D: { notes: [] }, $: () => null }, panels: {} }); } }, {}, {});
+  new Function("InfraDiagram", "window", "document", src)({ define: (n, d, f) => { mod = f({ core: { D: { notes: [] }, $: () => null, on() {} }, panels: {} }); } }, {}, {});
   return mod;
 })();
 const at = (y, mo, d, h, mi) => new Date(y, mo - 1, d, h, mi);

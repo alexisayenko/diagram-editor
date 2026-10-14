@@ -23,29 +23,32 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
   }
   function showAll() { ctx.hidden = {}; saveToggles(); applyToggles(); networks.setNet(null); }
 
-  function buildLegend() {
+  function fillLegend() {
     var lg = $("lg");
     function sw(t) {
       return '<button type="button" class="sw" role="switch" aria-checked="true" data-k="' + t.k + '" data-ty="' + t.ty + '"><span class="trk"></span><i class="' + (t.dash ? "dash" : "") + '"></i><span class="t">' + esc(t.label) + '</span></button>';
     }
     var ap = D.types.filter(function (t) { return !t.infra; }), inf = D.types.filter(function (t) { return t.infra; });
     lg.innerHTML = "<b>Server types</b>" + ap.map(sw).join("") + (inf.length ? "<b>Other infrastructure</b>" + inf.map(sw).join("") : "") + '<button type="button" class="reset">Show all</button>';
-    lg.addEventListener("click", function (e) {
-      var b = e.target.closest?.(".sw");
-      if (b) { toggle(b.dataset.k); return; }
-      if (e.target.closest?.(".reset")) showAll();
-    });
     var lk = document.querySelector("#lp .lk");
     // Connection switches (levels "lv:server" / "lv:process", groups "g:<id>"): a connection shows only while all its switches are on.
     lk.insertAdjacentHTML("beforeend", (D.edgeSwitches || []).map(function (g) {
       return '<button type="button" class="sw es" role="switch" aria-checked="true" data-k="' + g.k + '"' + (g.g ? ' data-g="' + g.g + '"' : "") + '><span class="trk"></span><i class="ln"></i><span class="t">' + esc(g.label) + "</span></button>";
     }).join(""));
+    lk.insertAdjacentHTML("beforeend", '<button type="button" id="lbl" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Connection labels</span></button>');
+    $("lbl").addEventListener("click", function () { setLabels(!ctx.labels, true); });
+  }
+  function bindLegend() {
+    $("lg").addEventListener("click", function (e) {
+      var b = e.target.closest?.(".sw");
+      if (b) { toggle(b.dataset.k); return; }
+      if (e.target.closest?.(".reset")) showAll();
+    });
+    var lk = document.querySelector("#lp .lk");
     lk.addEventListener("click", function (e) {
       var b = e.target.closest?.(".sw.es");
       if (b) toggle(b.dataset.k);
     });
-    lk.insertAdjacentHTML("beforeend", '<button type="button" id="lbl" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Connection labels</span></button>');
-    $("lbl").addEventListener("click", function () { setLabels(!ctx.labels, true); });
     lk.insertAdjacentHTML("afterend", '<div class="lo"><b>Servers</b><button type="button" id="osv" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Display System Information</span></button></div>');
     $("osv").addEventListener("click", function () { setSys(!ctx.sys, true); });
   }
@@ -66,11 +69,20 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
   // Builds the legend and restores the saved switches.
   function initLegend() {
     loadToggles();
-    buildLegend();
+    bindLegend();
+    fillLegend();
     setLabels(core.lsGet("labels") === "1", false);
     setSys(core.lsGet("os") !== "0", false);
     applyToggles();
   }
 
-  return { initLegend: initLegend, toggle: toggle, showAll: showAll };
+  // Scene swap: the connection key arrives as markup; the type and connection switches are built again from the new data, the switch states stay.
+  function refreshLegend(keyHtml) {
+    document.querySelector("#lp .lk").innerHTML = keyHtml;
+    fillLegend();
+    setLabels(!!ctx.labels, false);
+    applyToggles();
+  }
+
+  return { refreshLegend: refreshLegend, initLegend: initLegend, toggle: toggle, showAll: showAll };
 });

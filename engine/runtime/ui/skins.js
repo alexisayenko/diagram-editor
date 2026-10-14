@@ -79,7 +79,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
     if (e) e.setAttribute("x", w + M.osPill.eolGap);
   }
 
-  function rebuildChrome() {
+  function rebuildChrome(routeLater) {
     boxW = {};
     btn = {};
     Object.keys(D.idx.nodes).forEach(function (id) {
@@ -103,6 +103,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
       var s = ctx.style, t = els[e.l];
       pillW[k] = Math.round(measure(t, t.textContent.length, CW[s] * (s === "swiss" ? 1.05 : 1)) + 14);
     });
+    if (routeLater) return;
     if (hooks.route) hooks.route();
     sync(hooks.getState());
   }
@@ -162,7 +163,8 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
     });
   }
 
-  function setStyle(s, persist) {
+  // routeLater: the caller routes and fits itself next (a scene swap, which renders right after).
+  function setStyle(s, persist, routeLater) {
     if (!STYLES.includes(s)) s = "clean";
     ctx.style = s;
     document.documentElement.dataset.style = s;
@@ -175,8 +177,8 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
     document.querySelectorAll("#ss button").forEach(function (b) {
       b.setAttribute("aria-pressed", b.dataset.s === s ? "true" : "false");
     });
-    rebuildChrome();
-    if (hooks.fit && s !== "sketch") hooks.fit();
+    rebuildChrome(routeLater);
+    if (hooks.fit && s !== "sketch" && !routeLater) hooks.fit();
     if (persist) {
       core.lsSet("style", s);
       try {

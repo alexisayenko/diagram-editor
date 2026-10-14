@@ -46,12 +46,12 @@ function controls() {
   saveButton.disabled = busy || !ready || !serverOk || !dirty(); exportButton.disabled = busy || !ready;
   importButton.disabled = busy || !ready || importFlow.isOpen();
 }
-function onLoad(ready) {
+function onLoad(ready, swapped) {
   if (!ready) message("The diagram could not start. Reload it to retry.", true);
   else {
     const session = sessions.current(), after = session.after;
     session.after = null;
-    if (after?.edit) bridge.clickEdit();
+    if (after?.edit && !swapped) bridge.clickEdit();
     if (after?.key) bridge.select(after.key);
   }
   controls();
@@ -62,7 +62,7 @@ function load(folder, files, layoutText) {
   if (layoutText !== null) { try { saved = JSON.parse(layoutText); } catch (e) { throw new Error(layoutName + ": invalid JSON: " + e.message); } }
   const decision = decideLayoutLoad(saved, LAYOUT_VERSION), result = render(files, folder, decision.use, []);
   sessions.start(createSession({ folder, layoutName, files, layoutText, layout: decision.use, layoutLocked: decision.lockSave, id: result.id, notes: result.notes }));
-  bridge.show(result.html);
+  bridge.show(result.html, result.scene.shell);
   $("welcome").hidden = true;
   frame.hidden = false;
   message(`${folder} · ${layoutText === null || decision.lockSave ? "Automatically arranged" : "Saved layout restored"}${result.problems ? " · Open Edit layout to resolve highlighted spacing" : ""}${[...(decision.warning ? [decision.warning] : []), ...result.warnings].map((w) => " · Warning: " + w).join("")}`);

@@ -172,6 +172,11 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     else if (b.dataset.w) setPen(pen.color, +b.dataset.w);
   });
 
+  core.on("scene", function () {
+    layer = document.getElementById("dw");
+    hot = null;
+  });
+
   paintPen();
   sync();
 

@@ -15,7 +15,7 @@ const CSS = {
 // "ui/keys", "ui/metrics" and "canvas/geometry" are generated from lib/keys.mjs, render/metrics.mjs and render/geometry.mjs (see kits.mjs) so build and edit mode route connections identically.
 const RUNTIME = [
   "ui/keys", "ui/metrics", "ui/core", "ui/os-icons", "ui/details", "ui/skins", "ui/panels", "ui/networks", "ui/legend", "ui/selection", "ui/clear-click",
-  "ui/export-columns", "ui/copy", "ui/export-image", "ui/init", "ui/notes-edit", "ui/server-fields", "ui/server-edit",
+  "ui/export-columns", "ui/copy", "ui/export-image", "ui/init", "ui/scene", "ui/notes-edit", "ui/server-fields", "ui/server-edit",
   "canvas/geometry", "canvas/draw-kit", "canvas/model", "canvas/zoom-pan", "canvas/draw", "canvas/edit-mode", "canvas/context-menu",
 ];
 
@@ -92,11 +92,15 @@ function checkModules(mods) {
   }
 }
 
+const moduleSource = (name) => (KITS[name] ? kitSource(name, KITS[name]) : load(`runtime/${name}.js`).trim());
+const moduleFile = (name) => (KITS[name] ? KITS[name].file : `engine/runtime/${name}.js`);
+
+// Every runtime module in load order as the page runs it, with the file it comes from.
+export const runtimeModules = () => RUNTIME.map((name) => ({ name, file: moduleFile(name), source: wrapModule(moduleSource(name)) }));
+
 // One <script> body: the define() loader, then every module in RUNTIME order.
 export function script() {
-  const src = (name) => (KITS[name] ? kitSource(name, KITS[name]) : load(`runtime/${name}.js`).trim());
-  const file = (name) => (KITS[name] ? KITS[name].file : `engine/runtime/${name}.js`);
-  const mods = RUNTIME.map((name) => parseModule(name, src(name), file(name)));
+  const mods = RUNTIME.map((name) => parseModule(name, moduleSource(name), moduleFile(name)));
   checkModules(mods);
   return [load("runtime/define.js").trim(), ...mods.map((m) => wrapModule(m.src))].join("\n\n");
 }

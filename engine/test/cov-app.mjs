@@ -58,6 +58,7 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
   for (const [name, text] of Object.entries(files)) put(name, text, mtimes[name.split("/")[0]]);
   const store = createStore(dir);
   const h = { dir, store, put, requests: [], confirms: [], confirmAnswer, downloads: [], copied: [], timers: [], intervals: [], listeners: {}, docListeners: {}, serverUp: server, override: null,
+    scenes: [], swapResult: { ok: false },
     ctl: { editDirty: false, drawDirty: false, notesDirty: false, serverDirty: false, notesOpen: null, serverOpen: null, notesTexts: null, drawings: [], layout: null, modelOn: false, commits: [], notesMarked: [], drawMarked: 0, selected: [], editClicked: 0, loads: 0 },
     read: (name) => { try { return readFileSync(join(dir, ...name.split("/")), "utf8"); } catch (e) { return null; } } };
   const doc = new El("document");
@@ -121,7 +122,7 @@ export async function boot({ files = {}, server = true, mtimes = {}, boot: doBoo
   h.loadFrame = (modules) => {
     const D = dataOf(srcdoc);
     h.D = D;
-    frame.contentWindow = { InfraDiagram: { modules: modules ?? mkModules(D), select: (k) => h.ctl.selected.push(k), attachHost(host) { this.host = host; } } };
+    frame.contentWindow = { InfraDiagram: { modules: modules ?? mkModules(D), select: (k) => h.ctl.selected.push(k), attachHost(host) { this.host = host; }, replaceScene: (scene) => { h.scenes.push(scene); return h.swapResult; } } };
     frame.fire("load");
   };
   h.frame = frame;

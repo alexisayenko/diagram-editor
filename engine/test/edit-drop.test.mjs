@@ -20,7 +20,7 @@ function harness({ move, cl = "a" } = {}) {
   let mod;
   runInNewContext(readFileSync(new URL("../runtime/canvas/edit-mode.js", import.meta.url), "utf8"), {
     window: win, location: { search: "" }, requestAnimationFrame: (f) => f(), setTimeout() {},
-    InfraDiagram: { define: (n, d, f) => { mod = f({ core: { svg, els: [], $, D: { meta: { nodes: { s1: { cl } } } }, host, lsGet() {}, lsSet() {}, lsDel() {} }, init: { init() {}, editChanged() {} }, model, zoomPan: { fit: () => fits.push(1) }, keys }); } },
+    InfraDiagram: { define: (n, d, f) => { mod = f({ core: { svg, els: [], $, D: { meta: { nodes: { s1: { cl } } } }, host, on() {}, lsGet() {}, lsSet() {}, lsDel() {} }, init: { init() {}, editChanged() {} }, model, zoomPan: { fit: () => fits.push(1) }, keys }); } },
   });
   const target = (key) => ({ closest: () => dataEl({ e: key }) });
   const fire = (t, ev) => (svg.listeners[t] || []).forEach((f) => f({ button: 0, pointerId: 1, type: t, preventDefault() {}, ...ev }));

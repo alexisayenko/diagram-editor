@@ -89,6 +89,6 @@ export function prepareDiagram(files, folder, saved = null, refit = []) {
 
 export function renderDiagram(files, folder, saved, assets, refit = [], routeCache = null) {
   const { config, model, sections, notes, docs, meta, layout, kit, drawings, networks, warnings } = prepareDiagram(files, folder, saved, refit);
-  const { html, routeCache: nextRouteCache } = renderModel({ config, model, layout, meta, kit, sections, notes, docs, drawings, assets, networks, routeCache });
-  return { html, routeCache: nextRouteCache, layout, id: config.id, notes: notes.map((n) => n.text), problems: Object.keys(kit.problems(layout, meta)).length, warnings };
+  const { html, scene, routeCache: nextRouteCache } = renderModel({ config, model, layout, meta, kit, sections, notes, docs, drawings, assets, networks, routeCache });
+  return { html, scene, routeCache: nextRouteCache, layout, id: config.id, notes: notes.map((n) => n.text), problems: Object.keys(kit.problems(layout, meta)).length, warnings };
 }

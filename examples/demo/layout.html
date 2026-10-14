@@ -570,8 +570,9 @@ InfraDiagram.define("ui/core", ["ui/metrics"], function ({ metrics }) {
   // getState, isEdit, fit: the canvas (init). view, viewNode, title, route, rerender: canvas/model.
   // beforeSelect (returns false to veto a selection), pending (unsaved form edits): ui/server-edit.
   var SERVICES = ["getState", "isEdit", "fit", "route", "title", "view", "viewNode", "rerender", "beforeSelect", "pending"];
-  // Events: "panel" (key, panelElement) after ui/details filled the details panel; "render" after canvas/model drew a state.
-  var EVENTS = ["panel", "render"];
+  // Events: "panel" (key, panelElement) after ui/details filled the details panel; "render" after canvas/model drew a state;
+  // "scene" (scene, changed) after ui/scene swapped in a new scene: D, svg children, els and ents are replaced in place, the chrome is not yet rebuilt.
+  var EVENTS = ["panel", "render", "scene"];
   // Host: what the page gives the runtime, attached once with attachHost(host).
   // noteParser(text) -> { title, date, paras }; serverEditor: source, apply, add, duplicate, regionTypes, addRegion, move, renameNetwork.
   var HOST_FIELDS = ["noteParser", "serverEditor"];
@@ -637,9 +638,25 @@ InfraDiagram.define("ui/core", ["ui/metrics"], function ({ metrics }) {
   function lsDel(name) { try { localStorage.removeItem(D.id + "-" + name); } catch (e) { return; } }
   function $(id) { return document.getElementById(id); }
 
+  // D, svg's children, els and ents keep their identity so every module that captured them sees the new scene; D.layout too (canvas/model's base).
+  function replaceScene(data, svgHtml) {
+    var layout = D.layout, i;
+    Object.keys(D).forEach(function (k) { delete D[k]; });
+    Object.assign(D, data);
+    Object.keys(layout).forEach(function (k) { delete layout[k]; });
+    Object.assign(layout, D.layout);
+    D.layout = layout;
+    svg.innerHTML = svgHtml;
+    var kids = Array.from(svg.children).slice(1), marked = Array.from(svg.querySelectorAll("[data-ent]"));
+    els.length = 0;
+    ents.length = 0;
+    for (i = 0; i < kids.length; i++) els.push(kids[i]);
+    for (i = 0; i < marked.length; i++) ents.push(marked[i]);
+  }
+
   InfraDiagram.attachHost = registry.attachHost;
 
-  return { STYLES: STYLES, CW: CW, BG: BG, D: D, svg: svg, els: els, ents: ents, ctx: ctx, services: registry.services, provide: registry.provide, revoke: registry.revoke, on: registry.on, emit: registry.emit, host: registry.host, attachHost: registry.attachHost, detachHost: registry.detachHost, createRegistry: createRegistry, SERVICES: SERVICES, EVENTS: EVENTS, lsGet: lsGet, lsSet: lsSet, lsDel: lsDel, esc: esc, $: $, clipboard: clipboard, save: save };
+  return { STYLES: STYLES, CW: CW, BG: BG, D: D, svg: svg, els: els, ents: ents, replaceScene: replaceScene, ctx: ctx, services: registry.services, provide: registry.provide, revoke: registry.revoke, on: registry.on, emit: registry.emit, host: registry.host, attachHost: registry.attachHost, detachHost: registry.detachHost, createRegistry: createRegistry, SERVICES: SERVICES, EVENTS: EVENTS, lsGet: lsGet, lsSet: lsSet, lsDel: lsDel, esc: esc, $: $, clipboard: clipboard, save: save };
 });
 })();
 
@@ -898,7 +915,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
     if (e) e.setAttribute("x", w + M.osPill.eolGap);
   }
 
-  function rebuildChrome() {
+  function rebuildChrome(routeLater) {
     boxW = {};
     btn = {};
     Object.keys(D.idx.nodes).forEach(function (id) {
@@ -922,6 +939,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
       var s = ctx.style, t = els[e.l];
       pillW[k] = Math.round(measure(t, t.textContent.length, CW[s] * (s === "swiss" ? 1.05 : 1)) + 14);
     });
+    if (routeLater) return;
     if (hooks.route) hooks.route();
     sync(hooks.getState());
   }
@@ -981,7 +999,8 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
     });
   }
 
-  function setStyle(s, persist) {
+  // routeLater: the caller routes and fits itself next (a scene swap, which renders right after).
+  function setStyle(s, persist, routeLater) {
     if (!STYLES.includes(s)) s = "clean";
     ctx.style = s;
     document.documentElement.dataset.style = s;
@@ -994,8 +1013,8 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
     document.querySelectorAll("#ss button").forEach(function (b) {
       b.setAttribute("aria-pressed", b.dataset.s === s ? "true" : "false");
     });
-    rebuildChrome();
-    if (hooks.fit && s !== "sketch") hooks.fit();
+    rebuildChrome(routeLater);
+    if (hooks.fit && s !== "sketch" && !routeLater) hooks.fit();
     if (persist) {
       core.lsSet("style", s);
       try {
@@ -1154,29 +1173,32 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
   }
   function showAll() { ctx.hidden = {}; saveToggles(); applyToggles(); networks.setNet(null); }
 
-  function buildLegend() {
+  function fillLegend() {
     var lg = $("lg");
     function sw(t) {
       return '<button type="button" class="sw" role="switch" aria-checked="true" data-k="' + t.k + '" data-ty="' + t.ty + '"><span class="trk"></span><i class="' + (t.dash ? "dash" : "") + '"></i><span class="t">' + esc(t.label) + '</span></button>';
     }
     var ap = D.types.filter(function (t) { return !t.infra; }), inf = D.types.filter(function (t) { return t.infra; });
     lg.innerHTML = "<b>Server types</b>" + ap.map(sw).join("") + (inf.length ? "<b>Other infrastructure</b>" + inf.map(sw).join("") : "") + '<button type="button" class="reset">Show all</button>';
-    lg.addEventListener("click", function (e) {
-      var b = e.target.closest?.(".sw");
-      if (b) { toggle(b.dataset.k); return; }
-      if (e.target.closest?.(".reset")) showAll();
-    });
     var lk = document.querySelector("#lp .lk");
     // Connection switches (levels "lv:server" / "lv:process", groups "g:<id>"): a connection shows only while all its switches are on.
     lk.insertAdjacentHTML("beforeend", (D.edgeSwitches || []).map(function (g) {
       return '<button type="button" class="sw es" role="switch" aria-checked="true" data-k="' + g.k + '"' + (g.g ? ' data-g="' + g.g + '"' : "") + '><span class="trk"></span><i class="ln"></i><span class="t">' + esc(g.label) + "</span></button>";
     }).join(""));
+    lk.insertAdjacentHTML("beforeend", '<button type="button" id="lbl" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Connection labels</span></button>');
+    $("lbl").addEventListener("click", function () { setLabels(!ctx.labels, true); });
+  }
+  function bindLegend() {
+    $("lg").addEventListener("click", function (e) {
+      var b = e.target.closest?.(".sw");
+      if (b) { toggle(b.dataset.k); return; }
+      if (e.target.closest?.(".reset")) showAll();
+    });
+    var lk = document.querySelector("#lp .lk");
     lk.addEventListener("click", function (e) {
       var b = e.target.closest?.(".sw.es");
       if (b) toggle(b.dataset.k);
     });
-    lk.insertAdjacentHTML("beforeend", '<button type="button" id="lbl" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Connection labels</span></button>');
-    $("lbl").addEventListener("click", function () { setLabels(!ctx.labels, true); });
     lk.insertAdjacentHTML("afterend", '<div class="lo"><b>Servers</b><button type="button" id="osv" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Display System Information</span></button></div>');
     $("osv").addEventListener("click", function () { setSys(!ctx.sys, true); });
   }
@@ -1197,13 +1219,22 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
   // Builds the legend and restores the saved switches.
   function initLegend() {
     loadToggles();
-    buildLegend();
+    bindLegend();
+    fillLegend();
     setLabels(core.lsGet("labels") === "1", false);
     setSys(core.lsGet("os") !== "0", false);
     applyToggles();
   }
 
-  return { initLegend: initLegend, toggle: toggle, showAll: showAll };
+  // Scene swap: the connection key arrives as markup; the type and connection switches are built again from the new data, the switch states stay.
+  function refreshLegend(keyHtml) {
+    document.querySelector("#lp .lk").innerHTML = keyHtml;
+    fillLegend();
+    setLabels(!!ctx.labels, false);
+    applyToggles();
+  }
+
+  return { refreshLegend: refreshLegend, initLegend: initLegend, toggle: toggle, showAll: showAll };
 });
 })();
 
@@ -1228,8 +1259,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
     return B;
   }
 
-  function select(key) {
-    if (core.services.beforeSelect?.(key) === false) return;
+  function paint(key) {
     ctx.sel = key;
     var B = key ? related(key) : null;
     core.ents.forEach(function (el) {
@@ -1238,13 +1268,27 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details", "ui/keys", "ui/metrics
       el.classList.toggle("sel", !!B && k === key);
       if (el.getAttribute("tabindex") === "0") el.setAttribute("aria-pressed", String(!!B && k === key));
     });
+  }
+
+  function select(key) {
+    if (core.services.beforeSelect?.(key) === false) return;
+    paint(key);
     var pn = core.$("pn");
     if (key) { details.renderPanel(key); pn.hidden = false; }
     else pn.hidden = true;
     panels.placeChrome();
   }
 
-  return { related: related, select: select };
+  // After a scene swap: the selection stays when its entity still exists, else it clears; an open form with pending edits keeps its panel.
+  function restore(key) {
+    var live = key && D.ent[key] ? key : null, pn = core.$("pn");
+    paint(live);
+    if (!live) pn.hidden = true;
+    else if (!core.services.pending?.()) { details.renderPanel(live); pn.hidden = false; }
+    panels.placeChrome();
+  }
+
+  return { related: related, select: select, restore: restore };
 });
 })();
 
@@ -1616,6 +1660,7 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
     svg.addEventListener("focusin", onFocusIn);
     svg.addEventListener("focusout", onFocusOut);
     core.on("render", function () { if (ringKey) placeRing(); });
+    core.on("scene", function () { ringKey = null; dropRing(); makeFocusable(); });
     svg.addEventListener("click", onSvgClick);
     document.addEventListener("keydown", onEscape);
     document.fonts?.ready?.then(onFontsReady).catch(() => null);
@@ -1630,6 +1675,90 @@ InfraDiagram.define("ui/init", ["ui/core", "ui/details", "ui/skins", "ui/network
   Object.keys(api).forEach(function (k) { InfraDiagram[k] = api[k]; });
 
   return { init: init, editChanged: editChanged };
+});
+})();
+
+(function () { function netIdentity(net) { return net ? [net.cidr || "", net.name || ""] : null; }
+
+function findNet(nets, id) {
+  if (!id || !nets) return null;
+  var byCidr = id[0] ? nets.findIndex(function (n) { return n.cidr === id[0]; }) : -1;
+  var i = byCidr >= 0 ? byCidr : nets.findIndex(function (n) { return !n.cidr && n.name === id[1]; });
+  return i >= 0 ? i : null;
+}
+
+var TEXTS = ["title", "cssSvg", "viewBox", "svg", "legendKey", "notes", "docs", "data"];
+
+function malformed(scene) {
+  if (!scene || typeof scene !== "object") return "no scene";
+  var ok = TEXTS.every(function (k) { return typeof scene[k] === "string"; }) && typeof scene.noteCount === "number" && (scene.nets === null || typeof scene.nets === "string");
+  return ok ? null : "the scene is incomplete";
+}
+
+InfraDiagram.define("ui/scene", ["ui/core", "ui/skins", "ui/legend", "ui/networks", "ui/selection", "ui/panels"], function ({ core, skins, legend, networks, selection, panels }) {
+  var D = core.D, ctx = core.ctx, $ = core.$, hooks = core.services;
+  var last = {};
+
+  function changed(name, html) {
+    var c = last[name] !== html;
+    last[name] = html;
+    return c;
+  }
+
+  function misfit(scene, data) {
+    if (!ctx.ready) return "the page has not started yet";
+    if (data.id !== D.id) return "the scene belongs to another diagram";
+    if ((scene.nets === null) === !!$("wp")) return "the Networks panel appears or disappears";
+    return null;
+  }
+
+  function panelsOf(scene) {
+    var notes = changed("notes", scene.notes);
+    if (notes) {
+      $("nl").innerHTML = scene.notes;
+      $("nh").textContent = "Notes (" + scene.noteCount + ")";
+    }
+    if (changed("docs", scene.docs)) $("dl").innerHTML = scene.docs;
+    if (scene.nets !== null && changed("nets", scene.nets)) $("wl").innerHTML = scene.nets;
+    return { notes: notes };
+  }
+
+  function apply(scene, data) {
+    var sel = ctx.sel, net = ctx.net === null ? null : netIdentity(D.nets?.[ctx.net]);
+    core.replaceScene(data, scene.svg);
+    document.title = scene.title;
+    $("css-svg").textContent = scene.cssSvg;
+    var what = panelsOf(scene);
+    legend.refreshLegend(scene.legendKey);
+    ctx.net = findNet(D.nets, net);
+    if (net !== null) networks.setNet(ctx.net);
+    core.emit("scene", scene, what);
+    ctx.sel = null;
+    skins.setStyle(ctx.style, false, true);
+    hooks.rerender();
+    if (ctx.style !== "sketch") hooks.fit();
+    selection.restore(sel);
+    panels.placeChrome();
+  }
+
+  // Replaces the diagram, its data and the panels' contents in place; zoom, selection, edit mode, the drawing tool and unsaved edits stay.
+  // Returns { ok: true }, or { ok: false, reason } when the scene does not fit this page (nothing changed) or the swap failed half way (the caller reloads the page).
+  function replaceScene(scene) {
+    try {
+      var reason = malformed(scene);
+      var data = reason ? null : JSON.parse(scene.data);
+      reason = reason || misfit(scene, data);
+      if (reason) return { ok: false, reason: reason };
+      apply(scene, data);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, reason: String(e?.message ?? e) };
+    }
+  }
+
+  InfraDiagram.replaceScene = replaceScene;
+
+  return { replaceScene: replaceScene };
 });
 })();
 
@@ -1679,9 +1808,7 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function ({ core,
   var D = core.D, $ = core.$;
   var host = $("nl");
   var enabled = !!window.InfraDiagramFileBacked && !!host;
-  var list = (D.notes || []).map(function (n) { return n.text || ""; });
-  var cards = (D.notes || []).slice();
-  var baseline = list.slice();
+  var list, cards, baseline;
   var edit = null, busy = false;
 
   function parse(text) {
@@ -1807,7 +1934,13 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function ({ core,
     return edit ? edit.err.textContent : null;
   }
 
-  if (enabled) {
+  // The notes as the page was rendered: the working texts, their cards and the baseline that unsaved changes are measured against.
+  function load() {
+    list = (D.notes || []).map(function (n) { return n.text || ""; });
+    cards = (D.notes || []).slice();
+    baseline = list.slice();
+    edit = null;
+    if (!enabled) return;
     host.classList.add("ed");
     var add = button("Add note", "nadd", addNote);
     add.id = "na";
@@ -1818,6 +1951,15 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function ({ core,
       if (t) t.textContent = show(cards[i].date, new Date());
     });
     syncData();
+  }
+
+  load();
+  core.on("scene", function (_, changed) {
+    if (changed.notes) load();
+    else if (enabled) syncData();
+  });
+
+  if (enabled) {
     host.addEventListener("click", function (e) {
       var n = e.target.closest?.(".note");
       if (!n || n.classList.contains("editing")) return;
@@ -3068,6 +3210,12 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "
     core.emit("render");
   }
 
+  // A swapped-in scene brings the saved geometry as the new base; the resize handles lived in the replaced svg content.
+  core.on("scene", function () {
+    handles = null;
+    state.st = clone(base);
+  });
+
   core.provide("title", geometry.headerTitle);
   core.provide("route", function () {
     var s = core.services.getState?.();
@@ -3135,6 +3283,10 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function ({ 
     applyZoom();
   }
   function zoomFit() { Z.z = 1; Z.free = false; applyZoom(); }
+  core.on("scene", function (next) {
+    Z.base = next.viewBox.split(/\s+/).map(Number);
+    applyZoom();
+  });
   svg.addEventListener("wheel", function (e) {
     if (e.target.closest?.(".cp,#rc,#pn,#ta")) return;
     e.preventDefault();
@@ -3361,6 +3513,11 @@ InfraDiagram.define("canvas/draw", ["ui/core", "canvas/draw-kit", "canvas/model"
     else if (b.dataset.w) setPen(pen.color, +b.dataset.w);
   });
 
+  core.on("scene", function () {
+    layer = document.getElementById("dw");
+    hot = null;
+  });
+
   paintPen();
   sync();
 
@@ -3382,7 +3539,9 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   var svg = core.svg, els = core.els, $ = core.$, state = model.state, base = model.base, fit = zoomPan.fit;
   var GRID = 5;
   var drag = null, frame = 0;
-  var KEY = "layout-draft:" + hash(JSON.stringify(base) + svg.textContent.replace(/\s+/g, " "));
+  var KEY = draftKey();
+
+  function draftKey() { return "layout-draft:" + hash(JSON.stringify(base) + svg.textContent.replace(/\s+/g, " ")); }
 
   function loadDraft() {
     if (window.InfraDiagramFileBacked) return null;
@@ -3544,6 +3703,11 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
 
   if (/[?&]debug(=|&|$)/.test(location.search)) setMode(true);
   init.init({ getState: function () { return state.on ? state.st : base; }, isEdit: function () { return state.on; }, fit: fit });
+  // After ui/init's own scene handler, so the edit marks go on the elements it has made focusable.
+  core.on("scene", function () {
+    KEY = draftKey();
+    if (state.on) mark(true);
+  });
 
   return { currentLayout: currentLayout, isDirty: isDirty, commit: commit };
 });

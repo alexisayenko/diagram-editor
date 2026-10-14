@@ -104,7 +104,7 @@ test("a handler that unsubscribes while an event is delivered does not skip the 
 
 test("the event names are listed in one place and exported", () => {
   const { core } = loadCore();
-  assert.deepEqual([...core.EVENTS], ["panel", "render"]);
+  assert.deepEqual([...core.EVENTS], ["panel", "render", "scene"]);
   assert.equal(typeof core.createRegistry, "function");
   const other = core.createRegistry();
   other.provide("fit", () => 1);

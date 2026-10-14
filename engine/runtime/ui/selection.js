@@ -19,8 +19,7 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels", "ui/k
     return B;
   }
 
-  function select(key) {
-    if (core.services.beforeSelect?.(key) === false) return;
+  function paint(key) {
     ctx.sel = key;
     var B = key ? related(key) : null;
     core.ents.forEach(function (el) {
@@ -29,11 +28,25 @@ InfraDiagram.define("ui/selection", ["ui/core", "ui/details", "ui/panels", "ui/k
       el.classList.toggle("sel", !!B && k === key);
       if (el.getAttribute("tabindex") === "0") el.setAttribute("aria-pressed", String(!!B && k === key));
     });
+  }
+
+  function select(key) {
+    if (core.services.beforeSelect?.(key) === false) return;
+    paint(key);
     var pn = core.$("pn");
     if (key) { details.renderPanel(key); pn.hidden = false; }
     else pn.hidden = true;
     panels.placeChrome();
   }
 
-  return { related: related, select: select };
+  // After a scene swap: the selection stays when its entity still exists, else it clears; an open form with pending edits keeps its panel.
+  function restore(key) {
+    var live = key && D.ent[key] ? key : null, pn = core.$("pn");
+    paint(live);
+    if (!live) pn.hidden = true;
+    else if (!core.services.pending?.()) { details.renderPanel(live); pn.hidden = false; }
+    panels.placeChrome();
+  }
+
+  return { related: related, select: select, restore: restore };
 });

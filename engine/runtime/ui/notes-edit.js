@@ -44,9 +44,7 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function ({ core,
   var D = core.D, $ = core.$;
   var host = $("nl");
   var enabled = !!window.InfraDiagramFileBacked && !!host;
-  var list = (D.notes || []).map(function (n) { return n.text || ""; });
-  var cards = (D.notes || []).slice();
-  var baseline = list.slice();
+  var list, cards, baseline;
   var edit = null, busy = false;
 
   function parse(text) {
@@ -172,7 +170,13 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function ({ core,
     return edit ? edit.err.textContent : null;
   }
 
-  if (enabled) {
+  // The notes as the page was rendered: the working texts, their cards and the baseline that unsaved changes are measured against.
+  function load() {
+    list = (D.notes || []).map(function (n) { return n.text || ""; });
+    cards = (D.notes || []).slice();
+    baseline = list.slice();
+    edit = null;
+    if (!enabled) return;
     host.classList.add("ed");
     var add = button("Add note", "nadd", addNote);
     add.id = "na";
@@ -183,6 +187,15 @@ InfraDiagram.define("ui/notes-edit", ["ui/core", "ui/panels"], function ({ core,
       if (t) t.textContent = show(cards[i].date, new Date());
     });
     syncData();
+  }
+
+  load();
+  core.on("scene", function (_, changed) {
+    if (changed.notes) load();
+    else if (enabled) syncData();
+  });
+
+  if (enabled) {
     host.addEventListener("click", function (e) {
       var n = e.target.closest?.(".note");
       if (!n || n.classList.contains("editing")) return;

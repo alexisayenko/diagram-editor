@@ -41,8 +41,9 @@ InfraDiagram.define("ui/core", ["ui/metrics"], function ({ metrics }) {
   // getState, isEdit, fit: the canvas (init). view, viewNode, title, route, rerender: canvas/model.
   // beforeSelect (returns false to veto a selection), pending (unsaved form edits): ui/server-edit.
   var SERVICES = ["getState", "isEdit", "fit", "route", "title", "view", "viewNode", "rerender", "beforeSelect", "pending"];
-  // Events: "panel" (key, panelElement) after ui/details filled the details panel; "render" after canvas/model drew a state.
-  var EVENTS = ["panel", "render"];
+  // Events: "panel" (key, panelElement) after ui/details filled the details panel; "render" after canvas/model drew a state;
+  // "scene" (scene, changed) after ui/scene swapped in a new scene: D, svg children, els and ents are replaced in place, the chrome is not yet rebuilt.
+  var EVENTS = ["panel", "render", "scene"];
   // Host: what the page gives the runtime, attached once with attachHost(host).
   // noteParser(text) -> { title, date, paras }; serverEditor: source, apply, add, duplicate, regionTypes, addRegion, move, renameNetwork.
   var HOST_FIELDS = ["noteParser", "serverEditor"];
@@ -108,7 +109,23 @@ InfraDiagram.define("ui/core", ["ui/metrics"], function ({ metrics }) {
   function lsDel(name) { try { localStorage.removeItem(D.id + "-" + name); } catch (e) { return; } }
   function $(id) { return document.getElementById(id); }
 
+  // D, svg's children, els and ents keep their identity so every module that captured them sees the new scene; D.layout too (canvas/model's base).
+  function replaceScene(data, svgHtml) {
+    var layout = D.layout, i;
+    Object.keys(D).forEach(function (k) { delete D[k]; });
+    Object.assign(D, data);
+    Object.keys(layout).forEach(function (k) { delete layout[k]; });
+    Object.assign(layout, D.layout);
+    D.layout = layout;
+    svg.innerHTML = svgHtml;
+    var kids = Array.from(svg.children).slice(1), marked = Array.from(svg.querySelectorAll("[data-ent]"));
+    els.length = 0;
+    ents.length = 0;
+    for (i = 0; i < kids.length; i++) els.push(kids[i]);
+    for (i = 0; i < marked.length; i++) ents.push(marked[i]);
+  }
+
   InfraDiagram.attachHost = registry.attachHost;
 
-  return { STYLES: STYLES, CW: CW, BG: BG, D: D, svg: svg, els: els, ents: ents, ctx: ctx, services: registry.services, provide: registry.provide, revoke: registry.revoke, on: registry.on, emit: registry.emit, host: registry.host, attachHost: registry.attachHost, detachHost: registry.detachHost, createRegistry: createRegistry, SERVICES: SERVICES, EVENTS: EVENTS, lsGet: lsGet, lsSet: lsSet, lsDel: lsDel, esc: esc, $: $, clipboard: clipboard, save: save };
+  return { STYLES: STYLES, CW: CW, BG: BG, D: D, svg: svg, els: els, ents: ents, replaceScene: replaceScene, ctx: ctx, services: registry.services, provide: registry.provide, revoke: registry.revoke, on: registry.on, emit: registry.emit, host: registry.host, attachHost: registry.attachHost, detachHost: registry.detachHost, createRegistry: createRegistry, SERVICES: SERVICES, EVENTS: EVENTS, lsGet: lsGet, lsSet: lsSet, lsDel: lsDel, esc: esc, $: $, clipboard: clipboard, save: save };
 });

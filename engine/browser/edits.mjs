@@ -45,7 +45,7 @@ export function createEdits({ sessions, bridge, render }) {
     session.carryLayout = session.carryLayout || api.isDirty() || draw.isDirty();
     session.work = work;
     session.after = { key, edit: wasEdit };
-    session.reload = bridge.show(result.html).then(() => { session.reload = null; });
+    session.reload = bridge.replace(result).then(() => { session.reload = null; });
   }
   function rerender(path, next, id, at, extra = {}) {
     rerenderMany(new Map([[path, next]]), at ? { [id]: at } : {}, [id], extra.key ?? nodeKey("server", id), extra);

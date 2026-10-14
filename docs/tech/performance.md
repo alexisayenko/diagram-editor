@@ -183,12 +183,52 @@ connection at 400 servers against 1500 at 100. 400 servers with 600
 connections cost about 1.3 to 1.5 s in Node (noise of this machine
 included). A single edit that changes a box still re-routes everything;
 the 64 ms case is an edit that changes no geometry. The iframe reload
-(about 20 s in the browser) is not touched: it is the scene swap, the
-next step of the ladder.
+(about 20 s in the browser at that time) was not touched by this step:
+it is the scene swap, below.
 
 `perf.test.mjs` guards ratios only: 200 servers under 8x of 100, 400 under
 20x of 100 (measured 3.5x and 13x), page size, and a cached edit under a
 third of a full one.
+
+## After the scene swap (AR-06, ladder step 4)
+
+An edit no longer recreates the iframe or runs the page script again:
+the page is a shell plus a scene and `InfraDiagram.replaceScene` swaps the
+scene in place ([ADR-0019](decisions/adr-0019-page-shell-and-scene-swap.md),
+[architecture.md](architecture.md#shell-and-scene)).
+
+Browser measurements (built-in browser, `diagram.html` on `localhost:8090`,
+generated diagram opened through the page's own `load` as a scratch
+diagram, never saved; one server edit through `serverEditor.apply`, time
+from the call until the page is ready again, `performance.now()`, 3 to 5
+edits each). "Before" is the same edit with the swap refused, which takes
+the old path (new `srcdoc`); it already includes the router speed-up, so it
+is faster than the 29.6 s measured at the start of this document.
+
+| Servers | Edit before (reload) | Edit after (scene swap) | Open diagram |
+| ---: | ---: | ---: | ---: |
+| 100 | 0.57 to 0.65 s | 0.17 to 0.22 s | 0.5 s |
+| 400 | 5.6 to 5.8 s | 1.6 to 1.8 s | 5.3 s |
+
+At 400 servers the page was 1.57 MB per edit before; a swap hands over
+the scene (the same strings minus the 170 KB of runtime and CSS) by
+reference, with no parse of a document. What is left per edit: the render
+(about 0.1 s with the route cache), the client-side routing of the
+runtime (about 1.1 s at 400 servers, the same geometry code a load runs;
+it now runs once per swap) and the rebuild of the cards. The next step is
+incremental routing, not another transport.
+
+Kept across an edit now (all verified in the browser and in
+`scene-swap.test.mjs`): the zoom and pan, the selection (the edited
+server is selected as before; another selection stays when its entity
+exists), edit mode, the drawing tool and strokes, the legend switches,
+the network filter. Equality: a swapped page and a freshly loaded one
+have the same svg, data, panels and style sheet (`scene-swap.test.mjs`
+compares them byte for byte for a name, note, document, network, region,
+added and removed server; in the browser the `outerHTML` of the svg, the
+data and the panels matched for Clean, Dark and Swiss).
+`tools/bench.mjs` reports the scene size an edit hands over next to the
+page size and checks that the route-cached scene equals a fresh one.
 
 ## Do the numbers justify the big change (D6)?
 
@@ -197,7 +237,7 @@ measured about 200 ms at 157 servers). At 150 servers the measured
 pipeline is 0.3 to 0.9 s, which is noticeable but not slow; at 200 it is
 1.4 s and at 400 it is 7 s in Node and about 30 s in the browser. So:
 
-- Scene swap (AR-06, AR-13) is justified when diagrams of 200 or more
+- Scene swap (AR-06, AR-13; done, see above) is justified when diagrams of 200 or more
   servers are a real target. The iframe reload dominates there (about
   20 s per edit) and it also loses zoom and selection at any size.
 - It is not justified as the first step. Do the routing steps 1 and 2

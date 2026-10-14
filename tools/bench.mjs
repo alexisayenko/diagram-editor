@@ -128,6 +128,7 @@ export function measureOnce(files, folder, assetBundle) {
 }
 
 // The page's server-edit path without the browser: setServer on the file, then a full render with the layout of the previous render.
+// The edit swaps the scene into the loaded frame (no iframe load); sceneBytes is what is handed over, bytes the whole page a reload would parse.
 export function measureEdit(files, folder, assetBundle) {
   const first = renderDiagram(files, folder, null, assetBundle, []);
   const id = "srv010";
@@ -143,7 +144,7 @@ export function measureEdit(files, folder, assetBundle) {
   const t2 = performance.now();
   const cached = renderDiagram(work, folder, first.layout, assetBundle, [id], first.routeCache);
   const t3 = performance.now();
-  return { write: t1 - t0, rebuild: t2 - t1, total: t2 - t0, cachedTotal: t3 - t2 + (t1 - t0), bytes: Buffer.byteLength(result.html), same: cached.html === result.html };
+  return { write: t1 - t0, rebuild: t2 - t1, total: t2 - t0, cachedTotal: t3 - t2 + (t1 - t0), bytes: Buffer.byteLength(result.html), sceneBytes: Buffer.byteLength(JSON.stringify(result.scene)), same: cached.html === result.html && JSON.stringify(cached.scene) === JSON.stringify(result.scene) };
 }
 
 export function bench(sizes, runs, log = () => {}) {
@@ -162,7 +163,8 @@ export function bench(sizes, runs, log = () => {}) {
         row[k] = k.endsWith("Bytes") ? v[0] : { median: median(v), p95: p95(v) };
       }
       row.editCached = { median: median(edits.map((e) => e.cachedTotal)), identical: edits.every((e) => e.same) };
-      row.edit = { median: median(edits.map((e) => e.total)), p95: p95(edits.map((e) => e.total)), write: median(edits.map((e) => e.write)), rebuild: median(edits.map((e) => e.rebuild)) };
+      row.sceneBytes = edits[0].sceneBytes;
+  row.edit = { median: median(edits.map((e) => e.total)), p95: p95(edits.map((e) => e.total)), write: median(edits.map((e) => e.write)), rebuild: median(edits.map((e) => e.rebuild)) };
       row.connections = (files.get("topology.toml").match(/\[\[connections\]\]/g) || []).length;
       result[n] = row;
       log(n, row);
@@ -188,5 +190,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   console.log("ms, median of " + runs + " runs (parse = one tomlModel pass; networks = IP scan + derive; layout = restore, auto-layout, fit)");
   console.log(table(result));
   console.log("edit with the previous route cache (ms, median): " + Object.entries(result).map(([n, row]) => n + ": " + row.editCached.median.toFixed(0) + (row.editCached.identical ? "" : " (DIFFERENT OUTPUT)")).join(", "));
+  console.log("scene handed to the loaded frame on an edit (KB, the whole page is the page column): " + Object.entries(result).map(([n, row]) => n + ": " + (row.sceneBytes / 1024).toFixed(0)).join(", "));
   if (out) writeFileSync(out, JSON.stringify({ runs, node: process.version, result }, null, 2));
 }

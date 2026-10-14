@@ -10,7 +10,7 @@ import { computeViewBox } from "./viewbox.mjs";
 import { routeAll } from "./route-cache.mjs";
 import { buildEdgeKey, groupAssets } from "./edge-key.mjs";
 import { buildDataJson } from "../page/data.mjs";
-import { renderLayoutHtml } from "../page/layout-html.mjs";
+import { renderLayoutHtml, renderScene } from "../page/layout-html.mjs";
 
 // `networks` is null or the networks.toml rows with the derived ones (shared-networks.mjs).
 export function deriveNetworks(networks, model, layout) {
@@ -28,15 +28,15 @@ export function renderModel({ config, model, layout, meta, kit, sections, notes,
   const groupKit = groupAssets(config.groups);
   const edgeKeys = buildEdgeKey(model, config.edgeLabels, config.groups);
   const dataJson = buildDataJson({ config, model, layout, meta, idx, ent, typeList, sections, notes, nets, ipNet, edgeKeyRows: edgeKeys.rows, drawings });
-  const html = assets && renderLayoutHtml({
+  const scene = assets && renderScene({
+    id: config.id,
     title: config.title,
     cssSvg: assets.cssSvg + "\n" + typeCss.trim() + (groupKit.css ? "\n" + groupKit.css : ""),
-    cssPage: assets.cssPage,
     viewBox, svgBody, drawings,
     markers: groupKit.markers,
     edgeKeyHtml: edgeKeys.html,
     notes, docs, nets, dataJson,
-    js: assets.js,
   });
-  return { html, routes, routeCache: cache, nets, ipNet, ent, typeList, typeCss, svgBody, idx, viewBox, groupKit, edgeKeys, dataJson };
+  const html = scene && renderLayoutHtml({ scene, cssPage: assets.cssPage, js: assets.js });
+  return { html, scene, routes, routeCache: cache, nets, ipNet, ent, typeList, typeCss, svgBody, idx, viewBox, groupKit, edgeKeys, dataJson };
 }

@@ -1,4 +1,5 @@
 // The page's side of the diagram iframe: it gives the runtime its host interface, reports when the runtime is ready and when the user may have changed something, and wraps every look into the frame.
+// A frame is loaded once per shell (document, styles, runtime); later edits of the same diagram swap the scene inside it (see replace) and reload only when that is not possible.
 const MODULES = { editor: "canvas/edit-mode", notes: "ui/notes-edit", server: "ui/server-edit", draw: "canvas/draw", model: "canvas/model" };
 const ACTIVITY = ["pointerup", "keyup", "input", "change", "click"];
 
@@ -10,11 +11,11 @@ const ACTIVITY = ["pointerup", "keyup", "input", "change", "click"];
 
 /**
  * @param {HTMLIFrameElement} frame
- * @param {{host: Host, onLoad: (ready: boolean) => void, onChange: () => void, defer?: (fn: () => void) => void}} options
- * onLoad fires after every load of a frame that show() started; onChange fires, once per burst, after pointer, key or form activity inside a ready frame.
+ * @param {{host: Host, onLoad: (ready: boolean, swapped: boolean) => void, onChange: () => void, defer?: (fn: () => void) => void}} options
+ * onLoad fires after every load of a frame that show() started (swapped: false) and after every scene swap that replace() made (swapped: true); onChange fires, once per burst, after pointer, key or form activity inside a ready frame.
  */
 export function createFrameBridge(frame, { host, onLoad, onChange, defer = (fn) => setTimeout(fn, 0) }) {
-  let ready = false, expecting = false, queued = false;
+  let ready = false, expecting = false, queued = false, shell = null;
   const waiters = [];
   const diagram = () => frame.contentWindow.InfraDiagram;
   const mod = (key) => (ready ? diagram()?.modules[MODULES[key]] ?? null : null);
@@ -23,6 +24,17 @@ export function createFrameBridge(frame, { host, onLoad, onChange, defer = (fn) 
     queued = true;
     defer(() => { queued = false; onChange(); });
   };
+  function show(html, key = null) {
+    expecting = true;
+    ready = false;
+    shell = key;
+    const loaded = new Promise((resolve) => waiters.push(resolve));
+    frame.srcdoc = html;
+    return loaded;
+  }
+  const swapped = (scene) => {
+    try { return diagram().replaceScene(scene).ok; } catch { return false; }
+  };
   frame.addEventListener("load", () => {
     if (!expecting) return;
     ready = !!diagram()?.modules[MODULES.editor];
@@ -30,7 +42,7 @@ export function createFrameBridge(frame, { host, onLoad, onChange, defer = (fn) 
       diagram().attachHost(host);
       for (const type of ACTIVITY) frame.contentDocument.addEventListener(type, notify, true);
     }
-    onLoad(ready);
+    onLoad(ready, false);
     waiters.splice(0).forEach((resolve) => resolve());
   });
   return {
@@ -44,12 +56,14 @@ export function createFrameBridge(frame, { host, onLoad, onChange, defer = (fn) 
     noteTexts: () => mod("notes")?.texts() ?? null,
     select: (key) => diagram().select(key),
     clickEdit: () => frame.contentDocument.getElementById("te").click(),
-    show(html) {
-      expecting = true;
-      ready = false;
-      const loaded = new Promise((resolve) => waiters.push(resolve));
-      frame.srcdoc = html;
-      return loaded;
+    show,
+    /** Swaps the scene of the loaded frame in place; loads the whole page when the shell differs or the runtime refuses or fails. Resolves with "swapped" or "reloaded". */
+    replace({ html, scene }) {
+      if (ready && scene?.shell === shell && swapped(scene)) {
+        onLoad(true, true);
+        return Promise.resolve("swapped");
+      }
+      return show(html, scene?.shell ?? null).then(() => "reloaded");
     },
   };
 }

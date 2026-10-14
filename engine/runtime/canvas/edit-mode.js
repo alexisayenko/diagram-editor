@@ -12,7 +12,9 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
   var svg = core.svg, els = core.els, $ = core.$, state = model.state, base = model.base, fit = zoomPan.fit;
   var GRID = 5;
   var drag = null, frame = 0;
-  var KEY = "layout-draft:" + hash(JSON.stringify(base) + svg.textContent.replace(/\s+/g, " "));
+  var KEY = draftKey();
+
+  function draftKey() { return "layout-draft:" + hash(JSON.stringify(base) + svg.textContent.replace(/\s+/g, " ")); }
 
   function loadDraft() {
     if (window.InfraDiagramFileBacked) return null;
@@ -174,6 +176,11 @@ InfraDiagram.define("canvas/edit-mode", ["ui/core", "ui/init", "canvas/model", "
 
   if (/[?&]debug(=|&|$)/.test(location.search)) setMode(true);
   init.init({ getState: function () { return state.on ? state.st : base; }, isEdit: function () { return state.on; }, fit: fit });
+  // After ui/init's own scene handler, so the edit marks go on the elements it has made focusable.
+  core.on("scene", function () {
+    KEY = draftKey();
+    if (state.on) mark(true);
+  });
 
   return { currentLayout: currentLayout, isDirty: isDirty, commit: commit };
 });

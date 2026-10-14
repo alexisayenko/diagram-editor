@@ -48,6 +48,10 @@ InfraDiagram.define("canvas/zoom-pan", ["ui/core", "canvas/model"], function ({ 
     applyZoom();
   }
   function zoomFit() { Z.z = 1; Z.free = false; applyZoom(); }
+  core.on("scene", function (next) {
+    Z.base = next.viewBox.split(/\s+/).map(Number);
+    applyZoom();
+  });
   svg.addEventListener("wheel", function (e) {
     if (e.target.closest?.(".cp,#rc,#pn,#ta")) return;
     e.preventDefault();
