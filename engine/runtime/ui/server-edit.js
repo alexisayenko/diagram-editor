@@ -163,6 +163,8 @@ InfraDiagram.define("ui/server-edit", ["ui/core", "ui/selection", "ui/panels"], 
     return false;
   };
 
+  core.hooks.pending = function () { return !!edit && changed(); };
+
   core.hooks.panel = function (key, pn) {
     edit = null;
     current = null;

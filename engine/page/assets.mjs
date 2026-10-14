@@ -14,7 +14,7 @@ const CSS = {
 // Runtime modules in load order; a module may only depend on modules listed before it.
 // "canvas/geometry" is generated from render/geometry.mjs (geometryKit) so build and edit mode route connections identically.
 const RUNTIME = [
-  "ui/core", "ui/details", "ui/skins", "ui/panels", "ui/networks", "ui/legend", "ui/selection",
+  "ui/core", "ui/details", "ui/skins", "ui/panels", "ui/networks", "ui/legend", "ui/selection", "ui/clear-click",
   "ui/export-columns", "ui/copy", "ui/export-image", "ui/init", "ui/notes-edit", "ui/server-edit",
   "canvas/geometry", "canvas/draw-kit", "canvas/model", "canvas/zoom-pan", "canvas/draw", "canvas/edit-mode", "canvas/context-menu",
 ];

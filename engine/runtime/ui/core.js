@@ -6,8 +6,8 @@ InfraDiagram.define("ui/core", [], function () {
   var svg = document.querySelector("svg");
   var els = [].slice.call(svg.children, 1);
   var ents = [].slice.call(svg.querySelectorAll("[data-ent]"));
-  var ctx = { style: "clean", hidden: {}, sel: null, net: null, ready: false };
-  var hooks = { getState: null, isEdit: null, fit: null, route: null, title: null, panel: null, beforeSelect: null };
+  var ctx = { style: "clean", hidden: {}, sel: null, net: null, sys: true, ready: false };
+  var hooks = { getState: null, isEdit: null, fit: null, route: null, title: null, panel: null, beforeSelect: null, pending: null, view: null, viewNode: null, rerender: null };
 
   // Keys are "<diagram id>-<name>"; a value still under "<legacyId>-<name>" is copied over on first read.
   function lsGet(name) {

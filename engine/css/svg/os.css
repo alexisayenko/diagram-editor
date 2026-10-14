@@ -1,4 +1,4 @@
-svg:not(.showos) .osg{display:none}
+svg:not(.showsys) .osg,svg:not(.showsys) .hw{display:none}
 .osg{cursor:pointer}
 .osp{fill:var(--bg);stroke:var(--mut);stroke-width:.75}
 .ost{fill:var(--mut);font-family:var(--mono);font-size:8.5px}

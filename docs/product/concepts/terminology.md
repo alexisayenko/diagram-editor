@@ -22,7 +22,7 @@ What the diagram depicts; part of every export.
 | Server | One host, drawn as a box: header with hostname, body lines (services, jobs, deployments), IP lines. A node in `diagram.mmd`, key `nodes` in `layout.json`. | server panel, node, box |
 | Server type | Canonical role: Web, External Interface, Internal Interface, Application, Cache, Oracle Database, Mongo Database Server. Shown by colour. | badge, class |
 | Region | Bordered area grouping servers, e.g. one per server type ("Oracle DB Servers") or a cluster ("App Servers"). May be empty. At most one region per server type (the region's type is the default type of its servers; moving a server into a region gives it that type). A `subgraph` in `diagram.mmd`, key `clusters` in `layout.json`. | server type grouping, server type region, cluster |
-| OS pill | Small pill in a server box with its OS version from `details.md`, shown when "Display OS version" is on (default); amber outline plus "EOL" once the version is past end of standard support, faded dashed "OS ?" when unknown. | OS badge, OS label |
+| OS pill | Small pill in a server box with its OS version from `details.md`, shown when "Display System Information" is on (default); amber outline plus "EOL" once the version is past end of standard support, faded dashed "OS ?" when unknown. | OS badge, OS label |
 | Network | IP range (CIDR) from `networks.md`, or a CIDR-less group of them. A server belongs to it when one of its IP lines falls inside; a region when one of its servers does. | subnet, VLAN |
 | Other infrastructure | Real infrastructure that is not a server type, e.g. NAS. | |
 | Connection | Arrow between servers or regions: a request (TCP, NFS) one side makes to the other; the arrow points from initiator to target. An endpoint is a server (box) or a process (body line: job, deployment, RMI service); server connection vs process connection. Routed automatically. An edge in `diagram.mmd`, key `edges` in `layout.json`. | edge, request arrow |
@@ -39,7 +39,7 @@ Controls for working with the view; never part of the diagram itself.
 |---|---|---|
 | Top area | Top row: skin switch and zoom (left), SVG / PNG / Edit layout (right). | toolbar, buttons row |
 | Panel | Collapsible card floating over the diagram, beneath the top area: Legend and Networks (left), Notes and Related documents (right). | |
-| Legend | Panel with the server type switches, "Show all", the connection key with the connection switches (server / process connections, connection groups) and "Connection labels", and "Display OS version". | |
+| Legend | Panel with the server type switches, "Show all", the connection key with the connection switches (server / process connections, connection groups) and "Connection labels", and "Display System Information". | |
 | Networks panel | Panel under the Legend listing the networks from `networks.md` as a tree: CIDR, name, host count. | subnet list |
 | Network filter | Clicking a network in the Networks panel: servers outside it (and unrelated regions and connections) dim. One network at a time; combines with the type switches; exports keep it. | subnet highlight |
 | Network button | Small network glyph right after an IP pill (Sketch: IP text) or an IP in the details panel: sets the network filter to the deepest network containing that IP; again clears. Not exported. | subnet button, IP network link |

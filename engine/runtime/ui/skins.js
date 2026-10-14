@@ -12,8 +12,10 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
     return '<rect x="1" y="1" width="14" height="6" rx="1.5"/><rect x="1" y="9" width="14" height="6" rx="1.5"/><path d="M4 4h.01M4 12h.01"/>';
   }
 
+  // Card meta with the system information (OS pill, hardware strip) removed while it is switched off.
+  function sysMeta(m) { return ctx.sys ? m : Object.assign({}, m, { hw: "", os: 0 }); }
   function nodeChrome(id) {
-    var S = ctx.style, g = D.layout.nodes[id], e = D.ent["n:" + id], ix = D.idx.nodes[id];
+    var S = ctx.style, g = hooks.viewNode ? hooks.viewNode(id, D.layout.nodes[id]) : D.layout.nodes[id], e = D.ent["n:" + id], ix = D.idx.nodes[id];
     var tl = TEXT_X;
     var tw = measure(els[ix.t], els[ix.t].firstChild.textContent.length, CW[S]);
     var bottom = g.h;
@@ -21,7 +23,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
       bottom = Math.max(bottom, p[1] - g.y + 7);
       return measure(els[ix.i[k]], 14, CW[S]);
     });
-    var W = Math.max(g.w, tl + tw + 28), HH = 20, m = D.meta.nodes[id] || {}, nb = g.body.length, hwY = 18 + 16 * nb;
+    var W = Math.max(g.w, tl + tw + 28), HH = 20, m = sysMeta(D.meta.nodes[id] || {}), nb = g.body.length, hwY = 18 + 16 * nb;
     boxW[id] = W;
     var h = "";
     var hw = m.hw ? '<text class="hw" x="' + (g.body.length ? g.body[0][0] - g.x : 10) + '" y="' + hwY + '">' + core.esc(m.hw) + "</text>" : "";
@@ -108,6 +110,7 @@ InfraDiagram.define("ui/skins", ["ui/core", "ui/details"], function (core, detai
 
   function sync(s) {
     if (!ctx.ready || !s) return;
+    if (hooks.view) s = hooks.view(s);
     Object.keys(D.idx.nodes).forEach(function (id) {
       var g = s.nodes[id];
       els[D.idx.nodes[id].c].setAttribute("transform", "translate(" + g.x + " " + g.y + ")");

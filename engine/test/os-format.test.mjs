@@ -9,7 +9,7 @@ import { osInfo } from "../parse/os-eol.mjs";
 import { shortOs, OS_MAX } from "../render/geometry.mjs";
 
 const probe = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../tools/host-probe.sh"), "utf8");
-const fn = probe.match(/^os_name\(\) \{[\s\S]*?^\}/m)[0];
+const fn = probe.replace(/^main <\/dev\/null\s*$/m, "");
 const bash = spawnSync("bash", ["-c", "true"]).error ? null : "bash";
 
 function osName(osRelease, debianVersion) {

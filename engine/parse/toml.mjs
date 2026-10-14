@@ -253,7 +253,7 @@ export function tomlModel(files, folder = "diagram", nets = null) {
     const title = str(s.name ?? eid, eid + ".name");
     if (names.has(title)) fail(`${eid}: duplicate server name '${title}'`);
     names.add(title);
-    model.nodes.set(eid, { id: eid, title, cluster, db: !!TYPES[ty].db, body: serviceLines(list(s.services, eid + ".services"), list(s.jobs, eid + ".jobs"), list(s.rmi_services, eid + ".rmi_services"), cardUnits(list(s.systemd_services, eid + ".systemd_services"), groups)), jn: jobLines(list(s.jobs, eid + ".jobs")).length, svc: list(s.services, eid + ".services").length, hw: hardwareStrip(s), hwc: hardwareCells(s), ip: ips, os: typeof s.os === "string" && s.os && !/^TBD$/i.test(s.os) ? s.os : null });
+    model.nodes.set(eid, { id: eid, title, cluster, db: !!TYPES[ty].db, body: serviceLines(list(s.services, eid + ".services"), cardJobs(list(s.jobs, eid + ".jobs")), list(s.rmi_services, eid + ".rmi_services"), cardUnits(list(s.systemd_services, eid + ".systemd_services"), groups)), jn: jobLines(cardJobs(list(s.jobs, eid + ".jobs"))).length, svc: list(s.services, eid + ".services").length, hw: hardwareStrip(s), hwc: hardwareCells(s), ip: ips, os: typeof s.os === "string" && s.os && !/^TBD$/i.test(s.os) ? s.os : null });
     classes(eid, ty, bool(s.proposed, eid + ".proposed"));
     for (const k of ["os", "hardware", "cpu", "ram", "swap", "disk", "role"]) if (s[k] !== undefined) str(s[k], eid + "." + k);
     if (s.details !== undefined && typeof s.details !== "string") fail(`${eid}.details must be a string`);
@@ -297,6 +297,8 @@ export function serviceLines(services, jobs = [], rmi = [], units = []) {
 }
 export const capLines = (a) => (a.length > LIST_LINES ? [...a.slice(0, LIST_LINES), `+${a.length - LIST_LINES} more`] : a);
 export const jobLines = capLines;
+// Probe-found crontab lines ("cron: ...") stay in the data and the editor but are not shown on the card.
+export const cardJobs = (jobs) => jobs.filter((j) => !/^cron:/i.test(String(j).trim()));
 
 // One-line hardware strip: set cells of cpu / ram / swap / disk ("sd") as "<value> <label>" joined by " ·", else the free-text hardware key; "" when none.
 export const HW_SEP = " · ";

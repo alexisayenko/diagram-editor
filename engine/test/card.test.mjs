@@ -169,3 +169,28 @@ test("card pill sizing uses the shortened OS text", () => {
   assert.equal(ol("Debian GNU/Linux 11 (bullseye)"), "Debian 11 bullseye".length);
   assert.equal(ol("Debian 11.11 bullseye"), "Debian 11.11 bullseye".length);
 });
+
+test("card hides probe-found cron: jobs but keeps timer: and hand-written ones; the data keeps them all", () => {
+  const files = probe('jobs = ["cron: 17 * * * * cmd", "timer: report.timer", "Nightly import", "cron: 25 6 * * * anacron"]', 'services = ["svc"]');
+  const { model } = tomlModel(files, "x");
+  const n = model.nodes.get("a");
+  assert.deepEqual(n.body, ["timer: report.timer", "Nightly import", "svc"]);
+  assert.equal(n.jn, 2);
+  assert.ok(files.get("servers/a.toml").includes("cron: 17"));
+});
+
+test("jobs section and its height vanish when only cron: entries exist", () => {
+  const only = probe('jobs = ["cron: 17 * * * * cmd", "cron: 25 6 * * * anacron"]', 'services = ["svc"]');
+  const n = tomlModel(only, "x").model.nodes.get("a");
+  assert.deepEqual(n.body, ["svc"]);
+  assert.equal(n.jn, 0);
+  const none = probe('services = ["svc"]');
+  assert.equal(prepareDiagram(only, "x").layout.nodes.a.h, prepareDiagram(none, "x").layout.nodes.a.h);
+});
+
+test("the +N more cap counts only the shown (non-cron) jobs", () => {
+  const jobs = [...Array.from({ length: 10 }, (_, i) => `cron: ${i} * * * * c${i}`), "timer: a.timer", "timer: b.timer", "timer: c.timer", "timer: d.timer", "timer: e.timer"];
+  const n = tomlModel(probe(`jobs = ${JSON.stringify(jobs)}`), "x").model.nodes.get("a");
+  assert.deepEqual(n.body, ["timer: a.timer", "timer: b.timer", "timer: c.timer", "timer: d.timer", "+1 more"]);
+  assert.equal(n.jn, 5);
+});

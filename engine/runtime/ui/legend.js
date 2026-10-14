@@ -46,14 +46,15 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
     });
     lk.insertAdjacentHTML("beforeend", '<button type="button" id="lbl" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Connection labels</span></button>');
     $("lbl").addEventListener("click", function () { setLabels(!ctx.labels, true); });
-    lk.insertAdjacentHTML("afterend", '<div class="lo"><b>Servers</b><button type="button" id="osv" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Display OS version</span></button></div>');
-    $("osv").addEventListener("click", function () { setOs(!ctx.os, true); });
+    lk.insertAdjacentHTML("afterend", '<div class="lo"><b>Servers</b><button type="button" id="osv" class="sw" role="switch" aria-checked="false"><span class="trk"></span><span class="t">Display System Information</span></button></div>');
+    $("osv").addEventListener("click", function () { setSys(!ctx.sys, true); });
   }
-  function setOs(on, persist) {
-    ctx.os = on;
-    svg.classList.toggle("showos", on);
+  function setSys(on, persist) {
+    ctx.sys = on;
+    svg.classList.toggle("showsys", on);
     $("osv").setAttribute("aria-checked", on ? "true" : "false");
-    if (persist) { core.lsSet("os", on ? "1" : "0"); skins.rebuildChrome(); }
+    if (persist) core.lsSet("os", on ? "1" : "0");
+    if (ctx.ready) { skins.rebuildChrome(); if (core.hooks.rerender) core.hooks.rerender(); }
   }
   function setLabels(on, persist) {
     ctx.labels = on;
@@ -67,7 +68,7 @@ InfraDiagram.define("ui/legend", ["ui/core", "ui/skins", "ui/networks"], functio
     loadToggles();
     buildLegend();
     setLabels(core.lsGet("labels") === "1", false);
-    setOs(core.lsGet("os") !== "0", false);
+    setSys(core.lsGet("os") !== "0", false);
     applyToggles();
   }
 
