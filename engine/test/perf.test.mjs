@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { performance } from "node:perf_hooks";
-import { generate, assets } from "../../tools/bench.mjs";
+import { generate, assets, EDITS } from "../../tools/bench.mjs";
 import { renderDiagram } from "../browser/render.mjs";
 
 const skip = process.env.CI_SLOW ? "CI_SLOW is set" : false;
@@ -42,6 +42,26 @@ test("cost does not blow up beyond the measured scaling from 100 to 400 servers"
   const ratio = large.ms / small.ms, sizeRatio = large.bytes / small.bytes;
   assert.ok(sizeRatio < 6, `page size grew ${sizeRatio.toFixed(1)}x for 4x the servers (ceiling 6x)`);
   assert.ok(ratio < 20, `400 servers cost ${ratio.toFixed(1)}x of 100 (ceiling 20x; measured about 13x after the indexed router, 23x before)`);
+});
+
+test("an edit that changes one box routes incrementally: fewer searches and labels, the same page, not slower than a full render", { skip, timeout: 300000 }, () => {
+  const files = generate(150), first = renderDiagram(files, "bench", null, bundle, []);
+  const { files: next, refit } = EDITS.box(files);
+  const best = (cache) => {
+    let result, ms = Infinity;
+    for (let i = 0; i < 3; i++) {
+      const t = performance.now();
+      result = renderDiagram(next, "bench", first.layout, bundle, refit, cache);
+      ms = Math.min(ms, performance.now() - t);
+    }
+    return { result, ms };
+  };
+  const full = best(null), inc = best(first.routeCache);
+  assert.equal(inc.result.html, full.result.html);
+  const a = inc.result.routeCache.state.stats, b = full.result.routeCache.state.stats;
+  assert.ok(a.pass1 + a.pass2 < 0.8 * (b.pass1 + b.pass2), `${a.pass1 + a.pass2} of ${b.pass1 + b.pass2} searches ran again (ceiling 80%)`);
+  assert.ok(a.labels < 0.5 * b.labels, `${a.labels} of ${b.labels} labels were placed again (ceiling 50%)`);
+  assert.ok(inc.ms < full.ms, `incremental ${inc.ms.toFixed(0)} ms, full ${full.ms.toFixed(0)} ms (incremental must be faster)`);
 });
 
 test("an edit that changes no box reuses the routes and is far cheaper than a full render", { skip, timeout: 120000 }, () => {

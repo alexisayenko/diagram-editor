@@ -101,8 +101,11 @@ InfraDiagram.define("canvas/model", ["ui/core", "ui/skins", "canvas/geometry", "
   }
 
   // Connections re-routed from the current geometry (measured box and label widths); kept in ctx.routes for skins.sync.
+  // The state of the last run goes into the next one, which then routes only what the change can reach (same routes as a full re-route).
+  var routeState = null;
   function routeEdges(s) {
-    var rt = geometry.route(s, D.meta, { w: skins.widths(), lw: skins.labelWidths() });
+    var out = geometry.routeWith(s, D.meta, { w: skins.widths(), lw: skins.labelWidths() }, routeState), rt = out.routes;
+    routeState = out.state;
     ctx.routes = rt;
     Object.keys(D.idx.edges).forEach(function (k) {
       var e = D.idx.edges[k], r = rt[k];

@@ -16,6 +16,6 @@ export const KITS = {
   "ui/metrics": { fn: metricsKit, args: [json(METRICS)], file: "engine/render/metrics.mjs (metricsKit)", names: ["METRICS"] },
   "ui/os-icons": { fn: osIconKit, file: "engine/render/os-icons.mjs (osIconKit)", names: ["ICONS", "glyph", "iconSvg"] },
   "ui/server-fields": { fn: serverFieldsKit, file: "engine/model/server-fields.mjs (serverFieldsKit)", names: ["FIELDS"] },
-  "canvas/geometry": { fn: geometryKitOf, args: [json(METRICS), kit(keysKit)], file: "engine/render/geometry.mjs (geometryKitOf)", names: ["headerTitle", "boxExtent", "boxFor", "rows", "fitBox", "fitRegion", "regionBounds", "resizeRegion", "route", "problems"] },
+  "canvas/geometry": { fn: geometryKitOf, args: [json(METRICS), kit(keysKit)], file: "engine/render/geometry.mjs (geometryKitOf)", names: ["headerTitle", "boxExtent", "boxFor", "rows", "fitBox", "fitRegion", "regionBounds", "resizeRegion", "route", "routeWith", "problems"] },
   "canvas/draw-kit": { fn: drawKit, file: "engine/render/draw-kit.mjs (drawKit)", names: ["decimate", "smoothPath", "distToStroke", "hits", "hitIndex", "history", "validate", "pathMarkup", "markup", "newId"] },
 };

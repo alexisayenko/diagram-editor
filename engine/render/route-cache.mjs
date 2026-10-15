@@ -1,6 +1,8 @@
-// Connection routes with a reusable result: routing is a pure function of the box geometry, the connections and the saved
-// waypoints / labels, so an edit that changes none of them (a role, a note, the details text) reuses the previous routes.
-// The cache is a plain value ({ sig, routes }) that the caller keeps between renders; nothing here holds state.
+// Connection routes with a reusable result. Routing is a pure function of the box geometry, the connections and the saved
+// waypoints / labels, so an edit that changes none of them (a role, a note, the details text) reuses the previous routes as they are.
+// An edit that does change a box routes incrementally: kit.routeWith gets the state of the previous run and computes again only what
+// the edit can reach, with the very result of a full re-route (ADR-0020).
+// The cache is a plain value ({ sig, routes, state }) that the caller keeps between renders; nothing here holds state.
 // Everything is read in the order of `meta`, so the key order of the layout objects does not matter.
 export function routeSignature(layout, meta, measured = null) {
   const nodes = Object.keys(meta.nodes).map((id) => [id, meta.nodes[id].tl, meta.nodes[id].cl, layout.nodes[id] ?? null]);
@@ -13,6 +15,6 @@ export function routeSignature(layout, meta, measured = null) {
 export function routeAll(kit, layout, meta, previous = null, measured = null) {
   const sig = routeSignature(layout, meta, measured);
   if (previous?.sig === sig) return { routes: previous.routes, cache: previous, reused: true };
-  const routes = measured ? kit.route(layout, meta, measured) : kit.route(layout, meta);
-  return { routes, cache: { sig, routes }, reused: false };
+  const { routes, state } = kit.routeWith(layout, meta, measured, previous?.state);
+  return { routes, cache: { sig, routes, state }, reused: false };
 }

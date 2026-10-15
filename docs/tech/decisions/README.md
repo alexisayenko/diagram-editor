@@ -61,3 +61,4 @@ What we did not pick and why.
 | [0017](adr-0017-retire-the-legacy-mermaid-and-markdown-pipeline.md) | Retire the legacy Mermaid and Markdown pipeline | 2026-10-14 |
 | [0018](adr-0018-one-metrics-table-and-node-keys.md) | One metrics table and node keys | 2026-10-14 |
 | [0019](adr-0019-page-shell-and-scene-swap.md) | Page shell and scene swap | 2026-10-14 |
+| [0020](adr-0020-incremental-routing.md) | Incremental routing | 2026-10-15 |

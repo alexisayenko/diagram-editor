@@ -286,6 +286,7 @@ export function geometryKitOf(sizes, keyset) {
       cache.gen = 0;
       cache.hf = new Float64Array(1024);
       cache.hs = new Int32Array(1024);
+      cache.gm = new Int32Array(n >> 2);
     }
     cache.gen++;
   }
@@ -313,11 +314,6 @@ export function geometryKitOf(sizes, keyset) {
     return m;
   }
   function heapPush(f, st) {
-    if (cache.hn === cache.hf.length) {
-      var nf = new Float64Array(cache.hn * 2), ns = new Int32Array(cache.hn * 2);
-      nf.set(cache.hf); ns.set(cache.hs);
-      cache.hf = nf; cache.hs = ns;
-    }
     var hf = cache.hf, hs = cache.hs, i = cache.hn++, q, t;
     hf[i] = f; hs[i] = st;
     while (i > 0) {
@@ -326,20 +322,6 @@ export function geometryKitOf(sizes, keyset) {
       t = hf[q]; hf[q] = hf[i]; hf[i] = t;
       t = hs[q]; hs[q] = hs[i]; hs[i] = t;
       i = q;
-    }
-  }
-  function heapPop() {
-    var hf = cache.hf, hs = cache.hs, hn = --cache.hn;
-    if (!hn) return;
-    hf[0] = hf[hn]; hs[0] = hs[hn];
-    for (var a = 0; ;) {
-      var l = 2 * a + 1, r = l + 1, mm = a, t;
-      if (l < hn && hf[l] < hf[mm]) mm = l;
-      if (r < hn && hf[r] < hf[mm]) mm = r;
-      if (mm === a) break;
-      t = hf[mm]; hf[mm] = hf[a]; hf[a] = t;
-      t = hs[mm]; hs[mm] = hs[a]; hs[a] = t;
-      a = mm;
     }
   }
   function markGoal(Q, g) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
@@ -355,58 +337,96 @@ export function geometryKitOf(sizes, keyset) {
       heapPush(s.c + heur(Q, s.p), st);
     }
   }
-  function settle(Q, st, d0) {
-    var gl = Q.goalAt.get(st >> 2), d = st & 3;
-    if (!gl) return;
-    for (const g of gl) {
-      const total = d0 + turnCost(g.d, d) + g.c;
-      if (total < Q.best.cost) Q.best = { cost: total, st: st, goal: g };
-    }
-  }
-  function relax(Q, st, st2, nd, p2) {
-    var sd = cache.sd;
-    if (sd[2 * st2 + 1] < Q.gmin || nd < sd[2 * st2]) {
-      sd[2 * st2] = nd;
-      sd[2 * st2 + 1] = Q.gmin + st + 1;
-      heapPush(nd + heur(Q, p2), st2);
-    }
-  }
-  function stepTo(Q, st, d0, i2, j2, d2) {
-    var G = Q.G, p = st >> 2;
-    if (i2 < 0 || j2 < 0 || i2 >= G.nx || j2 >= G.ny) return;
-    var p2 = i2 * G.ny + j2;
-    if (G.blk[p2]) return;
-    var horiz = d2 % 2 === 0, forward = horiz ? d2 === 0 : d2 === 1, si = forward ? p : p2;
-    if ((horiz ? G.hb : G.vb)[si]) return;
-    var cl = (horiz ? G.hc : G.vc)[si], dear = cl >= 0 && cl !== Q.h0 && cl !== Q.h1 ? 1 : 0;
-    var nd = d0 + ((horiz ? G.hcost : G.vcost)[dear][si] + (d2 === (st & 3) ? 0 : BEND));
-    relax(Q, st, (p2 << 2) + d2, nd, p2);
-  }
-  function expand(Q, st, d0) {
-    var p = st >> 2, d = st & 3, i = Math.trunc(p / Q.G.ny), j = p - i * Q.G.ny;
-    for (var d2 = 0; d2 < 4; d2++) {
-      if (d2 !== ((d + 2) & 3)) stepTo(Q, st, d0, i + DX[d2], j + DY[d2], d2);
-    }
-  }
-  function search(G, starts, goals, home) {
-    searchBuffers(G.nx * G.ny * 4);
+  function search(G, starts, goals, home, acc) {
+    var nx = G.nx, ny = G.ny;
+    searchBuffers(nx * ny * 4);
+    var gen = cache.gen, gmin = gen * cache.scale, sd = cache.sd, hp = cache.hp, gm = cache.gm, xs = G.xs, ys = G.ys;
+    var blk = G.blk, hb = G.hb, vb = G.vb, hc = G.hc, vc = G.vc, hc0 = G.hcost[0], hc1 = G.hcost[1], vc0 = G.vcost[0], vc1 = G.vcost[1];
     var Q = {
-      G: G, gen: cache.gen, gmin: cache.gen * cache.scale, h0: home.length > 0 ? home[0] : -2, h1: home.length > 1 ? home[1] : -2,
-      goalAt: new Map(), hx: [], best: { cost: Infinity, st: -1, goal: null },
+      G: G, gen: gen, gmin: gmin, goalAt: new Map(), hx: [], best: { cost: Infinity, st: -1, goal: null },
     };
+    var h0 = home.length > 0 ? home[0] : -2, h1 = home.length > 1 ? home[1] : -2, best = Q.best, trace = acc[5];
     cache.hn = 0;
-    goals.forEach(function (g) { markGoal(Q, g); });
+    goals.forEach(function (g) { markGoal(Q, g); gm[g.p] = gen; });
     starts.forEach(function (s) { seed(Q, s); });
-    while (cache.hn) {
-      var f = cache.hf[0], st = cache.hs[0];
-      heapPop();
-      var d0 = cache.sd[2 * st];
-      if (f >= Q.best.cost) break;
-      if (f > d0 + heur(Q, st >> 2) + 1e-6) continue;
-      settle(Q, st, d0);
-      expand(Q, st, d0);
+    var gx = Q.hx.map(function (g) { return g[0]; }), gy = Q.hx.map(function (g) { return g[1]; }), ng = gx.length;
+    var hf = cache.hf, hs = cache.hs, hn = cache.hn, a, l, r, c, q, ii, k;
+    while (hn > 0) {
+      var f = hf[0], st = hs[0], lf, ls;
+      hn--;
+      if (hn > 0) {
+        lf = hf[hn]; ls = hs[hn]; a = 0;
+        for (;;) {
+          l = 2 * a + 1;
+          if (l >= hn) break;
+          r = l + 1;
+          c = r < hn && hf[r] < hf[l] ? r : l;
+          if (!(hf[c] < lf)) break;
+          hf[a] = hf[c]; hs[a] = hs[c]; a = c;
+        }
+        hf[a] = lf; hs[a] = ls;
+      }
+      var d0 = sd[2 * st];
+      if (f >= best.cost) break;
+      var p = st >> 2, i = Math.trunc(p / ny), j = p - i * ny;
+      if (f > d0 + hp[2 * p] + 1e-6) continue;
+      if (i < acc[0]) acc[0] = i;
+      if (i > acc[1]) acc[1] = i;
+      if (j < acc[2]) acc[2] = j;
+      if (j > acc[3]) acc[3] = j;
+      var d = st & 3;
+      if (trace) acc[4] = (Math.imul(acc[4], 1000003) + (Math.round(xs[i] * 8) * 31 + Math.round(ys[j] * 8)) * 4 + d) | 0;
+      if (gm[p] === gen) {
+        for (const g of Q.goalAt.get(p)) {
+          const total = d0 + turnCost(g.d, d) + g.c;
+          if (total < best.cost) best = { cost: total, st: st, goal: g };
+        }
+      }
+      var back = (d + 2) & 3;
+      for (var d2 = 0; d2 < 4; d2++) {
+        if (d2 === back) continue;
+        var i2 = i + DX[d2], j2 = j + DY[d2];
+        if (i2 < 0 || j2 < 0 || i2 >= nx || j2 >= ny) continue;
+        var p2 = i2 * ny + j2;
+        if (blk[p2]) continue;
+        var horiz = (d2 & 1) === 0, si = (horiz ? d2 === 0 : d2 === 1) ? p : p2, cl, step;
+        if (horiz) {
+          if (hb[si]) continue;
+          cl = hc[si];
+          step = cl >= 0 && cl !== h0 && cl !== h1 ? hc1[si] : hc0[si];
+        } else {
+          if (vb[si]) continue;
+          cl = vc[si];
+          step = cl >= 0 && cl !== h0 && cl !== h1 ? vc1[si] : vc0[si];
+        }
+        var nd = d0 + (step + (d2 === d ? 0 : BEND)), st2 = (p2 << 2) + d2, k2 = 2 * st2;
+        if (sd[k2 + 1] < gmin || nd < sd[k2]) {
+          sd[k2] = nd;
+          sd[k2 + 1] = gmin + st + 1;
+          var hv2;
+          if (hp[2 * p2 + 1] === gen) hv2 = hp[2 * p2];
+          else {
+            hv2 = Infinity;
+            for (k = 0; k < ng; k++) hv2 = Math.min(hv2, Math.abs(xs[i2] - gx[k]) + Math.abs(ys[j2] - gy[k]));
+            hp[2 * p2] = hv2; hp[2 * p2 + 1] = gen;
+          }
+          if (hn === hf.length) {
+            var nf = new Float64Array(hn * 2), ns = new Int32Array(hn * 2);
+            nf.set(hf); ns.set(hs);
+            hf = cache.hf = nf; hs = cache.hs = ns;
+          }
+          var fv = nd + hv2;
+          ii = hn++;
+          while (ii > 0) {
+            q = (ii - 1) >> 1;
+            if (hf[q] <= fv) break;
+            hf[ii] = hf[q]; hs[ii] = hs[q]; ii = q;
+          }
+          hf[ii] = fv; hs[ii] = st2;
+        }
+      }
     }
-    return Q.best.st < 0 ? null : traceBack(G, starts, Q.best);
+    return best.st < 0 ? null : traceBack(G, starts, best);
   }
 
   // Port on side sd (0 right, 1 bottom, 2 left, 3 top; = outward heading) at position v along the side.
@@ -509,7 +529,7 @@ export function geometryKitOf(sizes, keyset) {
     return out.sort(function (a, b) { return a.off - b.off; });
   }
 
-  function placeFirewall(sh, hard, soft) {
+  function placeFirewall(sh, hard, soft, bb) {
     var best = null;
     var st = stations(sh, 6, 26);
     if (!st.length) st = stations(sh, 2, 6);
@@ -521,27 +541,148 @@ export function geometryKitOf(sizes, keyset) {
         ? [{ label: [s.x, s.y + 21], anchor: "middle", box: { x0: s.x - 26, y0: s.y + 12, x1: s.x + 26, y1: s.y + 24 } }, { label: [s.x, s.y - 15], anchor: "middle", box: { x0: s.x - 26, y0: s.y - 25, x1: s.x + 26, y1: s.y - 13 } }]
         : [{ label: [s.x + 15, s.y + 3], anchor: "start", box: { x0: s.x + 14, y0: s.y - 7, x1: s.x + 66, y1: s.y + 5 } }, { label: [s.x - 15, s.y + 3], anchor: "end", box: { x0: s.x - 66, y0: s.y - 7, x1: s.x - 14, y1: s.y + 5 } }];
       opts.forEach(function (o) {
+        growBox(bb, mk); growBox(bb, o.box);
         var hit = cost([mk, o.box], hard) * 100 + cost([mk, o.box], soft) * 10, sc = hit + s.off * 0.01;
+        if (bb.t) bb.h = (Math.imul(bb.h, 1000003) + Math.round(sc * 1000)) | 0;
         if (!best || sc < best.score) best = { score: sc, clear: hit === 0, at: [r1(s.x), r1(s.y)], a: s.h ? 0 : 90, label: [r1(o.label[0]), r1(o.label[1])], anchor: o.anchor, boxes: [mk, o.box] };
       });
     });
     return best;
   }
 
-  function placeLabel(sh, lw, hard, soft) {
+  function placeLabel(sh, lw, hard, soft, bb) {
     var best = null;
     stations(sh, 4, 22).forEach(function (s) {
       if (best?.clear) return;
       var b = { x0: s.x - lw / 2, y0: s.y - 8.5, x1: s.x + lw / 2, y1: s.y + 8.5 };
+      growBox(bb, b);
       var hit = cost([b], hard) * 100 + cost([b], soft) * 5 + (s.h ? 0 : 400), sc = hit + s.off * 0.01;
+      if (bb.t) bb.h = (Math.imul(bb.h, 1000003) + Math.round(sc * 1000)) | 0;
       if (!best || sc < best.score) best = { score: sc, clear: hit === 0, label: [r1(b.x0 + 7), r1(s.y + 3.5)], box: b };
     });
     return best;
   }
 
+  // Incremental routing (docs/tech/performance.md, ADR-0020). A route is a pure function of its search window: the grid lines and the
+  // per-point flags inside the box of points the search touched, the start and goal ports, and the home regions. Every search records
+  // that box (index space of the grid it ran on); a later run reuses the result when the new grid holds the very same lines and flags in
+  // that box. Labels and firewall markers are reused when their route is unchanged and no box that changed (old or new rectangle) touches
+  // the area their candidates were scored in. Anything uncertain is computed again, so the output equals a full re-route.
+  function newAcc(trace) { return [Infinity, -Infinity, Infinity, -Infinity, 0, trace]; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+  function accIdx(acc, i0, i1, j0, j1) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    if (i0 < acc[0]) acc[0] = i0;
+    if (i1 > acc[1]) acc[1] = i1;
+    if (j0 < acc[2]) acc[2] = j0;
+    if (j1 > acc[3]) acc[3] = j1;
+  }
+  // The grid lines a point lookup (at) depends on.
+  function accPoint(acc, G, x, y) {
+    accIdx(acc, Math.max(0, firstAbove(G.xs, x - 0.7) - 1), Math.min(G.nx - 1, firstAtLeast(G.xs, x + 0.7)), Math.max(0, firstAbove(G.ys, y - 0.7) - 1), Math.min(G.ny - 1, firstAtLeast(G.ys, y + 0.7)));
+  }
+  function finishAcc(acc, G) {
+    if (acc[0] > acc[1] || acc[2] > acc[3]) return [0, G.nx - 1, 0, G.ny - 1];
+    return [Math.max(0, acc[0] - 1), Math.min(G.nx - 1, acc[1] + 1), Math.max(0, acc[2] - 1), Math.min(G.ny - 1, acc[3] + 1)];
+  }
+  function slim(G) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    return { xs: G.xs, ys: G.ys, nx: G.nx, ny: G.ny, blk: G.blk, hb: G.hb, vb: G.vb, hc: G.hc, vc: G.vc, hh: G.hh, vh: G.vh };
+  }
+  function axisMap(oa, na) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    var m = new Int32Array(oa.length), j = 0;
+    for (var i = 0; i < oa.length; i++) {
+      while (j < na.length && na[j] < oa[i]) j++;
+      m[i] = j < na.length && na[j] === oa[i] ? j : -1;
+    }
+    return m;
+  }
+  // Prefix counts over an axis map: lost[i] = old lines below i that are gone, split[i] = old lines below i whose predecessor is no longer the next line.
+  function axisCounts(m) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    var lost = new Int32Array(m.length + 1), split = new Int32Array(m.length + 1);
+    for (var i = 0; i < m.length; i++) {
+      lost[i + 1] = lost[i] + (m[i] < 0 ? 1 : 0);
+      split[i + 1] = split[i] + (i > 0 && m[i] >= 0 && m[i - 1] >= 0 && m[i] !== m[i - 1] + 1 ? 1 : 0);
+    }
+    return { lost: lost, split: split };
+  }
+  // How the grid of the previous run maps onto the new one: line maps, and a summed-area table of the points whose flags changed.
+  function gridDiff(Go, Gn) {
+    var xm = axisMap(Go.xs, Gn.xs), ym = axisMap(Go.ys, Gn.ys), nxo = Go.nx, nyo = Go.ny, nyn = Gn.ny, d = null, i, j;
+    var ax = axisCounts(xm), ay = axisCounts(ym);
+    for (i = 0; i < nxo; i++) {
+      var ni = xm[i];
+      if (ni < 0) continue;
+      for (j = 0; j < nyo; j++) {
+        var nj = ym[j];
+        if (nj < 0) continue;
+        var a = i * nyo + j, b = ni * nyn + nj;
+        if (Go.blk[a] !== Gn.blk[b] || Go.hb[a] !== Gn.hb[b] || Go.vb[a] !== Gn.vb[b] || Go.hc[a] !== Gn.hc[b] || Go.vc[a] !== Gn.vc[b] || Go.hh[a] !== Gn.hh[b] || Go.vh[a] !== Gn.vh[b]) {
+          d = d || new Uint8Array(nxo * nyo);
+          d[a] = 1;
+        }
+      }
+    }
+    var sat = null, w = nyo + 1;
+    if (d) {
+      sat = new Int32Array((nxo + 1) * w);
+      for (i = 0; i < nxo; i++) for (j = 0; j < nyo; j++) sat[(i + 1) * w + j + 1] = d[i * nyo + j] + sat[i * w + j + 1] + sat[(i + 1) * w + j] - sat[i * w + j];
+    }
+    return { xm: xm, ym: ym, nxo: nxo, nyo: nyo, nxn: Gn.nx, nyn: nyn, ax: ax, ay: ay, sat: sat, w: w };
+  }
+  // Whether the box fp = [i0, i1, j0, j1] (old index space) is the same grid region in the new grid.
+  function gridSame(gd, fp) {
+    var a = fp[0], b = fp[1], c = fp[2], e = fp[3];
+    if (gd.ax.lost[b + 1] - gd.ax.lost[a] || gd.ax.split[b + 1] - gd.ax.split[a + 1] || gd.ay.lost[e + 1] - gd.ay.lost[c] || gd.ay.split[e + 1] - gd.ay.split[c + 1]) return false;
+    if ((a === 0 && gd.xm[0] !== 0) || (b === gd.nxo - 1 && gd.xm[b] !== gd.nxn - 1) || (c === 0 && gd.ym[0] !== 0) || (e === gd.nyo - 1 && gd.ym[e] !== gd.nyn - 1)) return false;
+    if (!gd.sat) return true;
+    var w = gd.w, s = gd.sat;
+    return s[(b + 1) * w + e + 1] - s[a * w + e + 1] - s[(b + 1) * w + c] + s[a * w + c] === 0;
+  }
+  function gridMap(gd, fp) { return [gd.xm[fp[0]], gd.xm[fp[1]], gd.ym[fp[2]], gd.ym[fp[3]]]; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+  function rk(r) { return r.x0 + "," + r.y0 + "," + r.x1 + "," + r.y1; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+  // Pushes the rectangles of oldL / newL that have no equal partner onto out; false when the partnered ones changed their relative order.
+  function rectDiff(oldL, newL, out) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    var cnt = new Map(), used = new Map(), keepOld = [], keepNew = [];
+    oldL.forEach(function (r) { var k = rk(r); cnt.set(k, (cnt.get(k) || 0) + 1); });
+    newL.forEach(function (r) {
+      var k = rk(r), n = cnt.get(k) || 0;
+      if (n > 0) { cnt.set(k, n - 1); used.set(k, (used.get(k) || 0) + 1); keepNew.push(k); } else out.push(r);
+    });
+    oldL.forEach(function (r) {
+      var k = rk(r), n = used.get(k) || 0;
+      if (n > 0) { used.set(k, n - 1); keepOld.push(k); } else out.push(r);
+    });
+    return keepOld.length === keepNew.length && keepOld.every(function (k, i) { return k === keepNew[i]; });
+  }
+  function fpClear(fp, list) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    if (!fp) return true;
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      if (r.x0 <= fp.x1 && r.x1 >= fp.x0 && r.y0 <= fp.y1 && r.y1 >= fp.y0) return false;
+    }
+    return true;
+  }
+  function newBox(trace) { return { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity, h: 0, t: trace }; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+  function growBox(bb, b) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    bb.x0 = Math.min(bb.x0, b.x0); bb.y0 = Math.min(bb.y0, b.y0); bb.x1 = Math.max(bb.x1, b.x1); bb.y1 = Math.max(bb.y1, b.y1);
+  }
+  function boxesEq(a, b) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    if (a === b) return true;
+    if (!a || !b || a.length !== b.length) return false;
+    return a.every(function (r, i) { return rk(r) === rk(b[i]); });
+  }
+  function ptsEq(a, b) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    if (a === b) return true;
+    if (!a || !b || a.length !== b.length) return false;
+    return a.every(function (p, i) { return p[0] === b[i][0] && p[1] === b[i][1]; });
+  }
+
   // Routes every connection. o: { w: measured box widths, lw: measured label pill widths } (both optional).
-  function route(s, meta, o) {
+  function route(s, meta, o) { return routeWith(s, meta, o, null).routes; }
+
+  // Same routes, plus the state to hand to the next call as prev (the state of the previous call): only what the edit can have changed is computed again.
+  function routeWith(s, meta, o, prev) {
     o = o || {};
+    if (!prev || prev.v !== 1) prev = null;
+    var pe = prev ? prev.edges : null, ent = {}, stats = { pass1: 0, pass2: 0, fw: 0, labels: 0 };
     var S = shapes(s, meta, o.w), E = meta.edges, ov = s.edges || {};
     var res = {};
     function home(e) {
@@ -568,12 +709,14 @@ export function geometryKitOf(sizes, keyset) {
       var y = lineY(e, end);
       return y === null ? cands(r, other) : cands(r, other, y).filter(function (c) { return c.sd % 2 === 0; });
     }
-    function run(G, A, B, from, to, h) { // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
+    function run(G, from, to, h, acc) {
+      from.concat(to).forEach(function (c) { accPoint(acc, G, c.p.stub[0], c.p.stub[1]); });
       var st = from.map(function (c) { return { p: at(G, c.p.stub[0], c.p.stub[1]), d: c.sd, c: c.c, cand: c }; }).filter(function (c) { return c.p >= 0 && !G.blk[c.p]; });
       var gl = to.map(function (c) { return { p: at(G, c.p.stub[0], c.p.stub[1]), d: c.sd < 0 ? -1 : (c.sd + 2) % 4, c: c.c, cand: c }; }).filter(function (c) { return c.p >= 0 && !G.blk[c.p]; });
       if (!st.length || !gl.length) return null;
-      return search(G, st, gl, h);
+      return search(G, st, gl, h, acc);
     }
+    function rect(r) { return [r.x0, r.y0, r.x1, r.y1]; } // NOSONAR: the kit body is inlined through Function.toString, so its helpers must stay inside it
 
     // Pass 1: free sides, centred ports (process endpoints: left / right at their line).
     var extra = [];
@@ -585,28 +728,37 @@ export function geometryKitOf(sizes, keyset) {
       });
       (ov[e.k]?.via || []).forEach(function (v) { extra.push(v); });
     });
-    var G = grid(S, extra), first = {};
+    var G = grid(S, extra), gd1 = prev ? gridDiff(prev.G, G) : null, first = {};
     E.forEach(function (e) {
       var A = S.ent[e.from], B = S.ent[e.to];
       if (!A || !B) return;
-      var via = ov[e.k]?.via || [], h = home(e);
-      if (!via.length) {
-        var r = run(G, A, B, endCands(e, 0, A, B), endCands(e, 1, B, A), h);
-        if (r) first[e.k] = { sa: r.start.cand.sd, sb: (r.goal.d + 2) % 4, pts: [r.start.cand.p.pt].concat(r.pts, [r.goal.cand.p.pt]) };
+      var via = ov[e.k]?.via || [], h = home(e), k1 = JSON.stringify([rect(A), rect(B), h, lineY(e, 0), lineY(e, 1), via]), c = pe?.[e.k], rec = { k1: k1 };
+      ent[e.k] = rec;
+      if (c && c.k1 === k1 && gridSame(gd1, c.fp1)) {
+        rec.f1 = c.f1; rec.fp1 = gridMap(gd1, c.fp1); rec.h1 = c.h1;
+        if (c.f1) first[e.k] = c.f1;
         return;
       }
-      var pts = [], cur = endCands(e, 0, A, B), ok = true, sa = -1, sb = -1;
-      via.concat([null]).forEach(function (v, i) {
-        if (!ok) return;
-        var tgt = v ? [{ sd: -1, p: { pt: v, stub: v }, c: 0 }] : endCands(e, 1, B, A);
-        var rr = run(G, A, B, cur, tgt, h);
-        if (!rr) { ok = false; return; }
-        if (i === 0) { sa = rr.start.cand.sd; pts.push(rr.start.cand.p.pt); }
-        pts = pts.concat(rr.pts);
-        if (!v) { sb = (rr.goal.d + 2) % 4; pts.push(rr.goal.cand.p.pt); }
-        else cur = [0, 1, 2, 3].map(function (d) { return { sd: d, p: { pt: v, stub: v }, c: 0 }; });
-      });
-      if (ok) first[e.k] = { sa: sa, sb: sb, pts: pts, via: true };
+      var acc = newAcc(o.trace);
+      stats.pass1++;
+      if (!via.length) {
+        var r = run(G, endCands(e, 0, A, B), endCands(e, 1, B, A), h, acc);
+        if (r) first[e.k] = { sa: r.start.cand.sd, sb: (r.goal.d + 2) % 4, pts: [r.start.cand.p.pt].concat(r.pts, [r.goal.cand.p.pt]) };
+      } else {
+        var pts = [], cur = endCands(e, 0, A, B), ok = true, sa = -1, sb = -1;
+        via.concat([null]).forEach(function (v, i) {
+          if (!ok) return;
+          var tgt = v ? [{ sd: -1, p: { pt: v, stub: v }, c: 0 }] : endCands(e, 1, B, A);
+          var rr = run(G, cur, tgt, h, acc);
+          if (!rr) { ok = false; return; }
+          if (i === 0) { sa = rr.start.cand.sd; pts.push(rr.start.cand.p.pt); }
+          pts = pts.concat(rr.pts);
+          if (!v) { sb = (rr.goal.d + 2) % 4; pts.push(rr.goal.cand.p.pt); }
+          else cur = [0, 1, 2, 3].map(function (d) { return { sd: d, p: { pt: v, stub: v }, c: 0 }; });
+        });
+        if (ok) first[e.k] = { sa: sa, sb: sb, pts: pts, via: true };
+      }
+      rec.f1 = first[e.k]; rec.fp1 = finishAcc(acc, G); rec.h1 = acc[4];
     });
 
     // Pass 2: a port wants the other end's position (a facing pair with overlapping sides: the overlap's middle, so it runs straight;
@@ -639,50 +791,101 @@ export function geometryKitOf(sizes, keyset) {
     });
     var extra2 = extra.slice();
     Object.keys(ports).forEach(function (k) { var q = ports[k], p = port(q.r, q.sd, q.v); extra2.push(p.pt, p.stub); });
-    var G2 = grid(S, extra2);
+    var G2 = grid(S, extra2), gd2 = prev ? gridDiff(prev.G2, G2) : null;
     E.forEach(function (e) {
-      var f = first[e.k], A = S.ent[e.from], B = S.ent[e.to], pts = null;
+      var f = first[e.k], A = S.ent[e.from], B = S.ent[e.to], pts = null, rec = ent[e.k], sp = null;
       if (!f) {
         if (A && B) pts = [[(A.x0 + A.x1) / 2, (A.y0 + A.y1) / 2], [(B.x0 + B.x1) / 2, (B.y0 + B.y1) / 2]];
       } else if (f.via) pts = f.pts;
       else {
-        var a = ports[e.k + "|0"], b = ports[e.k + "|1"];
-        var r = run(G2, A, B, [{ sd: a.sd, p: port(A, a.sd, a.v), c: 0 }], [{ sd: b.sd, p: port(B, b.sd, b.v), c: 0 }], home(e));
-        pts = r ? [r.start.cand.p.pt].concat(r.pts, [r.goal.cand.p.pt]) : f.pts;
+        var a = ports[e.k + "|0"], b = ports[e.k + "|1"], pa = port(A, a.sd, a.v), pb = port(B, b.sd, b.v), h = home(e), c = pe?.[e.k];
+        var k2 = JSON.stringify([pa, a.sd, pb, b.sd, h]);
+        if (c && c.k2 === k2 && c.fp2 && (!c.fb || ptsEq(c.f1pts, f.pts)) && gridSame(gd2, c.fp2)) {
+          pts = c.pts2; sp = c.sp; rec.fb = c.fb; rec.fp2 = gridMap(gd2, c.fp2); rec.h2 = c.h2;
+        } else {
+          stats.pass2++;
+          var acc = newAcc(o.trace), r = run(G2, [{ sd: a.sd, p: pa, c: 0 }], [{ sd: b.sd, p: pb, c: 0 }], h, acc);
+          pts = r ? [r.start.cand.p.pt].concat(r.pts, [r.goal.cand.p.pt]) : f.pts;
+          rec.fb = !r; rec.fp2 = finishAcc(acc, G2); rec.h2 = acc[4];
+        }
+        rec.k2 = k2; rec.pts2 = pts; rec.f1pts = f.pts;
       }
-      if (pts) res[e.k] = { pts: simplify(pts) };
+      if (pts) {
+        rec.sp = sp || simplify(pts);
+        res[e.k] = { pts: rec.sp };
+      }
     });
 
     // Firewall markers, then connection labels, each clear of servers, region titles and borders where possible.
-    var hard = boxIndex(), soft = boxIndex();
-    S.nodes.concat(S.titles).forEach(function (b) { addBox(hard, b); });
-    S.bands.forEach(function (b) { addBox(soft, b); });
+    var hardR = S.nodes.concat(S.titles), softR = S.bands, hard = boxIndex(), soft = boxIndex();
+    hardR.forEach(function (b) { addBox(hard, b); });
+    softR.forEach(function (b) { addBox(soft, b); });
+    var order = Object.keys(res), chg = [], reuse = false, gone = [], fwc = [], lbc = [];
+    if (prev) {
+      reuse = rectDiff(prev.hardR, hardR, chg) && rectDiff(prev.softR, softR, chg);
+      var live = new Set(order), had = new Set(prev.order);
+      reuse = reuse && prev.order.filter(function (k) { return live.has(k); }).join("\n") === order.filter(function (k) { return had.has(k); }).join("\n");
+      if (reuse) {
+        prev.order.forEach(function (k) {
+          if (live.has(k)) return;
+          var c = pe[k];
+          if (c.fwr?.boxes) c.fwr.boxes.forEach(function (b) { fwc.push(b); });
+          if (c.lbl?.box) lbc.push(c.lbl.box);
+        });
+      }
+    }
+    var CF = chg.concat(fwc);
     E.forEach(function (e) {
       var rt = res[e.k];
       if (!rt) return;
-      var sh = shape(rt.pts);
-      rt.d = sh.d; rt.sh = sh;
+      var rec = ent[e.k], c = reuse ? pe[e.k] : null, same = !!c && ptsEq(c.sp, rt.pts), sh = null, ob = c?.fwr?.boxes || null;
+      if (same) rt.d = c.d;
+      else { sh = shape(rt.pts); rt.d = sh.d; }
+      rec.d = rt.d;
       rt.fw = null;
+      rec.fwr = null;
       if (e.fw) {
-        var f = placeFirewall(sh, hard, soft);
-        if (f) { f.boxes.forEach(function (b) { addBox(hard, b); }); rt.fw = { at: f.at, a: f.a, label: f.label, anchor: f.anchor }; }
+        var fr;
+        if (same && c.fwr && fpClear(c.fwr.fp, CF)) fr = c.fwr;
+        else {
+          stats.fw++;
+          var bb = newBox(o.trace), f = placeFirewall(sh || (sh = shape(rt.pts)), hard, soft, bb);
+          fr = { h: bb.h, fp: bb.x0 === Infinity ? null : bb, val: f ? { at: f.at, a: f.a, label: f.label, anchor: f.anchor } : null, boxes: f ? f.boxes : null };
+        }
+        if (fr.boxes) { fr.boxes.forEach(function (b) { addBox(hard, b); }); rt.fw = fr.val; }
+        rec.fwr = fr;
+      }
+      if (reuse && !boxesEq(ob, rec.fwr?.boxes || null)) {
+        [ob, rec.fwr?.boxes].forEach(function (l) { if (l) l.forEach(function (b) { CF.push(b); fwc.push(b); }); });
       }
     });
+    var CL = chg.concat(fwc, lbc);
     E.forEach(function (e) {
       var rt = res[e.k];
       if (!rt) return;
+      var rec = ent[e.k], c = reuse ? pe[e.k] : null, ol = c?.lbl || null;
       rt.label = null;
+      rec.lbl = null;
       if (e.ll) {
         var fix = ov[e.k]?.label;
         if (fix) rt.label = fix.slice();
         else {
-          var lw = o.lw?.[e.k] || e.ll * 6 + 14, l = placeLabel(rt.sh, lw, hard, soft);
-          if (l) { addBox(hard, l.box); rt.label = l.label; }
+          var lw = o.lw?.[e.k] || e.ll * 6 + 14, lr;
+          if (ol && ol.lw === lw && ptsEq(c.sp, rt.pts) && fpClear(ol.fp, CL)) lr = ol;
+          else {
+            stats.labels++;
+            var bb = newBox(o.trace), l = placeLabel(shape(rt.pts), lw, hard, soft, bb);
+            lr = { lw: lw, h: bb.h, fp: bb.x0 === Infinity ? null : bb, label: l ? l.label : null, box: l ? l.box : null };
+          }
+          if (lr.box) { addBox(hard, lr.box); rt.label = lr.label; }
+          rec.lbl = lr;
         }
       }
-      delete rt.sh;
+      var ob = ol?.box || null, nb = rec.lbl?.box || null;
+      if (reuse && !boxesEq(ob && [ob], nb && [nb])) [ob, nb].forEach(function (b) { if (b) CL.push(b); });
     });
-    return res;
+    var state = { v: 1, G: slim(G), G2: slim(G2), edges: ent, order: order, hardR: hardR, softR: softR, stats: stats };
+    return { routes: res, state: state };
   }
 
   // Keys ("n:id" / "c:id") of servers and regions breaking the spacing rules (validate.mjs states them for the build).
@@ -712,7 +915,7 @@ export function geometryKitOf(sizes, keyset) {
     return bad;
   }
 
-  return { headerTitle: headerTitle, boxExtent: boxExtent, boxFor: boxFor, rows: rows, fitBox: fitBox, fitRegion: fitRegion, regionBounds: regionBounds, resizeRegion: resizeRegion, route: route, problems: problems };
+  return { headerTitle: headerTitle, boxExtent: boxExtent, boxFor: boxFor, rows: rows, fitBox: fitBox, fitRegion: fitRegion, regionBounds: regionBounds, resizeRegion: resizeRegion, route: route, routeWith: routeWith, problems: problems };
 }
 
 export const geometryKit = () => geometryKitOf(METRICS, keysKit());

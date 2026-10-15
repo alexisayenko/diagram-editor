@@ -230,6 +230,140 @@ data and the panels matched for Clean, Dark and Swiss).
 `tools/bench.mjs` reports the scene size an edit hands over next to the
 page size and checks that the route-cached scene equals a fresh one.
 
+## After incremental routing (AR-13, step 3)
+
+[ADR-0020](decisions/adr-0020-incremental-routing.md). An edit routes again
+only what it can reach, with exactly the result of a full re-route.
+
+### What a route depends on
+
+Read from `render/geometry.mjs` (`routeWith`):
+
+- Connections do not depend on each other: there is no occupancy or lane
+  state, so routes can be computed in any order. What couples them is shared
+  input:
+  - **The grid.** One grid per pass, built from every box border (servers
+    +10, region titles +4, regions +-10), every port and stub of every
+    connection (pass 1: the four centred ports of both ends; pass 2: the
+    fixed ports) and every waypoint, plus midpoints of gaps over 30 px. Its
+    lines span the whole plane, so a box edit adds or removes lines through
+    areas far from the box.
+  - **Tie-breaking.** The A* pops equal estimates in the order of its
+    binary heap, so the chosen path among equal-cost ones depends on the
+    whole push history of the search. A line added anywhere inside the area
+    a search explores can change the path even when it adds no cost.
+  - **Ports of a box side.** Pass 2 spreads the connections that share a
+    side of a box (20 px steps), so a port depends on the other ends and
+    sides of its neighbours on that side. Recomputed every run (no search).
+  - **Markers and labels.** Placed after all routes, in edge order: every
+    firewall marker first, then every label; each avoids servers, titles
+    and the markers and labels placed before it (the firewall markers all
+    count for labels). A label depends on its route and on those boxes only.
+
+### Invalidation rule (implemented)
+
+- A search result (pass 1 or 2) is reused when its inputs (end rectangles,
+  home regions, waypoints, line-of-process ports, port points) are equal and
+  the **window** it touched is unchanged in the new grid: the same grid
+  lines in the same order with none inserted between them, the same
+  blocked, region, hug and narrow-channel flags at every point, and the same
+  situation at the grid border. The window is the box of grid points the
+  search popped plus one point around it plus the start and goal lookups.
+  This is a bounding box, not a distance: lines have no extent, so a line
+  inside the box's coordinate range invalidates it even far from the path.
+- A marker or label is reused when its route is the same and no changed
+  rectangle touches the box its candidate positions were scored in. Changed
+  rectangles: servers, region titles and region borders whose rectangle
+  differs between the runs (old and new), the markers and labels of edges
+  that vanished, and every marker or label placed differently than before
+  (in placement order: later ones see the earlier ones' old and new boxes).
+  This is the transitive rule: one label that moves invalidates the later
+  labels near its old or new place, and so on.
+- Fallback to placing every marker and label again: the unchanged servers,
+  titles or borders changed their order, or the surviving edges changed
+  theirs (the float sums of overlaps are taken in that order). Searches
+  have no fallback of their own: a changed window is searched again.
+- Nothing is compared by similarity and no bound is guessed. A rule
+  "re-route the connections whose route meets the changed box" was not used
+  because it is not exact here (see the ADR).
+
+### Equivalence test
+
+`route-incremental.test.mjs`: seeded random edit sequences on generated
+diagrams (150 sequences of up to 6 steps on 20 servers, 50 of 5 on 60, 12 of
+4 on 150; about 1200 steps) from move, tiny move, resize, region move and
+resize, rename, service lines, text, add and delete server, add, remove and
+swap connections, region change, swap regions, waypoints, fixed labels and
+measured widths. Each step is routed with the state of the previous step and
+compared with a full route (JSON of all routes), and with the hash of every
+search (the sequence of popped states) and of every marker and label
+(scores of the candidates): a reused result must be what a new run does, not
+merely look the same. The full route is also compared with the router of the
+previous commit in a one-off run (identical on all steps). Golden fixtures
+for 20, 100 and 200 servers and the demo outputs (svg, data, excalidraw) are
+unchanged.
+
+### Numbers (Node, ms, median of 5, `node tools/bench.mjs`)
+
+"Before" is the previous commit with its route cache (an edit that changes
+a box misses it and routes everything). "After, full" is a full route of the
+new code (the search is one function without per-step calls, about 1.25
+times faster, same pops). "Searches" are searches run, of the 2 per
+connection a full run does.
+
+| Servers | Edit | Before | After, full | After, incremental | Searches | Labels placed |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 100 | name, box kept | 13 (cache hit) | 75 | 9 | 0 of 300 | 0 of 150 |
+| 100 | one more IP row (box changes) | 113 | 78 | 57 | 105 of 300 | 21 of 150 |
+| 100 | add server, 2 connections | 117 | 79 | 71 | 140 of 304 | 66 of 152 |
+| 100 | delete server | 103 | 73 | 50 | 72 of 294 | 43 of 147 |
+| 400 | name, box kept | 35 (cache hit) | 898 | 34 | 0 of 1200 | 0 of 600 |
+| 400 | one more IP row (box changes) | 1175 | 844 | 563 | 371 of 1200 | 124 of 600 |
+| 400 | add server, 2 connections | 1181 | 885 | 725 | 545 of 1204 | 229 of 602 |
+| 400 | delete server | 1192 | 848 | 390 | 161 of 1194 | 134 of 597 |
+
+The target (a), a box-changing edit under 0.4 s at 400 servers, is **not
+reached**: 0.56 s in Node, 2.1 times better than before and 1.5 times
+better than a full route of the new code. The reason is the rule above: the
+edited box changes about 6 grid lines (its border, ports and centre); every
+connection whose window spans one of them is searched again, and those are
+the long, expensive ones (31 % of the searches, about 55 % of the time in
+the profile). Taking more would need a rule that is not exact (the search
+result can change with a line added far from the path, because of the
+tie-breaking), so there is no fallback to trade: the cases not reused are
+exactly the ones a full re-route could change. A text edit that keeps the
+box costs 34 ms (before: a full route when the header label length changed,
+for example 10 s in the browser, below).
+
+Browser (built-in browser, `diagram.html` on `localhost`, a generated
+diagram dropped into the page as a scratch archive, never saved; one server
+edit through `core.host.serverEditor` from the call until the frame has
+rendered the new scene, ms; host = render in the page, runtime = routing and
+cards in the frame; 3 to 4 edits each, the pane was hidden, so the absolute
+numbers are about 3 times the Node ones):
+
+| Servers | Edit | Before | After |
+| ---: | --- | ---: | ---: |
+| 100 | one more IP row | 270 to 300 (host 130-150, runtime 115) | 280 to 340 (host 120-165, runtime 120-145) |
+| 100 | name (header label changes) | 260 to 290 | 133 to 143 |
+| 100 | add server | 460 to 550 | 530 to 630 |
+| 400 | one more IP row | 9200 to 9700 (host 4700, runtime 4300) | 1550 to 1720 (host 660-790, runtime 760-820) |
+| 400 | name (header label changes) | 10000 to 10700 | 480 to 570 (host 110, runtime 275) |
+| 400 | add server | 10900 to 11000 | 2740 to 3870 (host 1250-1830, runtime 1380-1930) |
+
+At 100 servers the box and add edits are not faster in the browser (they
+were 15 % slower for add: the window bookkeeping and the diff cost as much
+as the 55 % of searches they save); at 400 they are 3 to 6 times faster (the
+browser engine ran the old per-step search much slower than Node did). A
+delete cannot be done through the page's host interface (there is no delete
+call), so it is measured in Node only. The 1.1 s of client-side routing per
+edit is now 0.8 s for a box edit and 0.28 s for a text edit.
+
+`tools/bench.mjs` prints the four edits with the searches and labels run;
+`perf.test.mjs` guards that a box edit at 150 servers runs under 80 % of the
+searches and places under half of the labels, is byte-identical to a full
+render and is not slower (counts, not milliseconds).
+
 ## Do the numbers justify the big change (D6)?
 
 Partly. D6 said to refactor "only if 150 servers feels slow" (reviewers

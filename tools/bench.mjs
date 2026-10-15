@@ -147,6 +147,55 @@ export function measureEdit(files, folder, assetBundle) {
   return { write: t1 - t0, rebuild: t2 - t1, total: t2 - t0, cachedTotal: t3 - t2 + (t1 - t0), bytes: Buffer.byteLength(result.html), sceneBytes: Buffer.byteLength(JSON.stringify(result.scene)), same: cached.html === result.html && JSON.stringify(cached.scene) === JSON.stringify(result.scene) };
 }
 
+const EDIT_ID = "srv010";
+
+// The edits a page makes, as { name: (files) => { files, refit } }: a text edit that changes no box, an edit that changes the box of one server
+// (one more IP address row), a server added with two connections, a server deleted with its connections.
+export const EDITS = {
+  name: (files) => ({ files: serverEdit(files, (s) => ({ name: s.name + "-x" })), refit: [EDIT_ID] }),
+  box: (files) => ({ files: serverEdit(files, (s) => ({ ips: [...(s.ips ?? []), "203.0.113.250/24"] })), refit: [EDIT_ID] }),
+  add: (files) => {
+    const next = new Map(files), id = "srv9001", text = files.get(serverPath(EDIT_ID)).replace(/^id = .*$/m, `id = "${id}"`).replace(/^name = .*$/m, `name = "${id}.example.test"`);
+    const link = (from, to, port) => `[[connections]]\nfrom = "${from}"\nto = "${to}"\nlabel = "TCP · port ${port}"\n\n`;
+    next.set(serverPath(id), text);
+    next.set("topology.toml", files.get("topology.toml") + link(id, "srv003", 7001) + link("srv007", id, 7002));
+    return { files: next, refit: [] };
+  },
+  remove: (files) => {
+    const next = new Map(files);
+    next.delete(serverPath(EDIT_ID));
+    next.set("topology.toml", files.get("topology.toml").split(/(?=\[\[connections\]\])/).filter((b, i) => i === 0 || !b.includes(`"${EDIT_ID}"`)).join(""));
+    return { files: next, refit: [] };
+  },
+};
+
+function serverEdit(files, change) {
+  const path = serverPath(EDIT_ID), root = mergeFolder(files), s = root.servers.find((x) => x.id === EDIT_ID);
+  const fields = { name: s.name, details: s.details ?? "", ...Object.fromEntries(["os", "hardware", "cpu", "ram", "swap", "disk", "role"].map((k) => [k, s[k] ?? ""])) };
+  for (const k of ["ips", "dns", "jobs", "rmi_services", "systemd_services", "services"]) fields[k] = s[k] ?? [];
+  return new Map(files).set(path, setServer(files.get(path), EDIT_ID, { ...fields, ...change(s) }, root));
+}
+
+// Each edit rendered from scratch and with the route cache of the render before it (incremental routing); the two must be byte-identical.
+export function measureEdits(files, folder, assetBundle, runs = 3) {
+  const first = renderDiagram(files, folder, null, assetBundle, []), out = {};
+  for (const [name, edit] of Object.entries(EDITS)) {
+    const { files: next, refit } = edit(files), full = [], inc = [];
+    let a, b;
+    for (let i = 0; i < runs; i++) {
+      let t = performance.now();
+      a = renderDiagram(next, folder, first.layout, assetBundle, refit);
+      full.push(performance.now() - t);
+      t = performance.now();
+      b = renderDiagram(next, folder, first.layout, assetBundle, refit, first.routeCache);
+      inc.push(performance.now() - t);
+    }
+    const none = { pass1: 0, pass2: 0, fw: 0, labels: 0 }, all = a.routeCache.state.stats, st = b.routeCache === first.routeCache ? none : b.routeCache.state.stats;
+    out[name] = { full: median(full), inc: median(inc), same: a.html === b.html && JSON.stringify(a.scene) === JSON.stringify(b.scene), searches: st.pass1 + st.pass2, labels: st.labels, searchesFull: all.pass1 + all.pass2, labelsFull: all.labels };
+  }
+  return out;
+}
+
 export function bench(sizes, runs, log = () => {}) {
   const assetBundle = assets(), result = {};
   for (const n of sizes) {
@@ -165,6 +214,7 @@ export function bench(sizes, runs, log = () => {}) {
       row.editCached = { median: median(edits.map((e) => e.cachedTotal)), identical: edits.every((e) => e.same) };
       row.sceneBytes = edits[0].sceneBytes;
   row.edit = { median: median(edits.map((e) => e.total)), p95: p95(edits.map((e) => e.total)), write: median(edits.map((e) => e.write)), rebuild: median(edits.map((e) => e.rebuild)) };
+      row.edits = measureEdits(files, folderName, assetBundle, Math.min(runs, 3));
       row.connections = (files.get("topology.toml").match(/\[\[connections\]\]/g) || []).length;
       result[n] = row;
       log(n, row);
@@ -191,5 +241,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   console.log(table(result));
   console.log("edit with the previous route cache (ms, median): " + Object.entries(result).map(([n, row]) => n + ": " + row.editCached.median.toFixed(0) + (row.editCached.identical ? "" : " (DIFFERENT OUTPUT)")).join(", "));
   console.log("scene handed to the loaded frame on an edit (KB, the whole page is the page column): " + Object.entries(result).map(([n, row]) => n + ": " + (row.sceneBytes / 1024).toFixed(0)).join(", "));
+  console.log("edits, ms (full re-route / incremental routing; searches run, of a full run; labels placed, of a full run):");
+  for (const [n, row] of Object.entries(result)) {
+    console.log(String(n).padEnd(5) + Object.entries(row.edits).map(([k, e]) => `${k} ${e.full.toFixed(0)} / ${e.inc.toFixed(0)} (${e.searches} of ${e.searchesFull}, ${e.labels} of ${e.labelsFull})${e.same ? "" : " DIFFERENT OUTPUT"}`).join("   "));
+  }
   if (out) writeFileSync(out, JSON.stringify({ runs, node: process.version, result }, null, 2));
 }
